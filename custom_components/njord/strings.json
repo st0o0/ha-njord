@@ -1,0 +1,20 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to njord",
+        "description": "Enter the host and port of your njord weather service.",
+        "data": {
+          "host": "Host",
+          "port": "Port"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Unable to connect to njord. Please check the host and port."
+    },
+    "abort": {
+      "already_configured": "This njord instance is already configured."
+    }
+  }
+}

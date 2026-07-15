@@ -1,0 +1,20 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Mit njord verbinden",
+        "description": "Gib Host und Port deines njord Wetter-Dienstes ein.",
+        "data": {
+          "host": "Host",
+          "port": "Port"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Verbindung zu njord fehlgeschlagen. Bitte Host und Port prüfen."
+    },
+    "abort": {
+      "already_configured": "Diese njord-Instanz ist bereits konfiguriert."
+    }
+  }
+}
