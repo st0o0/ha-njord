@@ -10,7 +10,7 @@ from .const import DOMAIN
 from .coordinator import NjordDataCoordinator
 from .grpc_client import NjordClient
 
-PLATFORMS = [Platform.WEATHER]
+PLATFORMS = [Platform.WEATHER, Platform.BINARY_SENSOR, Platform.SENSOR]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

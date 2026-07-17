@@ -11,13 +11,27 @@ from typing import TypeVar
 import grpc
 
 from .models import (
+    AlertData,
     BudgetStatusData,
+    ConsensusData,
+    CopOptimalHourData,
     DailyForecastData,
+    DerivedData,
+    EnergyData,
+    EnrichmentData,
     ForecastData,
+    HistoryData,
+    HorizonConsensusData,
+    HorizonDerivedData,
     HourlyForecastData,
+    IndexData,
+    ModelMetricsData,
     NjordConfigData,
     NjordLocation,
+    ParameterConsensusData,
+    ParameterTrendData,
     ServerStatusData,
+    TrendData,
 )
 
 # Ensure proto package path is on sys.path before importing generated stubs.
@@ -116,6 +130,202 @@ def _to_server_status(pb: config_service_pb2.ServerStatus) -> ServerStatusData:
     )
 
 
+# --- Enrichment protobuf converters ---
+
+_ALERT_TYPE_MAP: dict[int, str] = {
+    0: "unspecified",
+    1: "frost",
+    2: "heat",
+    3: "storm",
+    4: "heavy_rain",
+    5: "uv",
+    6: "fog",
+    7: "snow",
+    8: "pressure_drop",
+    9: "thunderstorm",
+}
+
+_ALERT_SEVERITY_MAP: dict[int, str] = {
+    0: "none",
+    1: "yellow",
+    2: "orange",
+    3: "red",
+}
+
+
+def _to_alert(pb: forecast_service_pb2.Alert) -> AlertData:
+    return AlertData(
+        type=_ALERT_TYPE_MAP.get(pb.type, "unspecified"),
+        severity=_ALERT_SEVERITY_MAP.get(pb.severity, "none"),
+        confidence=pb.confidence,
+    )
+
+
+def _to_index_data(pb: forecast_service_pb2.IndexUpdate) -> IndexData:
+    return IndexData(
+        laundry=pb.laundry,
+        outdoor=pb.outdoor,
+        running=pb.running,
+        cycling=pb.cycling,
+        bbq=pb.bbq,
+        irrigation=pb.irrigation,
+        solar=pb.solar,
+        ventilation=pb.ventilation,
+        vpd_kpa=pb.vpd_kpa if pb.HasField("vpd_kpa") else None,
+        vpd_category=pb.vpd_category if pb.HasField("vpd_category") else None,
+    )
+
+
+def _to_parameter_trend(pb: forecast_service_pb2.ParameterTrend) -> ParameterTrendData:
+    return ParameterTrendData(
+        parameter=pb.parameter,
+        direction=pb.direction,
+        delta=pb.delta,
+    )
+
+
+def _to_trend_data(pb: forecast_service_pb2.TrendUpdate) -> TrendData:
+    return TrendData(
+        parameter_trends=[_to_parameter_trend(t) for t in pb.parameter_trends],
+        weather_change_description=pb.weather_change_description if pb.HasField("weather_change_description") else None,
+        precip_starts_in_hours=pb.precip_starts_in_hours if pb.HasField("precip_starts_in_hours") else None,
+        precip_ends_in_hours=pb.precip_ends_in_hours if pb.HasField("precip_ends_in_hours") else None,
+        temp_max_in_hours=pb.temp_max_in_hours if pb.HasField("temp_max_in_hours") else None,
+        temp_min_in_hours=pb.temp_min_in_hours if pb.HasField("temp_min_in_hours") else None,
+        stability_label=pb.stability_label if pb.HasField("stability_label") else None,
+        stability_ratio=pb.stability_ratio if pb.HasField("stability_ratio") else None,
+        decay_rate=pb.decay_rate if pb.HasField("decay_rate") else None,
+        reliable_hours=pb.reliable_hours if pb.HasField("reliable_hours") else None,
+    )
+
+
+def _to_cop_optimal_hour(pb: forecast_service_pb2.CopOptimalHour) -> CopOptimalHourData:
+    return CopOptimalHourData(
+        hours_from_now=pb.hours_from_now,
+        cop=pb.cop,
+    )
+
+
+def _to_energy_data(pb: forecast_service_pb2.EnergyUpdate) -> EnergyData:
+    return EnergyData(
+        heating_demand=pb.heating_demand,
+        cop_estimate=pb.cop_estimate if pb.HasField("cop_estimate") else None,
+        shading=pb.shading,
+        battery_strategy=pb.battery_strategy,
+        night_cooling=pb.night_cooling,
+        cop_optimal=[_to_cop_optimal_hour(c) for c in pb.cop_optimal],
+    )
+
+
+def _to_horizon_derived(pb: forecast_service_pb2.HorizonDerived) -> HorizonDerivedData:
+    return HorizonDerivedData(
+        horizon=pb.horizon,
+        beaufort=pb.beaufort if pb.HasField("beaufort") else None,
+        wind_chill=pb.wind_chill if pb.HasField("wind_chill") else None,
+        dewpoint_comfort=pb.dewpoint_comfort if pb.HasField("dewpoint_comfort") else None,
+        wmo_description=pb.wmo_description if pb.HasField("wmo_description") else None,
+    )
+
+
+def _to_derived_data(pb: forecast_service_pb2.DerivedUpdate) -> DerivedData:
+    scalars = pb.scalars if pb.HasField("scalars") else None
+    return DerivedData(
+        by_horizon=[_to_horizon_derived(h) for h in pb.by_horizon],
+        diurnal_amplitude=scalars.diurnal_amplitude if scalars and scalars.HasField("diurnal_amplitude") else None,
+        sunshine_pct=scalars.sunshine_pct if scalars and scalars.HasField("sunshine_pct") else None,
+        inversion=scalars.inversion if scalars and scalars.HasField("inversion") else None,
+    )
+
+
+def _to_model_metrics(pb: forecast_service_pb2.ModelMetrics) -> ModelMetricsData:
+    return ModelMetricsData(
+        model=pb.model,
+        mae_7d=pb.mae_7d if pb.HasField("mae_7d") else None,
+        mae_30d=pb.mae_30d if pb.HasField("mae_30d") else None,
+        weight=pb.weight,
+        drift=pb.drift if pb.HasField("drift") else None,
+    )
+
+
+def _to_history_data(pb: forecast_service_pb2.HistoryUpdate) -> HistoryData:
+    return HistoryData(
+        models=[_to_model_metrics(m) for m in pb.models],
+        seasonal_best=pb.seasonal_best if pb.HasField("seasonal_best") else None,
+        anomaly=pb.anomaly if pb.HasField("anomaly") else None,
+        anomaly_deviation=pb.anomaly_deviation if pb.HasField("anomaly_deviation") else None,
+        weighted_temperature=pb.weighted_temperature if pb.HasField("weighted_temperature") else None,
+    )
+
+
+def _to_horizon_consensus(pb: forecast_service_pb2.HorizonConsensus) -> HorizonConsensusData:
+    return HorizonConsensusData(
+        horizon=pb.horizon,
+        median=pb.median if pb.HasField("median") else None,
+        trimmed_mean=pb.trimmed_mean if pb.HasField("trimmed_mean") else None,
+        spread=pb.spread if pb.HasField("spread") else None,
+        iqr=pb.iqr if pb.HasField("iqr") else None,
+        agreement=pb.agreement if pb.HasField("agreement") else None,
+        available_models=pb.available_models,
+    )
+
+
+def _to_parameter_consensus(pb: forecast_service_pb2.ParameterConsensus) -> ParameterConsensusData:
+    return ParameterConsensusData(
+        parameter=pb.parameter,
+        unit=pb.unit,
+        by_horizon=[_to_horizon_consensus(h) for h in pb.by_horizon],
+    )
+
+
+def _to_consensus_data(pb: forecast_service_pb2.ConsensusUpdate) -> ConsensusData:
+    return ConsensusData(
+        parameters=[_to_parameter_consensus(p) for p in pb.parameters],
+    )
+
+
+def _to_enrichment_data(pb: forecast_service_pb2.GetEnrichmentsResponse) -> EnrichmentData:
+    return EnrichmentData(
+        location=pb.location,
+        alerts=[_to_alert(a) for a in pb.alerts.alerts] if pb.HasField("alerts") else [],
+        indices=_to_index_data(pb.indices) if pb.HasField("indices") else None,
+        trends=_to_trend_data(pb.trends) if pb.HasField("trends") else None,
+        energy=_to_energy_data(pb.energy) if pb.HasField("energy") else None,
+        derived=_to_derived_data(pb.derived) if pb.HasField("derived") else None,
+        history=_to_history_data(pb.history) if pb.HasField("history") else None,
+        consensus=_to_consensus_data(pb.consensus) if pb.HasField("consensus") else None,
+    )
+
+
+def _to_enrichment_event(pb: forecast_service_pb2.EnrichmentEvent) -> EnrichmentData:
+    payload_field = pb.WhichOneof("payload")
+    alerts = []
+    indices = trends = energy = derived = history = consensus = None
+    if payload_field == "alerts":
+        alerts = [_to_alert(a) for a in pb.alerts.alerts]
+    elif payload_field == "indices":
+        indices = _to_index_data(pb.indices)
+    elif payload_field == "trends":
+        trends = _to_trend_data(pb.trends)
+    elif payload_field == "energy":
+        energy = _to_energy_data(pb.energy)
+    elif payload_field == "derived":
+        derived = _to_derived_data(pb.derived)
+    elif payload_field == "history":
+        history = _to_history_data(pb.history)
+    elif payload_field == "consensus":
+        consensus = _to_consensus_data(pb.consensus)
+    return EnrichmentData(
+        location=pb.location,
+        alerts=alerts,
+        indices=indices,
+        trends=trends,
+        energy=energy,
+        derived=derived,
+        history=history,
+        consensus=consensus,
+    )
+
+
 # --- Client ---
 
 
@@ -202,6 +412,15 @@ class NjordClient:
         )
         return _to_server_status(resp)
 
+    async def get_enrichments(self, location: str) -> EnrichmentData:
+        """Retrieve enrichment data for a location."""
+        self._ensure_connected()
+        assert self._forecast_stub is not None
+        resp = await self._forecast_stub.GetEnrichments(
+            forecast_service_pb2.GetEnrichmentsRequest(location=location)
+        )
+        return _to_enrichment_data(resp)
+
     # --- Streaming RPCs ---
 
     async def stream_forecasts(
@@ -221,6 +440,28 @@ class NjordClient:
         async for item in self._stream_with_reconnect(
             lambda: self._forecast_stub.StreamForecasts(req),
             _to_forecast_data,
+            on_disconnect=on_disconnect,
+            on_reconnect=on_reconnect,
+        ):
+            yield item
+
+    async def stream_enrichments(
+        self,
+        location: str | None = None,
+        *,
+        on_disconnect: Callable[[], None] | None = None,
+        on_reconnect: Callable[[], None] | None = None,
+    ) -> AsyncIterator[EnrichmentData]:
+        """Stream real-time enrichment updates with auto-reconnect."""
+        self._ensure_connected()
+        assert self._forecast_stub is not None
+        req = forecast_service_pb2.StreamEnrichmentsRequest(
+            location=location or ""
+        )
+
+        async for item in self._stream_with_reconnect(
+            lambda: self._forecast_stub.StreamEnrichments(req),
+            _to_enrichment_event,
             on_disconnect=on_disconnect,
             on_reconnect=on_reconnect,
         ):

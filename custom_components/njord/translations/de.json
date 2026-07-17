@@ -16,5 +16,39 @@
     "abort": {
       "already_configured": "Diese njord-Instanz ist bereits konfiguriert."
     }
+  },
+  "entity": {
+    "sensor": {
+      "laundry_index": { "name": "Wäsche-Index" },
+      "outdoor_index": { "name": "Outdoor-Index" },
+      "running_index": { "name": "Lauf-Index" },
+      "cycling_index": { "name": "Rad-Index" },
+      "bbq_index": { "name": "Grillwetter-Index" },
+      "irrigation_index": { "name": "Bewässerungs-Index" },
+      "solar_index": { "name": "Solar-Index" },
+      "ventilation_index": { "name": "Lüftungs-Index" },
+      "vpd": { "name": "VPD" },
+      "heating_demand": { "name": "Heizbedarf" },
+      "cop_estimate": { "name": "COP-Schätzung" },
+      "shading": { "name": "Verschattung" },
+      "battery_strategy": { "name": "Batterie-Strategie" },
+      "night_cooling": { "name": "Nachtkühlung" },
+      "weather_trend": { "name": "Wettertrend" },
+      "sunshine": { "name": "Sonnenschein" },
+      "diurnal_amplitude": { "name": "Tagesamplitude" },
+      "model_performance": { "name": "Modell-Performance" }
+    },
+    "binary_sensor": {
+      "frost_alert": { "name": "Frost-Warnung" },
+      "heat_alert": { "name": "Hitze-Warnung" },
+      "storm_alert": { "name": "Sturm-Warnung" },
+      "heavy_rain_alert": { "name": "Starkregen-Warnung" },
+      "uv_alert": { "name": "UV-Warnung" },
+      "fog_alert": { "name": "Nebel-Warnung" },
+      "snow_alert": { "name": "Schnee-Warnung" },
+      "pressure_drop_alert": { "name": "Druckabfall-Warnung" },
+      "thunderstorm_alert": { "name": "Gewitter-Warnung" },
+      "inversion": { "name": "Inversion" }
+    }
   }
 }

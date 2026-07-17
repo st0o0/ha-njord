@@ -5,7 +5,7 @@ import warnings
 
 from njord.v1 import config_service_pb2 as njord_dot_v1_dot_config__service__pb2
 
-GRPC_GENERATED_VERSION = '1.82.1'
+GRPC_GENERATED_VERSION = '1.78.0'
 GRPC_VERSION = grpc.__version__
 _version_not_supported = False
 
@@ -25,7 +25,7 @@ if _version_not_supported:
     )
 
 
-class ConfigServiceStub:
+class ConfigServiceStub(object):
     """Missing associated documentation comment in .proto file."""
 
     def __init__(self, channel):
@@ -86,7 +86,7 @@ class ConfigServiceStub:
                 _registered_method=True)
 
 
-class ConfigServiceServicer:
+class ConfigServiceServicer(object):
     """Missing associated documentation comment in .proto file."""
 
     def GetConfig(self, request, context):
@@ -216,7 +216,7 @@ def add_ConfigServiceServicer_to_server(servicer, server):
 
 
  # This class is part of an EXPERIMENTAL API.
-class ConfigService:
+class ConfigService(object):
     """Missing associated documentation comment in .proto file."""
 
     @staticmethod

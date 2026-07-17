@@ -16,5 +16,39 @@
     "abort": {
       "already_configured": "This njord instance is already configured."
     }
+  },
+  "entity": {
+    "sensor": {
+      "laundry_index": { "name": "Laundry Index" },
+      "outdoor_index": { "name": "Outdoor Index" },
+      "running_index": { "name": "Running Index" },
+      "cycling_index": { "name": "Cycling Index" },
+      "bbq_index": { "name": "BBQ Index" },
+      "irrigation_index": { "name": "Irrigation Index" },
+      "solar_index": { "name": "Solar Index" },
+      "ventilation_index": { "name": "Ventilation Index" },
+      "vpd": { "name": "VPD" },
+      "heating_demand": { "name": "Heating Demand" },
+      "cop_estimate": { "name": "COP Estimate" },
+      "shading": { "name": "Shading" },
+      "battery_strategy": { "name": "Battery Strategy" },
+      "night_cooling": { "name": "Night Cooling" },
+      "weather_trend": { "name": "Weather Trend" },
+      "sunshine": { "name": "Sunshine" },
+      "diurnal_amplitude": { "name": "Diurnal Amplitude" },
+      "model_performance": { "name": "Model Performance" }
+    },
+    "binary_sensor": {
+      "frost_alert": { "name": "Frost Alert" },
+      "heat_alert": { "name": "Heat Alert" },
+      "storm_alert": { "name": "Storm Alert" },
+      "heavy_rain_alert": { "name": "Heavy Rain Alert" },
+      "uv_alert": { "name": "UV Alert" },
+      "fog_alert": { "name": "Fog Alert" },
+      "snow_alert": { "name": "Snow Alert" },
+      "pressure_drop_alert": { "name": "Pressure Drop Alert" },
+      "thunderstorm_alert": { "name": "Thunderstorm Alert" },
+      "inversion": { "name": "Inversion" }
+    }
   }
 }
