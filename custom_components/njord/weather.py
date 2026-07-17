@@ -65,8 +65,6 @@ class NjordWeatherEntity(CoordinatorEntity[NjordDataCoordinator], WeatherEntity)
     _attr_native_temperature_unit = UnitOfTemperature.CELSIUS
     _attr_native_pressure_unit = UnitOfPressure.HPA
     _attr_native_wind_speed_unit = UnitOfSpeed.METERS_PER_SECOND
-    _attr_supported_features = WeatherEntityFeature.FORECAST_DAILY | WeatherEntityFeature.FORECAST_HOURLY
-
     def __init__(
         self,
         coordinator: NjordDataCoordinator,
@@ -96,6 +94,16 @@ class NjordWeatherEntity(CoordinatorEntity[NjordDataCoordinator], WeatherEntity)
         if self.coordinator.data is None:
             return None
         return self.coordinator.data.forecasts.get((self._location, self._model))
+
+    @property
+    def supported_features(self) -> WeatherEntityFeature:
+        features = WeatherEntityFeature(0)
+        data = self._forecast_data
+        if data and data.hourly:
+            features |= WeatherEntityFeature.FORECAST_HOURLY
+        if data and data.daily:
+            features |= WeatherEntityFeature.FORECAST_DAILY
+        return features
 
     @property
     def condition(self) -> str | None:

@@ -93,3 +93,43 @@ async def test_model_performance_diagnostic(hass: HomeAssistant, mock_client, mo
     assert state is not None
     assert float(state.state) == pytest.approx(24.48)
     assert "models" in state.attributes
+
+
+async def test_hdd_sensor(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+    await init_integration(hass, mock_config_entry)
+
+    state = hass.states.get("sensor.njord_home_heating_degree_days")
+    assert state is not None
+    assert float(state.state) == pytest.approx(5.2)
+    assert state.attributes["unit_of_measurement"] == "°C·d"
+    assert state.attributes["icon"] == "mdi:thermometer-chevron-up"
+
+
+async def test_cdd_sensor(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+    await init_integration(hass, mock_config_entry)
+
+    state = hass.states.get("sensor.njord_home_cooling_degree_days")
+    assert state is not None
+    assert float(state.state) == pytest.approx(1.3)
+    assert state.attributes["unit_of_measurement"] == "°C·d"
+    assert state.attributes["icon"] == "mdi:thermometer-chevron-down"
+
+
+async def test_frost_hours_sensor(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+    await init_integration(hass, mock_config_entry)
+
+    state = hass.states.get("sensor.njord_home_frost_hours")
+    assert state is not None
+    assert state.state == "4"
+    assert state.attributes["unit_of_measurement"] == "h"
+    assert state.attributes["icon"] == "mdi:snowflake-thermometer"
+
+
+async def test_frost_confidence_sensor(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+    await init_integration(hass, mock_config_entry)
+
+    state = hass.states.get("sensor.njord_home_frost_confidence")
+    assert state is not None
+    assert float(state.state) == pytest.approx(85.0)
+    assert state.attributes["unit_of_measurement"] == "%"
+    assert state.attributes["icon"] == "mdi:snowflake-check"

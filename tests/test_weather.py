@@ -2,10 +2,15 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
+from unittest.mock import AsyncMock
+
 import pytest
+from homeassistant.components.weather import WeatherEntityFeature
 from homeassistant.core import HomeAssistant
 
 from custom_components.njord.condition_mapper import map_condition
+from custom_components.njord.models import DailyForecastData, ForecastData, HourlyForecastData
 from tests.conftest import init_integration
 
 
@@ -47,3 +52,43 @@ async def test_consensus_weather_entity(hass: HomeAssistant, mock_client, mock_c
     assert state is not None
     assert state.attributes.get("agreement") is not None
     assert state.attributes.get("available_models") is not None
+
+
+async def test_supported_features_with_hourly_and_daily(
+    hass: HomeAssistant, mock_client, mock_config_entry
+) -> None:
+    await init_integration(hass, mock_config_entry)
+
+    state = hass.states.get("weather.njord_home_icon_d2")
+    assert state is not None
+    features = WeatherEntityFeature(state.attributes["supported_features"])
+    assert features & WeatherEntityFeature.FORECAST_HOURLY
+    assert features & WeatherEntityFeature.FORECAST_DAILY
+
+
+async def test_supported_features_hourly_only(
+    hass: HomeAssistant, mock_client, mock_config_entry
+) -> None:
+    mock_client.get_forecast = AsyncMock(
+        side_effect=lambda loc, model: ForecastData(
+            location=loc,
+            model=model,
+            updated_at=1720000000,
+            hourly=[
+                HourlyForecastData(
+                    timestamp=datetime(2026, 7, 15, 12, 0, tzinfo=UTC),
+                    temperature=22.5,
+                    weather_code=1,
+                    is_day=True,
+                ),
+            ],
+            daily=[],
+        )
+    )
+    await init_integration(hass, mock_config_entry)
+
+    state = hass.states.get("weather.njord_home_icon_d2")
+    assert state is not None
+    features = WeatherEntityFeature(state.attributes["supported_features"])
+    assert features & WeatherEntityFeature.FORECAST_HOURLY
+    assert not (features & WeatherEntityFeature.FORECAST_DAILY)

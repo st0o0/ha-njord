@@ -68,6 +68,10 @@ async def async_setup_entry(
         entities.append(NjordSunshineSensor(coordinator, entry, location))
         entities.append(NjordDiurnalAmplitudeSensor(coordinator, entry, location))
         entities.append(NjordHistorySensor(coordinator, entry, location))
+        entities.append(NjordHddSensor(coordinator, entry, location))
+        entities.append(NjordCddSensor(coordinator, entry, location))
+        entities.append(NjordFrostHoursSensor(coordinator, entry, location))
+        entities.append(NjordFrostConfidenceSensor(coordinator, entry, location))
 
     async_add_entities(entities)
 
@@ -82,6 +86,10 @@ async def async_setup_entry(
         new_entities.append(NjordSunshineSensor(coordinator, entry, location.name))
         new_entities.append(NjordDiurnalAmplitudeSensor(coordinator, entry, location.name))
         new_entities.append(NjordHistorySensor(coordinator, entry, location.name))
+        new_entities.append(NjordHddSensor(coordinator, entry, location.name))
+        new_entities.append(NjordCddSensor(coordinator, entry, location.name))
+        new_entities.append(NjordFrostHoursSensor(coordinator, entry, location.name))
+        new_entities.append(NjordFrostConfidenceSensor(coordinator, entry, location.name))
         return new_entities
 
     coordinator.register_entity_factory("sensor", async_add_entities, sensor_factory)
@@ -403,3 +411,109 @@ class NjordHistorySensor(_NjordEnrichmentSensor):
         if h.anomaly_deviation is not None:
             attrs["anomaly_deviation"] = h.anomaly_deviation
         return attrs
+
+
+class NjordHddSensor(_NjordEnrichmentSensor):
+    """Sensor for Heating Degree Days."""
+
+    _attr_native_unit_of_measurement = "°C·d"
+    _attr_icon = "mdi:thermometer-chevron-up"
+    _attr_translation_key = "hdd"
+
+    def __init__(self, coordinator, entry, location):
+        super().__init__(coordinator, entry, location)
+        slug = f"{location}_hdd".replace("-", "_").replace(" ", "_").lower()
+        self._attr_unique_id = f"{entry.entry_id}_{slug}"
+        self._attr_name = "Heating Degree Days"
+
+    @property
+    def available(self) -> bool:
+        enrichment = self._enrichment()
+        return enrichment is not None and enrichment.indices is not None
+
+    @property
+    def native_value(self) -> float | None:
+        enrichment = self._enrichment()
+        if enrichment is None or enrichment.indices is None:
+            return None
+        return enrichment.indices.hdd
+
+
+class NjordCddSensor(_NjordEnrichmentSensor):
+    """Sensor for Cooling Degree Days."""
+
+    _attr_native_unit_of_measurement = "°C·d"
+    _attr_icon = "mdi:thermometer-chevron-down"
+    _attr_translation_key = "cdd"
+
+    def __init__(self, coordinator, entry, location):
+        super().__init__(coordinator, entry, location)
+        slug = f"{location}_cdd".replace("-", "_").replace(" ", "_").lower()
+        self._attr_unique_id = f"{entry.entry_id}_{slug}"
+        self._attr_name = "Cooling Degree Days"
+
+    @property
+    def available(self) -> bool:
+        enrichment = self._enrichment()
+        return enrichment is not None and enrichment.indices is not None
+
+    @property
+    def native_value(self) -> float | None:
+        enrichment = self._enrichment()
+        if enrichment is None or enrichment.indices is None:
+            return None
+        return enrichment.indices.cdd
+
+
+class NjordFrostHoursSensor(_NjordEnrichmentSensor):
+    """Sensor for frost hours."""
+
+    _attr_native_unit_of_measurement = "h"
+    _attr_icon = "mdi:snowflake-thermometer"
+    _attr_translation_key = "frost_hours"
+
+    def __init__(self, coordinator, entry, location):
+        super().__init__(coordinator, entry, location)
+        slug = f"{location}_frost_hours".replace("-", "_").replace(" ", "_").lower()
+        self._attr_unique_id = f"{entry.entry_id}_{slug}"
+        self._attr_name = "Frost Hours"
+
+    @property
+    def available(self) -> bool:
+        enrichment = self._enrichment()
+        return enrichment is not None and enrichment.indices is not None
+
+    @property
+    def native_value(self) -> int | None:
+        enrichment = self._enrichment()
+        if enrichment is None or enrichment.indices is None:
+            return None
+        return enrichment.indices.frost_hours
+
+
+class NjordFrostConfidenceSensor(_NjordEnrichmentSensor):
+    """Sensor for frost confidence as percentage."""
+
+    _attr_native_unit_of_measurement = "%"
+    _attr_icon = "mdi:snowflake-check"
+    _attr_translation_key = "frost_confidence"
+
+    def __init__(self, coordinator, entry, location):
+        super().__init__(coordinator, entry, location)
+        slug = f"{location}_frost_confidence".replace("-", "_").replace(" ", "_").lower()
+        self._attr_unique_id = f"{entry.entry_id}_{slug}"
+        self._attr_name = "Frost Confidence"
+
+    @property
+    def available(self) -> bool:
+        enrichment = self._enrichment()
+        return enrichment is not None and enrichment.indices is not None
+
+    @property
+    def native_value(self) -> float | None:
+        enrichment = self._enrichment()
+        if enrichment is None or enrichment.indices is None:
+            return None
+        if enrichment.indices.frost_confidence is None:
+            return None
+        return enrichment.indices.frost_confidence * 100

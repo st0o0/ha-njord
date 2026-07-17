@@ -98,6 +98,10 @@ class IndexData:
     irrigation: int = 0
     solar: int = 0
     ventilation: int = 0
+    hdd: float = 0.0
+    cdd: float = 0.0
+    frost_hours: int | None = None
+    frost_confidence: float | None = None
     vpd_kpa: float | None = None
     vpd_category: str | None = None
 

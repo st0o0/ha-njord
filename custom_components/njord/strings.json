@@ -36,7 +36,11 @@
       "weather_trend": { "name": "Weather Trend" },
       "sunshine": { "name": "Sunshine" },
       "diurnal_amplitude": { "name": "Diurnal Amplitude" },
-      "model_performance": { "name": "Model Performance" }
+      "model_performance": { "name": "Model Performance" },
+      "hdd": { "name": "Heating Degree Days" },
+      "cdd": { "name": "Cooling Degree Days" },
+      "frost_hours": { "name": "Frost Hours" },
+      "frost_confidence": { "name": "Frost Confidence" }
     },
     "binary_sensor": {
       "frost_alert": { "name": "Frost Alert" },

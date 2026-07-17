@@ -171,6 +171,10 @@ def _to_index_data(pb: forecast_service_pb2.IndexUpdate) -> IndexData:
         irrigation=pb.irrigation,
         solar=pb.solar,
         ventilation=pb.ventilation,
+        hdd=pb.hdd,
+        cdd=pb.cdd,
+        frost_hours=pb.frost_hours if pb.HasField("frost_hours") else None,
+        frost_confidence=pb.frost_confidence if pb.HasField("frost_confidence") else None,
         vpd_kpa=pb.vpd_kpa if pb.HasField("vpd_kpa") else None,
         vpd_category=pb.vpd_category if pb.HasField("vpd_category") else None,
     )
