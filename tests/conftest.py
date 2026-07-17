@@ -82,6 +82,22 @@ def _default_forecast(location: str = "home", model: str = "icon_d2") -> Forecas
                 sunset="2026-07-15T19:17:00+00:00",
                 weather_code=61,
             ),
+            DailyForecastData(
+                date="2026-07-16",
+                temperature_max=25.0,
+                temperature_min=14.0,
+                precipitation_sum=0.0,
+                wind_speed_max=10.0,
+                weather_code=1,
+            ),
+            DailyForecastData(
+                date="2026-07-17",
+                temperature_max=30.0,
+                temperature_min=18.0,
+                precipitation_sum=1.0,
+                wind_speed_max=15.0,
+                weather_code=3,
+            ),
         ],
     )
 

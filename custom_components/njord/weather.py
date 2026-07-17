@@ -6,7 +6,7 @@ from datetime import UTC, datetime, timedelta
 
 from homeassistant.components.weather import (
     Forecast,
-    WeatherEntity,
+    SingleCoordinatorWeatherEntity,
     WeatherEntityFeature,
 )
 from homeassistant.config_entries import ConfigEntry
@@ -15,10 +15,9 @@ from homeassistant.const import (
     UnitOfSpeed,
     UnitOfTemperature,
 )
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .condition_mapper import map_condition
 from .const import DOMAIN
@@ -58,7 +57,7 @@ async def async_setup_entry(
     coordinator.register_entity_factory("weather", async_add_entities, weather_factory)
 
 
-class NjordWeatherEntity(CoordinatorEntity[NjordDataCoordinator], WeatherEntity):
+class NjordWeatherEntity(SingleCoordinatorWeatherEntity[NjordDataCoordinator]):
     """Weather entity for a njord location×model pair."""
 
     _attr_has_entity_name = True
@@ -93,7 +92,7 @@ class NjordWeatherEntity(CoordinatorEntity[NjordDataCoordinator], WeatherEntity)
         features = WeatherEntityFeature(0)
         if data and data.hourly:
             features |= WeatherEntityFeature.FORECAST_HOURLY
-        if data and data.daily:
+        if data and len(data.daily) >= 3:
             features |= WeatherEntityFeature.FORECAST_DAILY
         self._attr_supported_features = features
 
@@ -173,8 +172,8 @@ class NjordWeatherEntity(CoordinatorEntity[NjordDataCoordinator], WeatherEntity)
             return None
         return data.hourly[0].cloud_cover
 
-    async def async_forecast_hourly(self) -> list[Forecast] | None:
-        """Return the hourly forecast."""
+    @callback
+    def _async_forecast_hourly(self) -> list[Forecast] | None:
         data = self._forecast_data
         if data is None:
             return None
@@ -213,8 +212,8 @@ class NjordWeatherEntity(CoordinatorEntity[NjordDataCoordinator], WeatherEntity)
             return None
         return map_condition(midday.weather_code, True)
 
-    async def async_forecast_daily(self) -> list[Forecast] | None:
-        """Return the daily forecast."""
+    @callback
+    def _async_forecast_daily(self) -> list[Forecast] | None:
         data = self._forecast_data
         if data is None:
             return None
@@ -231,7 +230,7 @@ class NjordWeatherEntity(CoordinatorEntity[NjordDataCoordinator], WeatherEntity)
 
             forecasts.append(
                 Forecast(
-                    datetime=d.date,
+                    datetime=f"{d.date}T00:00:00+00:00",
                     native_temperature=d.temperature_max,
                     native_templow=d.temperature_min,
                     precipitation=d.precipitation_sum,
@@ -260,7 +259,7 @@ _CONSENSUS_PARAM_MAP = {
 _AGREEMENT_THRESHOLD = 0.5
 
 
-class NjordConsensusWeatherEntity(CoordinatorEntity[NjordDataCoordinator], WeatherEntity):
+class NjordConsensusWeatherEntity(SingleCoordinatorWeatherEntity[NjordDataCoordinator]):
     """Weather entity using multi-model consensus values with hourly granularity."""
 
     _attr_has_entity_name = True
@@ -419,7 +418,8 @@ class NjordConsensusWeatherEntity(CoordinatorEntity[NjordDataCoordinator], Weath
             "reliable_hours": self._reliable_hours(),
         }
 
-    async def async_forecast_hourly(self) -> list[Forecast] | None:
+    @callback
+    def _async_forecast_hourly(self) -> list[Forecast] | None:
         consensus = self._consensus()
         if consensus is None:
             return None
@@ -455,7 +455,8 @@ class NjordConsensusWeatherEntity(CoordinatorEntity[NjordDataCoordinator], Weath
             )
         return forecasts
 
-    async def async_forecast_daily(self) -> list[Forecast] | None:
+    @callback
+    def _async_forecast_daily(self) -> list[Forecast] | None:
         consensus = self._consensus()
         if consensus is None:
             return None
@@ -490,7 +491,7 @@ class NjordConsensusWeatherEntity(CoordinatorEntity[NjordDataCoordinator], Weath
 
             forecasts.append(
                 Forecast(
-                    datetime=date_str,
+                    datetime=f"{date_str}T00:00:00+00:00",
                     native_temperature=max(temps) if temps else None,
                     native_templow=min(temps) if temps else None,
                     precipitation=sum(precips) if precips else None,
