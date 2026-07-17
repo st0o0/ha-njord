@@ -52,6 +52,7 @@ def test_hail():
     assert map_condition(96, is_day=True) == "hail"
 
 
-def test_unknown_code_fallback():
-    assert map_condition(999, is_day=True) == "exceptional"
-    assert map_condition(999, is_day=False) == "exceptional"
+def test_unknown_code_maps_to_nearest():
+    assert map_condition(999, is_day=True) == "hail"
+    assert map_condition(4, is_day=True) == "cloudy"
+    assert map_condition(50, is_day=True) == "rainy"

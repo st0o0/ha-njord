@@ -262,7 +262,6 @@ class NjordConsensusWeatherEntity(CoordinatorEntity[NjordDataCoordinator], Weath
     _attr_native_temperature_unit = UnitOfTemperature.CELSIUS
     _attr_native_pressure_unit = UnitOfPressure.HPA
     _attr_native_wind_speed_unit = UnitOfSpeed.METERS_PER_SECOND
-    _attr_supported_features = WeatherEntityFeature.FORECAST_DAILY
 
     def __init__(
         self,
@@ -283,6 +282,11 @@ class NjordConsensusWeatherEntity(CoordinatorEntity[NjordDataCoordinator], Weath
             model=location,
             entry_type=None,
         )
+
+        features = WeatherEntityFeature(0)
+        if self._daily_horizons():
+            features |= WeatherEntityFeature.FORECAST_DAILY
+        self._attr_supported_features = features
 
     def _consensus(self) -> ConsensusData | None:
         if self.coordinator.data is None:
@@ -366,6 +370,22 @@ class NjordConsensusWeatherEntity(CoordinatorEntity[NjordDataCoordinator], Weath
             "spread": temp_h.spread,
         }
 
+    def _condition_for_horizon(self, horizon: str) -> str | None:
+        """Get condition for a horizon, falling back to nearest available."""
+        wmo = self._get_horizon_value("weather_code", horizon)
+        if wmo is not None:
+            return map_condition(int(round(wmo)), True)
+        consensus = self._consensus()
+        if consensus is None:
+            return None
+        for param in consensus.parameters:
+            if param.parameter == "weather_code" and param.by_horizon:
+                target = int(horizon[1:])
+                nearest = min(param.by_horizon, key=lambda h: abs(int(h.horizon[1:]) - target))
+                if nearest.median is not None:
+                    return map_condition(int(round(nearest.median)), True)
+        return None
+
     def _daily_horizons(self) -> list[str]:
         """Get available horizons >= 24h from consensus data, sorted."""
         consensus = self._consensus()
@@ -393,10 +413,7 @@ class NjordConsensusWeatherEntity(CoordinatorEntity[NjordDataCoordinator], Weath
             hours = int(horizon[1:])
             forecast_date = today + timedelta(hours=hours)
             precip = self._get_horizon_value("precipitation", horizon)
-            wmo = self._get_horizon_value("weather_code", horizon)
-            condition = None
-            if wmo is not None:
-                condition = map_condition(int(round(wmo)), True)
+            condition = self._condition_for_horizon(horizon)
 
             forecasts.append(
                 Forecast(

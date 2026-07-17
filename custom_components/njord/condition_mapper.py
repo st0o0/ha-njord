@@ -35,7 +35,17 @@ WMO_TO_HA: dict[int, tuple[str, str]] = {
 }
 
 
+_KNOWN_CODES = sorted(WMO_TO_HA.keys())
+
+
+def _nearest_wmo_code(code: int) -> int:
+    """Find the nearest known WMO code."""
+    return min(_KNOWN_CODES, key=lambda c: abs(c - code))
+
+
 def map_condition(weather_code: int, is_day: bool) -> str:
     """Map a WMO weather code + is_day flag to an HA condition string."""
-    pair = WMO_TO_HA.get(weather_code, ("exceptional", "exceptional"))
+    pair = WMO_TO_HA.get(weather_code)
+    if pair is None:
+        pair = WMO_TO_HA[_nearest_wmo_code(weather_code)]
     return pair[0] if is_day else pair[1]
