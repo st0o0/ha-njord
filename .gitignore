@@ -30,3 +30,6 @@ openspec/changes/archive/
 
 # Concept docs (local only)
 ha-njord-concept.md
+
+# Node (commitlint)
+node_modules/

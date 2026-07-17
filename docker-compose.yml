@@ -1,0 +1,31 @@
+services:
+  homeassistant:
+    image: ghcr.io/home-assistant/home-assistant:stable
+    container_name: ha-njord-dev
+    restart: unless-stopped
+    ports:
+      - "8123:8123"
+    volumes:
+      - ha-config:/config
+      - ./custom_components/njord:/config/custom_components/njord:ro
+    environment:
+      - TZ=Europe/Zurich
+
+  njord:
+    image: njord:local
+    container_name: njord-dev
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+      - "8081:8081"
+    volumes:
+      - njord-data:/app/data
+    environment:
+      - Njord__Mqtt__Enabled=false
+      - Njord__Locations__0__Name=home
+      - Njord__Locations__0__Latitude=47.05
+      - Njord__Locations__0__Longitude=8.31
+
+volumes:
+  ha-config:
+  njord-data:
