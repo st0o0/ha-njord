@@ -86,6 +86,48 @@ def _default_forecast(location: str = "home", model: str = "icon_d2") -> Forecas
     )
 
 
+def _default_consensus() -> ConsensusData:
+    temp_horizons = []
+    wmo_horizons = []
+    is_day_horizons = []
+    precip_horizons = []
+    wind_horizons = []
+    for i in range(49):
+        agreement = max(0.0, 0.9 - i * 0.015)
+        temp_horizons.append(
+            HorizonConsensusData(
+                horizon=f"h{i}",
+                median=20.0 + (i % 12) * 0.5,
+                spread=3.0 + i * 0.1,
+                agreement=round(agreement, 2),
+                available_models=max(2, 10 - i // 10),
+            )
+        )
+        wmo_horizons.append(
+            HorizonConsensusData(horizon=f"h{i}", median=1.0 if i < 24 else 3.0, available_models=max(2, 10 - i // 10))
+        )
+        is_day_horizons.append(
+            HorizonConsensusData(
+                horizon=f"h{i}", median=1.0 if 6 <= (i % 24) <= 20 else 0.0, available_models=max(2, 10 - i // 10)
+            )
+        )
+        precip_horizons.append(
+            HorizonConsensusData(horizon=f"h{i}", median=0.0 if i < 30 else 0.5, available_models=max(2, 10 - i // 10))
+        )
+        wind_horizons.append(
+            HorizonConsensusData(horizon=f"h{i}", median=5.0 + (i % 8), available_models=max(2, 10 - i // 10))
+        )
+    return ConsensusData(
+        parameters=[
+            ParameterConsensusData(parameter="temperature_2m", unit="°C", by_horizon=temp_horizons),
+            ParameterConsensusData(parameter="weather_code", unit="wmo code", by_horizon=wmo_horizons),
+            ParameterConsensusData(parameter="is_day", by_horizon=is_day_horizons),
+            ParameterConsensusData(parameter="precipitation", unit="mm", by_horizon=precip_horizons),
+            ParameterConsensusData(parameter="wind_speed_10m", unit="m/s", by_horizon=wind_horizons),
+        ],
+    )
+
+
 def _default_enrichment(location: str = "home") -> EnrichmentData:
     return EnrichmentData(
         location=location,
@@ -145,36 +187,7 @@ def _default_enrichment(location: str = "home") -> EnrichmentData:
             models=[ModelMetricsData(model="icon_d2", weight=0.5)],
             weighted_temperature=24.48,
         ),
-        consensus=ConsensusData(
-            parameters=[
-                ParameterConsensusData(
-                    parameter="temperature_2m",
-                    unit="°C",
-                    by_horizon=[
-                        HorizonConsensusData(
-                            horizon="h3",
-                            median=20.4,
-                            spread=5.2,
-                            agreement=0.67,
-                            available_models=6,
-                        ),
-                    ],
-                ),
-                ParameterConsensusData(
-                    parameter="weather_code",
-                    unit="wmo code",
-                    by_horizon=[
-                        HorizonConsensusData(horizon="h3", median=1.0, available_models=6),
-                    ],
-                ),
-                ParameterConsensusData(
-                    parameter="is_day",
-                    by_horizon=[
-                        HorizonConsensusData(horizon="h3", median=1.0, available_models=6),
-                    ],
-                ),
-            ],
-        ),
+        consensus=_default_consensus(),
     )
 
 

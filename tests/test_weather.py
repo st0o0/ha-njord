@@ -10,7 +10,7 @@ from homeassistant.components.weather import WeatherEntityFeature
 from homeassistant.core import HomeAssistant
 
 from custom_components.njord.condition_mapper import map_condition
-from custom_components.njord.models import DailyForecastData, ForecastData, HourlyForecastData
+from custom_components.njord.models import ForecastData, HourlyForecastData
 from tests.conftest import init_integration
 
 
@@ -45,13 +45,26 @@ async def test_weather_entity_second_model(hass: HomeAssistant, mock_client, moc
     assert state.state == "partlycloudy"
 
 
-async def test_consensus_weather_entity(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+async def test_consensus_current_state_from_h0(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
     await init_integration(hass, mock_config_entry)
 
     state = hass.states.get("weather.njord_home_consensus")
     assert state is not None
+    assert state.attributes.get("temperature") == 20.0
     assert state.attributes.get("agreement") is not None
     assert state.attributes.get("available_models") is not None
+    assert state.attributes.get("reliable_hours") is not None
+    assert state.attributes["reliable_hours"] > 0
+
+
+async def test_consensus_supported_features(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+    await init_integration(hass, mock_config_entry)
+
+    state = hass.states.get("weather.njord_home_consensus")
+    assert state is not None
+    features = WeatherEntityFeature(state.attributes["supported_features"])
+    assert features & WeatherEntityFeature.FORECAST_HOURLY
+    assert features & WeatherEntityFeature.FORECAST_DAILY
 
 
 async def test_supported_features_with_hourly_and_daily(hass: HomeAssistant, mock_client, mock_config_entry) -> None:

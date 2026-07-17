@@ -122,9 +122,9 @@ class NjordDataCoordinator(DataUpdateCoordinator[NjordCoordinatorData]):
 
     def start_streams(self) -> None:
         self._stream_tasks = [
-            self.hass.async_create_task(self._run_forecast_stream()),
-            self.hass.async_create_task(self._run_enrichment_stream()),
-            self.hass.async_create_task(self._run_config_stream()),
+            self.hass.async_create_background_task(self._run_forecast_stream(), "njord_forecast_stream"),
+            self.hass.async_create_background_task(self._run_enrichment_stream(), "njord_enrichment_stream"),
+            self.hass.async_create_background_task(self._run_config_stream(), "njord_config_stream"),
         ]
 
     async def stop_streams(self) -> None:
