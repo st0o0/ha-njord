@@ -154,9 +154,7 @@ def test_history_data_with_values():
 
 
 def test_horizon_consensus_data():
-    hc = HorizonConsensusData(
-        horizon="h3", median=20.4, spread=5.2, agreement=0.67, available_models=6
-    )
+    hc = HorizonConsensusData(horizon="h3", median=20.4, spread=5.2, agreement=0.67, available_models=6)
     assert hc.median == 20.4
     assert hc.available_models == 6
 

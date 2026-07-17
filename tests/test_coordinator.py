@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock
 
-import pytest
 from homeassistant.core import HomeAssistant
 
 from custom_components.njord.const import DOMAIN

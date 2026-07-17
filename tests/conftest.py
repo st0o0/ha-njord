@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -55,7 +55,7 @@ def _default_forecast(location: str = "home", model: str = "icon_d2") -> Forecas
         updated_at=1720000000,
         hourly=[
             HourlyForecastData(
-                timestamp=datetime(2026, 7, 15, 12, 0, tzinfo=timezone.utc),
+                timestamp=datetime(2026, 7, 15, 12, 0, tzinfo=UTC),
                 temperature=22.5,
                 apparent_temperature=21.0,
                 humidity=65.0,
@@ -101,9 +101,16 @@ def _default_enrichment(location: str = "home") -> EnrichmentData:
             AlertData(type="thunderstorm", severity="none", confidence=0.0),
         ],
         indices=IndexData(
-            laundry=47, outdoor=56, running=48, cycling=50,
-            bbq=51, irrigation=22, solar=38, ventilation=22,
-            vpd_kpa=0.59, vpd_category="optimal",
+            laundry=47,
+            outdoor=56,
+            running=48,
+            cycling=50,
+            bbq=51,
+            irrigation=22,
+            solar=38,
+            ventilation=22,
+            vpd_kpa=0.59,
+            vpd_category="optimal",
         ),
         trends=TrendData(
             parameter_trends=[
@@ -115,8 +122,11 @@ def _default_enrichment(location: str = "home") -> EnrichmentData:
             reliable_hours=3,
         ),
         energy=EnergyData(
-            heating_demand=21, cop_estimate=10.95, shading=12,
-            battery_strategy="discharge", night_cooling=40,
+            heating_demand=21,
+            cop_estimate=10.95,
+            shading=12,
+            battery_strategy="discharge",
+            night_cooling=40,
             cop_optimal=[CopOptimalHourData(hours_from_now=20, cop=14.91)],
         ),
         derived=DerivedData(
@@ -138,8 +148,11 @@ def _default_enrichment(location: str = "home") -> EnrichmentData:
                     unit="°C",
                     by_horizon=[
                         HorizonConsensusData(
-                            horizon="h3", median=20.4, spread=5.2,
-                            agreement=0.67, available_models=6,
+                            horizon="h3",
+                            median=20.4,
+                            spread=5.2,
+                            agreement=0.67,
+                            available_models=6,
                         ),
                     ],
                 ),

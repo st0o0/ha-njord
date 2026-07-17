@@ -4,21 +4,14 @@ from __future__ import annotations
 
 import asyncio
 import importlib.util
-from datetime import datetime, timezone
+from datetime import datetime
 from unittest.mock import MagicMock
 
 import grpc
 import pytest
 
-from custom_components.njord.proto.njord.v1 import (
-    config_service_pb2,
-    config_service_pb2_grpc,
-    forecast_service_pb2,
-    forecast_service_pb2_grpc,
-)
 from custom_components.njord.grpc_client import (
     NjordClient,
-    _BACKOFF_INITIAL,
 )
 from custom_components.njord.models import (
     EnrichmentData,
@@ -26,7 +19,12 @@ from custom_components.njord.models import (
     NjordConfigData,
     ServerStatusData,
 )
-
+from custom_components.njord.proto.njord.v1 import (
+    config_service_pb2,
+    config_service_pb2_grpc,
+    forecast_service_pb2,
+    forecast_service_pb2_grpc,
+)
 
 # --- Mock Servicers ---
 
@@ -37,9 +35,7 @@ class MockForecastServicer(forecast_service_pb2_grpc.ForecastServiceServicer):
         self.fail_stream_on_call: int | None = None
 
     async def GetLocations(self, request, context):
-        return forecast_service_pb2.GetLocationsResponse(
-            locations=["lucerne", "zurich"]
-        )
+        return forecast_service_pb2.GetLocationsResponse(locations=["lucerne", "zurich"])
 
     async def GetModels(self, request, context):
         return forecast_service_pb2.GetModelsResponse(
@@ -268,12 +264,8 @@ async def mock_server():
     forecast_servicer = MockForecastServicer()
     config_servicer = MockConfigServicer()
     server = grpc.aio.server()
-    forecast_service_pb2_grpc.add_ForecastServiceServicer_to_server(
-        forecast_servicer, server
-    )
-    config_service_pb2_grpc.add_ConfigServiceServicer_to_server(
-        config_servicer, server
-    )
+    forecast_service_pb2_grpc.add_ForecastServiceServicer_to_server(forecast_servicer, server)
+    config_service_pb2_grpc.add_ConfigServiceServicer_to_server(config_servicer, server)
     port = server.add_insecure_port("[::]:0")
     await server.start()
     yield port, forecast_servicer, config_servicer
@@ -409,6 +401,7 @@ async def test_stream_reconnects_on_failure(mock_server, monkeypatch):
 
     # Speed up backoff for testing
     import custom_components.njord.grpc_client as client_module
+
     monkeypatch.setattr(client_module, "_BACKOFF_INITIAL", 0.05)
     monkeypatch.setattr(client_module, "_BACKOFF_MAX", 0.1)
 

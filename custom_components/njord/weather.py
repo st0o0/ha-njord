@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from homeassistant.components.weather import (
     Forecast,
@@ -35,18 +35,14 @@ async def async_setup_entry(
     coordinator: NjordDataCoordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
 
     entities: list[WeatherEntity] = []
-    for (location, model) in coordinator.data.forecasts:
-        entities.append(
-            NjordWeatherEntity(coordinator, entry, location, model)
-        )
+    for location, model in coordinator.data.forecasts:
+        entities.append(NjordWeatherEntity(coordinator, entry, location, model))
 
     locations = {loc for loc, _ in coordinator.data.forecasts}
     for location in sorted(locations):
         enrichment = coordinator.data.enrichments.get(location)
         if enrichment and enrichment.consensus:
-            entities.append(
-                NjordConsensusWeatherEntity(coordinator, entry, location)
-            )
+            entities.append(NjordConsensusWeatherEntity(coordinator, entry, location))
 
     async_add_entities(entities)
 
@@ -58,9 +54,7 @@ class NjordWeatherEntity(CoordinatorEntity[NjordDataCoordinator], WeatherEntity)
     _attr_native_temperature_unit = UnitOfTemperature.CELSIUS
     _attr_native_pressure_unit = UnitOfPressure.HPA
     _attr_native_wind_speed_unit = UnitOfSpeed.METERS_PER_SECOND
-    _attr_supported_features = (
-        WeatherEntityFeature.FORECAST_DAILY | WeatherEntityFeature.FORECAST_HOURLY
-    )
+    _attr_supported_features = WeatherEntityFeature.FORECAST_DAILY | WeatherEntityFeature.FORECAST_HOURLY
 
     def __init__(
         self,
@@ -341,7 +335,7 @@ class NjordConsensusWeatherEntity(CoordinatorEntity[NjordDataCoordinator], Weath
         if consensus is None:
             return None
 
-        today = datetime.now(timezone.utc).date()
+        today = datetime.now(UTC).date()
         forecasts: list[Forecast] = []
         for horizon in self._DAILY_HORIZONS:
             temp = self._get_horizon_value("temperature_2m", horizon)
@@ -364,4 +358,3 @@ class NjordConsensusWeatherEntity(CoordinatorEntity[NjordDataCoordinator], Weath
                 )
             )
         return forecasts
-

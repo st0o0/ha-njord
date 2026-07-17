@@ -6,10 +6,9 @@ import logging
 from typing import Any
 
 import voluptuous as vol
-
 from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
 
-from .const import DOMAIN, DEFAULT_PORT
+from .const import DEFAULT_PORT, DOMAIN
 from .grpc_client import NjordClient
 
 _LOGGER = logging.getLogger(__name__)
@@ -34,9 +33,7 @@ class NjordConfigFlow(ConfigFlow, domain=DOMAIN):
         self._locations: list[str] = []
         self._model_count: int = 0
 
-    async def async_step_user(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
+    async def async_step_user(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Handle the initial step."""
         errors: dict[str, str] = {}
 

@@ -14,7 +14,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
 from .coordinator import NjordDataCoordinator
-from .models import AlertData, EnrichmentData
+from .models import AlertData
 
 ALERT_TYPES = [
     "frost",
@@ -67,15 +67,11 @@ async def async_setup_entry(
 
     for location in sorted(locations):
         for alert_type in ALERT_TYPES:
-            entities.append(
-                NjordAlertEntity(coordinator, entry, location, alert_type)
-            )
+            entities.append(NjordAlertEntity(coordinator, entry, location, alert_type))
 
         enrichment = coordinator.data.enrichments.get(location)
         if enrichment and enrichment.derived is not None:
-            entities.append(
-                NjordInversionEntity(coordinator, entry, location)
-            )
+            entities.append(NjordInversionEntity(coordinator, entry, location))
 
     async_add_entities(entities)
 

@@ -49,6 +49,6 @@ jobs:
         with:
           fetch-depth: 0
       - uses: wagoid/commitlint-github-action@v6
-      - uses: hacs/action@v2
+      - uses: hacs/action@main
         with:
           category: integration

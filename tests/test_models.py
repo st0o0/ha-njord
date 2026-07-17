@@ -1,6 +1,6 @@
 """Tests for njord data models."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -16,7 +16,7 @@ from custom_components.njord.models import (
 
 
 def test_hourly_forecast_defaults_to_none():
-    h = HourlyForecastData(timestamp=datetime(2026, 7, 15, tzinfo=timezone.utc))
+    h = HourlyForecastData(timestamp=datetime(2026, 7, 15, tzinfo=UTC))
     assert h.temperature is None
     assert h.weather_code is None
     assert h.is_day is None
@@ -24,7 +24,7 @@ def test_hourly_forecast_defaults_to_none():
 
 def test_hourly_forecast_with_values():
     h = HourlyForecastData(
-        timestamp=datetime(2026, 7, 15, 12, 0, tzinfo=timezone.utc),
+        timestamp=datetime(2026, 7, 15, 12, 0, tzinfo=UTC),
         temperature=22.5,
         weather_code=3,
         is_day=True,
@@ -35,7 +35,7 @@ def test_hourly_forecast_with_values():
 
 
 def test_hourly_forecast_frozen():
-    h = HourlyForecastData(timestamp=datetime(2026, 7, 15, tzinfo=timezone.utc))
+    h = HourlyForecastData(timestamp=datetime(2026, 7, 15, tzinfo=UTC))
     with pytest.raises(AttributeError):
         h.temperature = 10.0
 

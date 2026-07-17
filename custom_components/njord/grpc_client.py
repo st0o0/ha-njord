@@ -5,11 +5,13 @@ from __future__ import annotations
 import asyncio
 import logging
 from collections.abc import AsyncIterator, Callable
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import TypeVar
 
 import grpc
 
+# Ensure proto package path is on sys.path before importing generated stubs.
+from . import proto as _proto_pkg  # noqa: F401
 from .models import (
     AlertData,
     BudgetStatusData,
@@ -33,11 +35,7 @@ from .models import (
     ServerStatusData,
     TrendData,
 )
-
-# Ensure proto package path is on sys.path before importing generated stubs.
-from . import proto as _proto_pkg  # noqa: F401
-from .proto.njord.v1 import config_service_pb2, config_service_pb2_grpc
-from .proto.njord.v1 import forecast_service_pb2, forecast_service_pb2_grpc
+from .proto.njord.v1 import config_service_pb2, config_service_pb2_grpc, forecast_service_pb2, forecast_service_pb2_grpc
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -53,7 +51,7 @@ _BACKOFF_FACTOR = 2.0
 
 def _to_hourly(pb: forecast_service_pb2.HourlyForecast) -> HourlyForecastData:
     return HourlyForecastData(
-        timestamp=datetime.fromtimestamp(pb.timestamp, tz=timezone.utc),
+        timestamp=datetime.fromtimestamp(pb.timestamp, tz=UTC),
         temperature=pb.temperature if pb.HasField("temperature") else None,
         apparent_temperature=pb.apparent_temperature if pb.HasField("apparent_temperature") else None,
         precipitation=pb.precipitation if pb.HasField("precipitation") else None,
@@ -83,7 +81,9 @@ def _to_daily(pb: forecast_service_pb2.DailyForecast) -> DailyForecastData:
     )
 
 
-def _to_forecast_data(pb: forecast_service_pb2.GetForecastResponse | forecast_service_pb2.ForecastUpdate) -> ForecastData:
+def _to_forecast_data(
+    pb: forecast_service_pb2.GetForecastResponse | forecast_service_pb2.ForecastUpdate,
+) -> ForecastData:
     return ForecastData(
         location=pb.location,
         model=pb.model,
@@ -371,18 +371,14 @@ class NjordClient:
         """Retrieve all configured location names."""
         self._ensure_connected()
         assert self._forecast_stub is not None
-        resp = await self._forecast_stub.GetLocations(
-            forecast_service_pb2.GetLocationsRequest()
-        )
+        resp = await self._forecast_stub.GetLocations(forecast_service_pb2.GetLocationsRequest())
         return list(resp.locations)
 
     async def get_models(self, location: str) -> list[str]:
         """Retrieve available weather models for a location."""
         self._ensure_connected()
         assert self._forecast_stub is not None
-        resp = await self._forecast_stub.GetModels(
-            forecast_service_pb2.GetModelsRequest(location=location)
-        )
+        resp = await self._forecast_stub.GetModels(forecast_service_pb2.GetModelsRequest(location=location))
         return list(resp.models)
 
     async def get_forecast(self, location: str, model: str) -> ForecastData:
@@ -398,27 +394,21 @@ class NjordClient:
         """Retrieve njord's current configuration."""
         self._ensure_connected()
         assert self._config_stub is not None
-        resp = await self._config_stub.GetConfig(
-            config_service_pb2.GetConfigRequest()
-        )
+        resp = await self._config_stub.GetConfig(config_service_pb2.GetConfigRequest())
         return _to_config_data(resp)
 
     async def get_status(self) -> ServerStatusData:
         """Retrieve njord's server status."""
         self._ensure_connected()
         assert self._config_stub is not None
-        resp = await self._config_stub.GetStatus(
-            config_service_pb2.GetStatusRequest()
-        )
+        resp = await self._config_stub.GetStatus(config_service_pb2.GetStatusRequest())
         return _to_server_status(resp)
 
     async def get_enrichments(self, location: str) -> EnrichmentData:
         """Retrieve enrichment data for a location."""
         self._ensure_connected()
         assert self._forecast_stub is not None
-        resp = await self._forecast_stub.GetEnrichments(
-            forecast_service_pb2.GetEnrichmentsRequest(location=location)
-        )
+        resp = await self._forecast_stub.GetEnrichments(forecast_service_pb2.GetEnrichmentsRequest(location=location))
         return _to_enrichment_data(resp)
 
     # --- Streaming RPCs ---
@@ -433,9 +423,7 @@ class NjordClient:
         """Stream real-time forecast updates with auto-reconnect."""
         self._ensure_connected()
         assert self._forecast_stub is not None
-        req = forecast_service_pb2.StreamForecastsRequest(
-            location=location or ""
-        )
+        req = forecast_service_pb2.StreamForecastsRequest(location=location or "")
 
         async for item in self._stream_with_reconnect(
             lambda: self._forecast_stub.StreamForecasts(req),
@@ -455,9 +443,7 @@ class NjordClient:
         """Stream real-time enrichment updates with auto-reconnect."""
         self._ensure_connected()
         assert self._forecast_stub is not None
-        req = forecast_service_pb2.StreamEnrichmentsRequest(
-            location=location or ""
-        )
+        req = forecast_service_pb2.StreamEnrichmentsRequest(location=location or "")
 
         async for item in self._stream_with_reconnect(
             lambda: self._forecast_stub.StreamEnrichments(req),

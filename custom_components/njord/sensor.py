@@ -209,10 +209,7 @@ class NjordEnergySensor(_NjordEnrichmentSensor):
         if enrichment is None or enrichment.energy is None:
             return None
         return {
-            "cop_optimal": [
-                {"hours_from_now": c.hours_from_now, "cop": c.cop}
-                for c in enrichment.energy.cop_optimal
-            ]
+            "cop_optimal": [{"hours_from_now": c.hours_from_now, "cop": c.cop} for c in enrichment.energy.cop_optimal]
         }
 
 
@@ -268,8 +265,7 @@ class NjordTrendSensor(_NjordEnrichmentSensor):
             attrs["decay_rate"] = t.decay_rate
         if t.parameter_trends:
             attrs["parameter_trends"] = [
-                {"parameter": p.parameter, "direction": p.direction, "delta": p.delta}
-                for p in t.parameter_trends
+                {"parameter": p.parameter, "direction": p.direction, "delta": p.delta} for p in t.parameter_trends
             ]
         return attrs if attrs else None
 
