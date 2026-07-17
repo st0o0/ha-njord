@@ -150,9 +150,7 @@ class NjordDataCoordinator(DataUpdateCoordinator[NjordCoordinatorData]):
     async def _run_config_stream(self) -> None:
         try:
             async for config in self.client.stream_config():
-                new_locations = [
-                    loc for loc in config.locations if loc.name not in self._known_locations
-                ]
+                new_locations = [loc for loc in config.locations if loc.name not in self._known_locations]
                 for location in new_locations:
                     await self._create_entities_for_location(location)
         except asyncio.CancelledError:

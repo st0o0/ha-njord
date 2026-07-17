@@ -53,9 +53,15 @@ def test_index_data_defaults():
 
 def test_index_data_with_values():
     idx = IndexData(
-        laundry=47, outdoor=56, bbq=51,
-        hdd=5.2, cdd=1.3, frost_hours=4, frost_confidence=0.85,
-        vpd_kpa=0.59, vpd_category="optimal",
+        laundry=47,
+        outdoor=56,
+        bbq=51,
+        hdd=5.2,
+        cdd=1.3,
+        frost_hours=4,
+        frost_confidence=0.85,
+        vpd_kpa=0.59,
+        vpd_category="optimal",
     )
     assert idx.laundry == 47
     assert idx.hdd == 5.2

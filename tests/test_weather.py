@@ -54,9 +54,7 @@ async def test_consensus_weather_entity(hass: HomeAssistant, mock_client, mock_c
     assert state.attributes.get("available_models") is not None
 
 
-async def test_supported_features_with_hourly_and_daily(
-    hass: HomeAssistant, mock_client, mock_config_entry
-) -> None:
+async def test_supported_features_with_hourly_and_daily(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
     await init_integration(hass, mock_config_entry)
 
     state = hass.states.get("weather.njord_home_icon_d2")
@@ -66,9 +64,7 @@ async def test_supported_features_with_hourly_and_daily(
     assert features & WeatherEntityFeature.FORECAST_DAILY
 
 
-async def test_supported_features_hourly_only(
-    hass: HomeAssistant, mock_client, mock_config_entry
-) -> None:
+async def test_supported_features_hourly_only(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
     mock_client.get_forecast = AsyncMock(
         side_effect=lambda loc, model: ForecastData(
             location=loc,

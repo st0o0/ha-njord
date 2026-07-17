@@ -24,9 +24,7 @@ def _make_client() -> AsyncMock:
             locations=[NjordLocation(name="home", latitude=47.0, longitude=8.0, models=["icon_d2"])],
         )
     )
-    client.get_forecast = AsyncMock(
-        return_value=ForecastData(location="bern", model="gfs", updated_at=5000)
-    )
+    client.get_forecast = AsyncMock(return_value=ForecastData(location="bern", model="gfs", updated_at=5000))
     client.get_enrichments = AsyncMock(return_value=EnrichmentData(location="bern"))
     return client
 
@@ -118,9 +116,7 @@ async def test_duplicate_location_no_double_creation(hass: HomeAssistant) -> Non
     coordinator = await _make_coordinator(hass, client)
 
     factory_calls: list[str] = []
-    coordinator.register_entity_factory(
-        "weather", MagicMock(), lambda loc: factory_calls.append(loc.name) or []
-    )
+    coordinator.register_entity_factory("weather", MagicMock(), lambda loc: factory_calls.append(loc.name) or [])
 
     config_with_bern = NjordConfigData(
         locations=[

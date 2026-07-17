@@ -121,9 +121,7 @@ async def test_config_stream_detects_new_locations(hass: HomeAssistant) -> None:
         ],
     )
 
-    client.get_forecast = AsyncMock(
-        return_value=ForecastData(location="bern", model="gfs", updated_at=3000)
-    )
+    client.get_forecast = AsyncMock(return_value=ForecastData(location="bern", model="gfs", updated_at=3000))
     client.get_enrichments = AsyncMock(return_value=EnrichmentData(location="bern"))
 
     factory_called_with: list[NjordLocation] = []
@@ -162,9 +160,7 @@ async def test_config_stream_noop_for_known_locations(hass: HomeAssistant) -> No
     )
 
     factory_called: list[str] = []
-    coordinator.register_entity_factory(
-        "weather", MagicMock(), lambda loc: factory_called.append(loc.name) or []
-    )
+    coordinator.register_entity_factory("weather", MagicMock(), lambda loc: factory_called.append(loc.name) or [])
 
     async def fake_stream_config():
         yield same_config
