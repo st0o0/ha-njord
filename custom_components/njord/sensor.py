@@ -99,6 +99,7 @@ class _NjordEnrichmentSensor(CoordinatorEntity[NjordDataCoordinator], SensorEnti
     """Base class for enrichment sensors."""
 
     _attr_has_entity_name = True
+    _attr_entity_registry_enabled_default = False
 
     def __init__(
         self,

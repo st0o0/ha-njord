@@ -88,3 +88,31 @@ async def test_supported_features_hourly_only(hass: HomeAssistant, mock_client, 
     features = WeatherEntityFeature(state.attributes["supported_features"])
     assert features & WeatherEntityFeature.FORECAST_HOURLY
     assert not (features & WeatherEntityFeature.FORECAST_DAILY)
+
+
+async def test_supported_features_stub_has_no_features(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+    mock_client.get_forecast = AsyncMock(side_effect=Exception("fetch error"))
+    await init_integration(hass, mock_config_entry)
+
+    state = hass.states.get("weather.njord_home_icon_d2")
+    assert state is not None
+    features = WeatherEntityFeature(state.attributes["supported_features"])
+    assert not (features & WeatherEntityFeature.FORECAST_HOURLY)
+    assert not (features & WeatherEntityFeature.FORECAST_DAILY)
+
+
+async def test_weather_entity_available_with_data(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+    await init_integration(hass, mock_config_entry)
+
+    state = hass.states.get("weather.njord_home_icon_d2")
+    assert state is not None
+    assert state.state != "unavailable"
+
+
+async def test_weather_entity_available_with_stub(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+    mock_client.get_forecast = AsyncMock(side_effect=Exception("fetch error"))
+    await init_integration(hass, mock_config_entry)
+
+    state = hass.states.get("weather.njord_home_icon_d2")
+    assert state is not None
+    assert state.state == "unknown"

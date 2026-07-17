@@ -96,6 +96,9 @@ class NjordDataCoordinator(DataUpdateCoordinator[NjordCoordinatorData]):
                         model,
                         err,
                     )
+                    result.forecasts[(location.name, model)] = ForecastData(
+                        location=location.name, model=model, updated_at=0
+                    )
 
             try:
                 enrichment = await self.client.get_enrichments(location.name)

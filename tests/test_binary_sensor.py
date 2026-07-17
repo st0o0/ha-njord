@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_registry as er
 
 from tests.conftest import init_integration
 
@@ -46,9 +47,24 @@ async def test_all_alert_entities_exist(hass: HomeAssistant, mock_client, mock_c
         assert state is not None, f"Missing alert entity: {alert_type}"
 
 
-async def test_inversion_entity(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+async def test_inversion_entity_disabled_by_default(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
     await init_integration(hass, mock_config_entry)
 
+    registry = er.async_get(hass)
+    entry = registry.async_get("binary_sensor.njord_home_inversion")
+    assert entry is not None
+    assert entry.disabled_by == er.RegistryEntryDisabler.INTEGRATION
+
     state = hass.states.get("binary_sensor.njord_home_inversion")
-    assert state is not None
-    assert state.state == "off"
+    assert state is None
+
+
+async def test_alert_entities_enabled_by_default(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+    await init_integration(hass, mock_config_entry)
+
+    registry = er.async_get(hass)
+    alert_types = ["frost", "heat", "storm", "heavy_rain", "uv", "fog", "snow", "pressure_drop", "thunderstorm"]
+    for alert_type in alert_types:
+        entry = registry.async_get(f"binary_sensor.njord_home_{alert_type}_alert")
+        assert entry is not None, f"Missing alert entity: {alert_type}"
+        assert entry.disabled_by is None, f"Alert {alert_type} should be enabled by default"

@@ -31,11 +31,16 @@ async def test_enrichment_failure_does_not_block_forecasts(hass: HomeAssistant, 
     assert "home" not in coordinator.data.enrichments
 
 
-async def test_forecast_failure_does_not_block_enrichments(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+async def test_forecast_failure_inserts_stub(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
     mock_client.get_forecast = AsyncMock(side_effect=Exception("forecast error"))
 
     await init_integration(hass, mock_config_entry)
 
     coordinator = hass.data[DOMAIN][mock_config_entry.entry_id]["coordinator"]
-    assert len(coordinator.data.forecasts) == 0
+    assert ("home", "icon_d2") in coordinator.data.forecasts
+    assert ("home", "ecmwf_ifs025") in coordinator.data.forecasts
+    stub = coordinator.data.forecasts[("home", "icon_d2")]
+    assert stub.updated_at == 0
+    assert stub.hourly == []
+    assert stub.daily == []
     assert "home" in coordinator.data.enrichments

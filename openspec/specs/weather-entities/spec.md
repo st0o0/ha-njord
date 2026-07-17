@@ -12,24 +12,41 @@ Model weather entities SHALL expose `native_apparent_temperature` and `cloud_cov
 - **THEN** cloud cover percentage is available as an attribute
 
 ### Requirement: Weather entities advertise supported forecast types
-Model weather entities SHALL dynamically determine `supported_features` based on whether the model's current forecast data contains hourly and/or daily entries, instead of statically claiming both.
+Model weather entities SHALL determine `supported_features` once at construction time based on the initial forecast data, stored as `_attr_supported_features`.
 
-#### Scenario: Model with hourly and daily data
-- **WHEN** a model's forecast data contains both hourly and daily entries
-- **THEN** `supported_features` includes `FORECAST_HOURLY | FORECAST_DAILY`
+#### Scenario: Model with hourly and daily data at init
+- **WHEN** a weather entity is created and the forecast data contains both hourly and daily entries
+- **THEN** `_attr_supported_features` includes `FORECAST_HOURLY | FORECAST_DAILY`
 
-#### Scenario: Model with only hourly data
-- **WHEN** a model's forecast data contains hourly entries but no daily entries
-- **THEN** `supported_features` includes only `FORECAST_HOURLY`
-- **AND** the HA weather card does not show an empty daily forecast section
+#### Scenario: Model with only hourly data at init
+- **WHEN** a weather entity is created and the forecast data contains hourly entries but no daily entries
+- **THEN** `_attr_supported_features` includes only `FORECAST_HOURLY`
 
-#### Scenario: Model with no data yet
-- **WHEN** the forecast data is None or empty
-- **THEN** `supported_features` returns no forecast features
+#### Scenario: Model with no data at init (stub)
+- **WHEN** a weather entity is created and the forecast data has empty hourly and daily
+- **THEN** `_attr_supported_features` is `0` (no forecast features)
 
-#### Scenario: Features update when data changes
-- **WHEN** a model initially has no daily data and later receives daily forecasts via streaming
-- **THEN** `supported_features` dynamically includes `FORECAST_DAILY` on the next state read
+### Requirement: Weather entities report availability based on forecast key
+Weather entities SHALL return `available = True` when their forecast key exists in coordinator data, even if hourly/daily lists are empty. They SHALL return `available = False` only when the key is entirely missing.
+
+#### Scenario: Forecast key exists with data
+- **WHEN** `coordinator.data.forecasts[(location, model)]` exists with hourly entries
+- **THEN** the entity is available and shows current condition/temperature
+
+#### Scenario: Forecast key exists but empty (stub)
+- **WHEN** `coordinator.data.forecasts[(location, model)]` exists but has empty hourly and daily
+- **THEN** the entity is available but shows "Unknown" state
+
+#### Scenario: Forecast key missing
+- **WHEN** `(location, model)` is not in `coordinator.data.forecasts`
+- **THEN** the entity is unavailable
+
+### Requirement: First refresh inserts stub on failure
+When `GetForecast` fails for a model during first refresh, the coordinator SHALL insert an empty `ForecastData` stub so the entity starts as available.
+
+#### Scenario: Forecast fetch fails during first refresh
+- **WHEN** `GetForecast(location, model)` raises an exception during `_async_update_data`
+- **THEN** `ForecastData(location=location, model=model, updated_at=0)` is inserted into the result
 
 ### Requirement: Forecast entries have all required keys
 Every `Forecast` dict returned by `async_forecast_hourly` and `async_forecast_daily` SHALL include the `condition` key mapped from WMO weather code, even when the code maps to an unknown condition.

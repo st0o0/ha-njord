@@ -154,6 +154,7 @@ class NjordInversionEntity(CoordinatorEntity[NjordDataCoordinator], BinarySensor
     """Binary sensor for temperature inversion detection."""
 
     _attr_has_entity_name = True
+    _attr_entity_registry_enabled_default = False
     _attr_icon = "mdi:arrow-collapse-vertical"
     _attr_translation_key = "inversion"
 

@@ -89,22 +89,24 @@ class NjordWeatherEntity(CoordinatorEntity[NjordDataCoordinator], WeatherEntity)
             entry_type=None,
         )
 
+        data = coordinator.data.forecasts.get((location, model))
+        features = WeatherEntityFeature(0)
+        if data and data.hourly:
+            features |= WeatherEntityFeature.FORECAST_HOURLY
+        if data and data.daily:
+            features |= WeatherEntityFeature.FORECAST_DAILY
+        self._attr_supported_features = features
+
+    @property
+    def available(self) -> bool:
+        return self.coordinator.data is not None and (self._location, self._model) in self.coordinator.data.forecasts
+
     @property
     def _forecast_data(self) -> ForecastData | None:
         """Get current forecast data from coordinator."""
         if self.coordinator.data is None:
             return None
         return self.coordinator.data.forecasts.get((self._location, self._model))
-
-    @property
-    def supported_features(self) -> WeatherEntityFeature:
-        features = WeatherEntityFeature(0)
-        data = self._forecast_data
-        if data and data.hourly:
-            features |= WeatherEntityFeature.FORECAST_HOURLY
-        if data and data.daily:
-            features |= WeatherEntityFeature.FORECAST_DAILY
-        return features
 
     @property
     def condition(self) -> str | None:
@@ -197,6 +199,20 @@ class NjordWeatherEntity(CoordinatorEntity[NjordDataCoordinator], WeatherEntity)
             )
         return forecasts
 
+    def _daily_condition_from_hourly(self, date_str: str) -> str | None:
+        """Derive daily condition from midday hourly entry as fallback."""
+        data = self._forecast_data
+        if data is None or not data.hourly:
+            return None
+        midday = None
+        for h in data.hourly:
+            if h.timestamp.strftime("%Y-%m-%d") == date_str:
+                if midday is None or abs(h.timestamp.hour - 12) < abs(midday.timestamp.hour - 12):
+                    midday = h
+        if midday is None or midday.weather_code is None:
+            return None
+        return map_condition(midday.weather_code, True)
+
     async def async_forecast_daily(self) -> list[Forecast] | None:
         """Return the daily forecast."""
         data = self._forecast_data
@@ -208,6 +224,8 @@ class NjordWeatherEntity(CoordinatorEntity[NjordDataCoordinator], WeatherEntity)
             condition = None
             if d.weather_code is not None:
                 condition = map_condition(d.weather_code, True)
+            else:
+                condition = self._daily_condition_from_hourly(d.date)
 
             forecasts.append(
                 Forecast(
@@ -245,8 +263,6 @@ class NjordConsensusWeatherEntity(CoordinatorEntity[NjordDataCoordinator], Weath
     _attr_native_pressure_unit = UnitOfPressure.HPA
     _attr_native_wind_speed_unit = UnitOfSpeed.METERS_PER_SECOND
     _attr_supported_features = WeatherEntityFeature.FORECAST_DAILY
-
-    _DAILY_HORIZONS = ["h24", "h48", "h72", "h96"]
 
     def __init__(
         self,
@@ -350,6 +366,19 @@ class NjordConsensusWeatherEntity(CoordinatorEntity[NjordDataCoordinator], Weath
             "spread": temp_h.spread,
         }
 
+    def _daily_horizons(self) -> list[str]:
+        """Get available horizons >= 24h from consensus data, sorted."""
+        consensus = self._consensus()
+        if consensus is None:
+            return []
+        for param in consensus.parameters:
+            if param.parameter == "temperature_2m":
+                return sorted(
+                    [h.horizon for h in param.by_horizon if int(h.horizon[1:]) >= 24],
+                    key=lambda x: int(x[1:]),
+                )
+        return []
+
     async def async_forecast_daily(self) -> list[Forecast] | None:
         consensus = self._consensus()
         if consensus is None:
@@ -357,7 +386,7 @@ class NjordConsensusWeatherEntity(CoordinatorEntity[NjordDataCoordinator], Weath
 
         today = datetime.now(UTC).date()
         forecasts: list[Forecast] = []
-        for horizon in self._DAILY_HORIZONS:
+        for horizon in self._daily_horizons():
             temp = self._get_horizon_value("temperature_2m", horizon)
             if temp is None:
                 continue
