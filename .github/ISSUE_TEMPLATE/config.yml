@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: njord server issues
+    url: https://github.com/st0o0/njord/issues
+    about: For issues with the njord server itself (not the HA integration)
