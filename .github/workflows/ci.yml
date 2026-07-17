@@ -1,0 +1,54 @@
+name: ci
+
+# PRs only — the merge commit was already validated here, so re-running on
+# push to main would be pure duplication. release.yml owns main.
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+# One in-flight run per PR; pushing new commits cancels the superseded run.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - name: Install dependencies
+        run: pip install grpcio "protobuf>=5.0,<7.0" pytest pytest-asyncio pytest-homeassistant-custom-component voluptuous
+      - name: Run tests
+        run: python -m pytest tests/ -v --tb=short
+
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install ruff
+      - run: ruff format --check .
+      - run: ruff check .
+
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: wagoid/commitlint-github-action@v6
+      - uses: hacs/action@v2
+        with:
+          category: integration
