@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import importlib.util
 from datetime import datetime, timezone
 from unittest.mock import MagicMock
 
@@ -20,6 +21,7 @@ from custom_components.njord.grpc_client import (
     _BACKOFF_INITIAL,
 )
 from custom_components.njord.models import (
+    EnrichmentData,
     ForecastData,
     NjordConfigData,
     ServerStatusData,
@@ -69,7 +71,95 @@ class MockForecastServicer(forecast_service_pb2_grpc.ForecastServiceServicer):
         )
 
     async def GetEnrichments(self, request, context):
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        return forecast_service_pb2.GetEnrichmentsResponse(
+            location=request.location,
+            alerts=forecast_service_pb2.AlertUpdate(
+                alerts=[
+                    forecast_service_pb2.Alert(
+                        type=5,  # UV
+                        severity=2,  # ORANGE
+                        confidence=1.0,
+                    ),
+                    forecast_service_pb2.Alert(
+                        type=1,  # FROST
+                        severity=0,  # NONE
+                        confidence=0.0,
+                    ),
+                ]
+            ),
+            indices=forecast_service_pb2.IndexUpdate(
+                laundry=47,
+                outdoor=56,
+                bbq=51,
+                vpd_kpa=0.59,
+                vpd_category="optimal",
+            ),
+            trends=forecast_service_pb2.TrendUpdate(
+                parameter_trends=[
+                    forecast_service_pb2.ParameterTrend(
+                        parameter="temperature_2m",
+                        direction="stable",
+                        delta=0.3,
+                    ),
+                ],
+                stability_label="stable",
+                stability_ratio=0.83,
+                precip_starts_in_hours=2,
+                reliable_hours=3,
+            ),
+            energy=forecast_service_pb2.EnergyUpdate(
+                heating_demand=21,
+                cop_estimate=10.95,
+                shading=12,
+                battery_strategy="discharge",
+                night_cooling=40,
+                cop_optimal=[
+                    forecast_service_pb2.CopOptimalHour(hours_from_now=20, cop=14.91),
+                ],
+            ),
+            derived=forecast_service_pb2.DerivedUpdate(
+                by_horizon=[
+                    forecast_service_pb2.HorizonDerived(
+                        horizon="h3",
+                        beaufort=2,
+                        dewpoint_comfort="sticky",
+                        wmo_description="Rain: slight",
+                    ),
+                ],
+                scalars=forecast_service_pb2.ScalarDerived(
+                    diurnal_amplitude=7.3,
+                    sunshine_pct=66.4,
+                    inversion=False,
+                ),
+            ),
+            history=forecast_service_pb2.HistoryUpdate(
+                models=[
+                    forecast_service_pb2.ModelMetrics(
+                        model="icon_global",
+                        weight=0.1667,
+                        drift=0.0,
+                    ),
+                ],
+                weighted_temperature=24.48,
+            ),
+            consensus=forecast_service_pb2.ConsensusUpdate(
+                parameters=[
+                    forecast_service_pb2.ParameterConsensus(
+                        parameter="temperature_2m",
+                        unit="°C",
+                        by_horizon=[
+                            forecast_service_pb2.HorizonConsensus(
+                                horizon="h3",
+                                median=20.4,
+                                spread=5.2,
+                                agreement=0.67,
+                                available_models=6,
+                            ),
+                        ],
+                    ),
+                ]
+            ),
+        )
 
     async def StreamForecasts(self, request, context):
         self.stream_call_count += 1
@@ -86,7 +176,17 @@ class MockForecastServicer(forecast_service_pb2_grpc.ForecastServiceServicer):
             )
 
     async def StreamEnrichments(self, request, context):
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        for i in range(2):
+            yield forecast_service_pb2.EnrichmentEvent(
+                location=request.location or "lucerne",
+                type_name="alerts",
+                updated_at=1720000000 + i,
+                alerts=forecast_service_pb2.AlertUpdate(
+                    alerts=[
+                        forecast_service_pb2.Alert(type=2, severity=1, confidence=0.5),
+                    ]
+                ),
+            )
 
 
 class MockConfigServicer(config_service_pb2_grpc.ConfigServiceServicer):
@@ -177,7 +277,7 @@ async def mock_server():
     port = server.add_insecure_port("[::]:0")
     await server.start()
     yield port, forecast_servicer, config_servicer
-    await server.stop(grace=0)
+    await server.stop(grace=None)
 
 
 @pytest.fixture()
@@ -300,6 +400,10 @@ async def test_stream_config(client):
 
 @pytest.mark.asyncio
 async def test_stream_reconnects_on_failure(mock_server, monkeypatch):
+    # gRPC's C-extension poller thread lingers after server stop, which
+    # triggers pytest-homeassistant-custom-component's strict thread check.
+    if importlib.util.find_spec("pytest_homeassistant_custom_component"):
+        pytest.skip("gRPC poller thread conflicts with HA plugin thread checker")
     port, forecast_servicer, _ = mock_server
     forecast_servicer.fail_stream_on_call = 1
 
@@ -324,7 +428,86 @@ async def test_stream_reconnects_on_failure(mock_server, monkeypatch):
             break
 
     await client.close()
+    await asyncio.sleep(1.0)
 
     assert len(updates) == 3
     assert on_disconnect.call_count >= 1
     assert on_reconnect.call_count >= 1
+
+
+# --- Enrichment Tests ---
+
+
+@pytest.mark.asyncio
+async def test_get_enrichments(client):
+    enrichment = await client.get_enrichments("lucerne")
+    assert isinstance(enrichment, EnrichmentData)
+    assert enrichment.location == "lucerne"
+
+    # Alerts
+    assert len(enrichment.alerts) == 2
+    assert enrichment.alerts[0].type == "uv"
+    assert enrichment.alerts[0].severity == "orange"
+    assert enrichment.alerts[0].confidence == 1.0
+    assert enrichment.alerts[1].type == "frost"
+    assert enrichment.alerts[1].severity == "none"
+
+    # Indices
+    assert enrichment.indices is not None
+    assert enrichment.indices.laundry == 47
+    assert enrichment.indices.outdoor == 56
+    assert enrichment.indices.bbq == 51
+    assert enrichment.indices.vpd_kpa == pytest.approx(0.59)
+    assert enrichment.indices.vpd_category == "optimal"
+
+    # Trends
+    assert enrichment.trends is not None
+    assert enrichment.trends.stability_label == "stable"
+    assert enrichment.trends.stability_ratio == pytest.approx(0.83)
+    assert enrichment.trends.precip_starts_in_hours == 2
+    assert enrichment.trends.reliable_hours == 3
+    assert len(enrichment.trends.parameter_trends) == 1
+    assert enrichment.trends.parameter_trends[0].parameter == "temperature_2m"
+
+    # Energy
+    assert enrichment.energy is not None
+    assert enrichment.energy.heating_demand == 21
+    assert enrichment.energy.cop_estimate == pytest.approx(10.95)
+    assert enrichment.energy.battery_strategy == "discharge"
+    assert len(enrichment.energy.cop_optimal) == 1
+    assert enrichment.energy.cop_optimal[0].hours_from_now == 20
+
+    # Derived
+    assert enrichment.derived is not None
+    assert len(enrichment.derived.by_horizon) == 1
+    assert enrichment.derived.by_horizon[0].horizon == "h3"
+    assert enrichment.derived.by_horizon[0].beaufort == 2
+    assert enrichment.derived.by_horizon[0].dewpoint_comfort == "sticky"
+    assert enrichment.derived.sunshine_pct == pytest.approx(66.4)
+    assert enrichment.derived.inversion is False
+
+    # History
+    assert enrichment.history is not None
+    assert enrichment.history.weighted_temperature == pytest.approx(24.48)
+    assert len(enrichment.history.models) == 1
+    assert enrichment.history.models[0].model == "icon_global"
+
+    # Consensus
+    assert enrichment.consensus is not None
+    assert len(enrichment.consensus.parameters) == 1
+    assert enrichment.consensus.parameters[0].parameter == "temperature_2m"
+    assert enrichment.consensus.parameters[0].by_horizon[0].median == pytest.approx(20.4)
+    assert enrichment.consensus.parameters[0].by_horizon[0].available_models == 6
+
+
+@pytest.mark.asyncio
+async def test_stream_enrichments(client):
+    updates: list[EnrichmentData] = []
+    async for update in client.stream_enrichments():
+        updates.append(update)
+    assert len(updates) == 2
+    assert all(isinstance(u, EnrichmentData) for u in updates)
+    assert updates[0].location == "lucerne"
+    assert len(updates[0].alerts) == 1
+    assert updates[0].alerts[0].type == "heat"
+    assert updates[0].alerts[0].severity == "yellow"
