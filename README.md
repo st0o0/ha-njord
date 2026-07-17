@@ -37,11 +37,11 @@ A running [njord](https://github.com/st0o0/njord) instance accessible via gRPC (
 
 ### HACS (recommended)
 
-1. Open HACS in Home Assistant
-2. Click the three dots menu → **Custom repositories**
-3. Add `https://github.com/st0o0/ha-njord` as **Integration**
-4. Search for "njord Weather" and install
-5. Restart Home Assistant
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=st0o0&repository=ha-njord&category=integration)
+
+1. Click the button above — or open HACS → three dots → **Custom repositories** → add `https://github.com/st0o0/ha-njord` as **Integration**
+2. Search for "njord Weather" and install
+3. Restart Home Assistant
 
 ### Manual
 
