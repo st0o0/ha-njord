@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -192,6 +192,14 @@ def mock_client():
     mock.get_forecast = AsyncMock(side_effect=lambda loc, model: _default_forecast(loc, model))
     mock.get_enrichments = AsyncMock(side_effect=lambda loc: _default_enrichment(loc))
     mock.get_status = AsyncMock()
+
+    async def _empty_async_gen(**kwargs):
+        return
+        yield
+
+    mock.stream_forecasts = MagicMock(side_effect=lambda **kwargs: _empty_async_gen())
+    mock.stream_enrichments = MagicMock(side_effect=lambda **kwargs: _empty_async_gen())
+    mock.stream_config = MagicMock(side_effect=lambda **kwargs: _empty_async_gen())
 
     with (
         patch("custom_components.njord.NjordClient", return_value=mock),

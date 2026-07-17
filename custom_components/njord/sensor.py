@@ -12,7 +12,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
 from .coordinator import NjordDataCoordinator
-from .models import EnrichmentData
+from .models import EnrichmentData, NjordLocation
 
 INDEX_TYPES = [
     ("laundry", "Laundry Index", "mdi:tshirt-crew"),
@@ -70,6 +70,21 @@ async def async_setup_entry(
         entities.append(NjordHistorySensor(coordinator, entry, location))
 
     async_add_entities(entities)
+
+    def sensor_factory(location: NjordLocation) -> list[SensorEntity]:
+        new_entities: list[SensorEntity] = []
+        for key, name, icon in INDEX_TYPES:
+            new_entities.append(NjordIndexSensor(coordinator, entry, location.name, key, name, icon))
+        new_entities.append(NjordVpdSensor(coordinator, entry, location.name))
+        for key, name, unit, icon in ENERGY_SENSORS:
+            new_entities.append(NjordEnergySensor(coordinator, entry, location.name, key, name, unit, icon))
+        new_entities.append(NjordTrendSensor(coordinator, entry, location.name))
+        new_entities.append(NjordSunshineSensor(coordinator, entry, location.name))
+        new_entities.append(NjordDiurnalAmplitudeSensor(coordinator, entry, location.name))
+        new_entities.append(NjordHistorySensor(coordinator, entry, location.name))
+        return new_entities
+
+    coordinator.register_entity_factory("sensor", async_add_entities, sensor_factory)
 
 
 class _NjordEnrichmentSensor(CoordinatorEntity[NjordDataCoordinator], SensorEntity):

@@ -23,7 +23,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .condition_mapper import map_condition
 from .const import DOMAIN
 from .coordinator import NjordDataCoordinator
-from .models import ConsensusData, ForecastData, HorizonConsensusData
+from .models import ConsensusData, ForecastData, HorizonConsensusData, NjordLocation
 
 
 async def async_setup_entry(
@@ -45,6 +45,17 @@ async def async_setup_entry(
             entities.append(NjordConsensusWeatherEntity(coordinator, entry, location))
 
     async_add_entities(entities)
+
+    def weather_factory(location: NjordLocation) -> list[WeatherEntity]:
+        new_entities: list[WeatherEntity] = []
+        for model in location.models:
+            new_entities.append(NjordWeatherEntity(coordinator, entry, location.name, model))
+        enrichment = coordinator.data.enrichments.get(location.name)
+        if enrichment and enrichment.consensus:
+            new_entities.append(NjordConsensusWeatherEntity(coordinator, entry, location.name))
+        return new_entities
+
+    coordinator.register_entity_factory("weather", async_add_entities, weather_factory)
 
 
 class NjordWeatherEntity(CoordinatorEntity[NjordDataCoordinator], WeatherEntity):

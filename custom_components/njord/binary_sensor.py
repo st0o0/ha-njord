@@ -14,7 +14,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
 from .coordinator import NjordDataCoordinator
-from .models import AlertData
+from .models import AlertData, NjordLocation
 
 ALERT_TYPES = [
     "frost",
@@ -74,6 +74,17 @@ async def async_setup_entry(
             entities.append(NjordInversionEntity(coordinator, entry, location))
 
     async_add_entities(entities)
+
+    def binary_sensor_factory(location: NjordLocation) -> list[BinarySensorEntity]:
+        new_entities: list[BinarySensorEntity] = []
+        for alert_type in ALERT_TYPES:
+            new_entities.append(NjordAlertEntity(coordinator, entry, location.name, alert_type))
+        enrichment = coordinator.data.enrichments.get(location.name)
+        if enrichment and enrichment.derived is not None:
+            new_entities.append(NjordInversionEntity(coordinator, entry, location.name))
+        return new_entities
+
+    coordinator.register_entity_factory("binary_sensor", async_add_entities, binary_sensor_factory)
 
 
 class NjordAlertEntity(CoordinatorEntity[NjordDataCoordinator], BinarySensorEntity):

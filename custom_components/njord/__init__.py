@@ -31,6 +31,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     }
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+
+    coordinator.start_streams()
+
     return True
 
 
@@ -40,6 +43,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     if unload_ok:
         entry_data = hass.data[DOMAIN].pop(entry.entry_id)
+        coordinator: NjordDataCoordinator = entry_data["coordinator"]
+        await coordinator.stop_streams()
         client: NjordClient = entry_data["client"]
         await client.close()
 
