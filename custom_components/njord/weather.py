@@ -7,6 +7,7 @@ from datetime import UTC, datetime, timedelta
 from homeassistant.components.weather import (
     Forecast,
     SingleCoordinatorWeatherEntity,
+    WeatherEntity,
     WeatherEntityFeature,
 )
 from homeassistant.config_entries import ConfigEntry
