@@ -1,7 +1,7 @@
 {
   "domain": "njord",
   "name": "njord Weather",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "documentation": "https://github.com/st0o0/ha-njord",
   "issue_tracker": "https://github.com/st0o0/ha-njord/issues",
   "dependencies": [],

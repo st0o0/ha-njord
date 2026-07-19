@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.2.0](https://github.com/st0o0/ha-njord/compare/v0.1.0...v0.2.0) (2026-07-19)
+
+
+### ⚠ BREAKING CHANGES
+
+* add extra forecast parameters, alert trigger values, and convert alerts to sensors
+
+### Features
+
+* add extra forecast parameters, alert trigger values, and convert alerts to sensors ([7a11aae](https://github.com/st0o0/ha-njord/commit/7a11aae0b9d3d5f1dbaac8deda67b9d606a5c35a))
+
 ## 0.1.0 (2026-07-18)
 
 
