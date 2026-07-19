@@ -12,7 +12,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
 from .coordinator import NjordDataCoordinator
-from .models import EnrichmentData, NjordLocation
+from .models import AlertData, EnrichmentData, NjordLocation
 
 INDEX_TYPES = [
     ("laundry", "Laundry Index", "mdi:tshirt-crew"),
@@ -24,6 +24,54 @@ INDEX_TYPES = [
     ("solar", "Solar Index", "mdi:solar-power"),
     ("ventilation", "Ventilation Index", "mdi:air-filter"),
 ]
+
+ALERT_TYPES = [
+    "frost",
+    "heat",
+    "storm",
+    "heavy_rain",
+    "uv",
+    "fog",
+    "snow",
+    "pressure_drop",
+    "thunderstorm",
+]
+
+ALERT_NAMES = {
+    "frost": "Frost Alert",
+    "heat": "Heat Alert",
+    "storm": "Storm Alert",
+    "heavy_rain": "Heavy Rain Alert",
+    "uv": "UV Alert",
+    "fog": "Fog Alert",
+    "snow": "Snow Alert",
+    "pressure_drop": "Pressure Drop Alert",
+    "thunderstorm": "Thunderstorm Alert",
+}
+
+ALERT_UNITS = {
+    "frost": "°C",
+    "heat": "°C",
+    "storm": "km/h",
+    "heavy_rain": "mm",
+    "uv": "UV",
+    "fog": "m",
+    "snow": "cm",
+    "pressure_drop": "hPa",
+    "thunderstorm": "J/kg",
+}
+
+ALERT_ICONS = {
+    "frost": "mdi:snowflake-alert",
+    "heat": "mdi:thermometer-alert",
+    "storm": "mdi:weather-hurricane",
+    "heavy_rain": "mdi:weather-pouring",
+    "uv": "mdi:sun-wireless",
+    "fog": "mdi:weather-fog",
+    "snow": "mdi:snowflake",
+    "pressure_drop": "mdi:gauge-low",
+    "thunderstorm": "mdi:weather-lightning",
+}
 
 ENERGY_SENSORS = [
     ("heating_demand", "Heating Demand", "%", "mdi:radiator"),
@@ -56,6 +104,9 @@ async def async_setup_entry(
     locations = {loc for loc, _ in coordinator.data.forecasts}
 
     for location in sorted(locations):
+        for alert_type in ALERT_TYPES:
+            entities.append(NjordAlertSensor(coordinator, entry, location, alert_type))
+
         for key, name, icon in INDEX_TYPES:
             entities.append(NjordIndexSensor(coordinator, entry, location, key, name, icon))
 
@@ -77,6 +128,8 @@ async def async_setup_entry(
 
     def sensor_factory(location: NjordLocation) -> list[SensorEntity]:
         new_entities: list[SensorEntity] = []
+        for alert_type in ALERT_TYPES:
+            new_entities.append(NjordAlertSensor(coordinator, entry, location.name, alert_type))
         for key, name, icon in INDEX_TYPES:
             new_entities.append(NjordIndexSensor(coordinator, entry, location.name, key, name, icon))
         new_entities.append(NjordVpdSensor(coordinator, entry, location.name))
@@ -115,6 +168,65 @@ class _NjordEnrichmentSensor(CoordinatorEntity[NjordDataCoordinator], SensorEnti
         if self.coordinator.data is None:
             return None
         return self.coordinator.data.enrichments.get(self._location)
+
+
+class NjordAlertSensor(_NjordEnrichmentSensor):
+    """Sensor for a weather alert showing the trigger value."""
+
+    _attr_entity_registry_enabled_default = True
+
+    def __init__(
+        self,
+        coordinator: NjordDataCoordinator,
+        entry: ConfigEntry,
+        location: str,
+        alert_type: str,
+    ) -> None:
+        super().__init__(coordinator, entry, location)
+        self._alert_type = alert_type
+        slug = f"{location}_{alert_type}_alert".replace("-", "_").replace(" ", "_").lower()
+        self._attr_unique_id = f"{entry.entry_id}_{slug}"
+        self._attr_name = ALERT_NAMES.get(alert_type, f"{alert_type} Alert")
+        self._attr_icon = ALERT_ICONS.get(alert_type, "mdi:alert")
+        self._attr_native_unit_of_measurement = ALERT_UNITS.get(alert_type)
+
+    def _get_alert(self) -> AlertData | None:
+        enrichment = self._enrichment()
+        if enrichment is None:
+            return None
+        for alert in enrichment.alerts:
+            if alert.type == self._alert_type:
+                return alert
+        return None
+
+    @property
+    def available(self) -> bool:
+        return self._enrichment() is not None
+
+    @property
+    def native_value(self) -> float | None:
+        alert = self._get_alert()
+        if alert is None:
+            return None
+        return alert.trigger_value
+
+    @property
+    def extra_state_attributes(self) -> dict[str, object] | None:
+        alert = self._get_alert()
+        if alert is None:
+            return None
+        attrs: dict[str, object] = {
+            "severity": alert.severity,
+            "confidence": alert.confidence,
+            "threshold": alert.threshold,
+        }
+        if alert.peak_value is not None:
+            attrs["peak_value"] = alert.peak_value
+        if alert.hours_until is not None:
+            attrs["hours_until"] = alert.hours_until
+        if alert.duration_hours is not None:
+            attrs["duration_hours"] = alert.duration_hours
+        return attrs
 
 
 class NjordIndexSensor(_NjordEnrichmentSensor):

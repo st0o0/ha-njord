@@ -49,6 +49,19 @@ _BACKOFF_FACTOR = 2.0
 # --- Protobuf to dataclass converters ---
 
 
+def _parse_extra(pb_extra) -> dict[str, float | str | bool]:
+    result: dict[str, float | str | bool] = {}
+    for pv in pb_extra:
+        field = pv.WhichOneof("value")
+        if field == "numeric":
+            result[pv.name] = pv.numeric
+        elif field == "text":
+            result[pv.name] = pv.text
+        elif field == "flag":
+            result[pv.name] = pv.flag
+    return result
+
+
 def _to_hourly(pb: forecast_service_pb2.HourlyForecast) -> HourlyForecastData:
     return HourlyForecastData(
         timestamp=datetime.fromtimestamp(pb.timestamp, tz=UTC),
@@ -64,6 +77,7 @@ def _to_hourly(pb: forecast_service_pb2.HourlyForecast) -> HourlyForecastData:
         rain=pb.rain if pb.HasField("rain") else None,
         wind_gusts=pb.wind_gusts if pb.HasField("wind_gusts") else None,
         pressure_msl=pb.pressure_msl if pb.HasField("pressure_msl") else None,
+        extra=_parse_extra(pb.extra),
     )
 
 
@@ -78,6 +92,7 @@ def _to_daily(pb: forecast_service_pb2.DailyForecast) -> DailyForecastData:
         sunrise=pb.sunrise or None,
         sunset=pb.sunset or None,
         weather_code=pb.weather_code if pb.HasField("weather_code") else None,
+        extra=_parse_extra(pb.extra),
     )
 
 
@@ -158,6 +173,11 @@ def _to_alert(pb: forecast_service_pb2.Alert) -> AlertData:
         type=_ALERT_TYPE_MAP.get(pb.type, "unspecified"),
         severity=_ALERT_SEVERITY_MAP.get(pb.severity, "none"),
         confidence=pb.confidence,
+        trigger_value=pb.trigger_value,
+        threshold=pb.threshold,
+        peak_value=pb.peak_value if pb.HasField("peak_value") else None,
+        hours_until=pb.hours_until if pb.HasField("hours_until") else None,
+        duration_hours=pb.duration_hours if pb.HasField("duration_hours") else None,
     )
 
 

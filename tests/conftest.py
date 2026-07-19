@@ -148,9 +148,9 @@ def _default_enrichment(location: str = "home") -> EnrichmentData:
     return EnrichmentData(
         location=location,
         alerts=[
-            AlertData(type="uv", severity="orange", confidence=1.0),
+            AlertData(type="uv", severity="orange", confidence=1.0, trigger_value=8.5, threshold=6.0, peak_value=9.2, hours_until=2, duration_hours=4),
             AlertData(type="frost", severity="none", confidence=0.0),
-            AlertData(type="heat", severity="yellow", confidence=0.33),
+            AlertData(type="heat", severity="yellow", confidence=0.33, trigger_value=38.2, threshold=35.0),
             AlertData(type="storm", severity="none", confidence=0.0),
             AlertData(type="heavy_rain", severity="none", confidence=0.0),
             AlertData(type="fog", severity="none", confidence=0.0),

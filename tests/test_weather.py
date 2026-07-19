@@ -10,7 +10,7 @@ from homeassistant.components.weather import WeatherEntityFeature
 from homeassistant.core import HomeAssistant
 
 from custom_components.njord.condition_mapper import map_condition
-from custom_components.njord.models import ForecastData, HourlyForecastData
+from custom_components.njord.models import DailyForecastData, ForecastData, HourlyForecastData
 from tests.conftest import init_integration
 
 
@@ -129,3 +129,141 @@ async def test_weather_entity_available_with_stub(hass: HomeAssistant, mock_clie
     state = hass.states.get("weather.njord_home_icon_d2")
     assert state is not None
     assert state.state == "unknown"
+
+
+async def test_extra_state_attributes_with_extras(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+    mock_client.get_forecast = AsyncMock(
+        side_effect=lambda loc, model: ForecastData(
+            location=loc,
+            model=model,
+            updated_at=1720000000,
+            hourly=[
+                HourlyForecastData(
+                    timestamp=datetime(2026, 7, 15, 12, 0, tzinfo=UTC),
+                    temperature=22.5,
+                    weather_code=1,
+                    is_day=True,
+                    extra={"cape": 450.0, "uv_index": 7.2},
+                ),
+            ],
+            daily=[
+                DailyForecastData(
+                    date="2026-07-15",
+                    temperature_max=28.0,
+                    temperature_min=15.0,
+                    weather_code=2,
+                ),
+                DailyForecastData(date="2026-07-16", temperature_max=25.0, temperature_min=14.0, weather_code=1),
+                DailyForecastData(date="2026-07-17", temperature_max=30.0, temperature_min=18.0, weather_code=3),
+            ],
+        )
+    )
+    await init_integration(hass, mock_config_entry)
+
+    state = hass.states.get("weather.njord_home_icon_d2")
+    assert state is not None
+    assert state.attributes["cape"] == 450.0
+    assert state.attributes["uv_index"] == 7.2
+
+
+async def test_extra_state_attributes_empty(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+    await init_integration(hass, mock_config_entry)
+
+    state = hass.states.get("weather.njord_home_icon_d2")
+    assert state is not None
+    assert "cape" not in state.attributes
+
+
+async def test_hourly_forecast_includes_extras(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+    mock_client.get_forecast = AsyncMock(
+        side_effect=lambda loc, model: ForecastData(
+            location=loc,
+            model=model,
+            updated_at=1720000000,
+            hourly=[
+                HourlyForecastData(
+                    timestamp=datetime(2026, 7, 15, 12, 0, tzinfo=UTC),
+                    temperature=22.5,
+                    weather_code=1,
+                    is_day=True,
+                    extra={"cape": 450.0},
+                ),
+                HourlyForecastData(
+                    timestamp=datetime(2026, 7, 15, 13, 0, tzinfo=UTC),
+                    temperature=23.0,
+                    weather_code=1,
+                    is_day=True,
+                    extra={},
+                ),
+            ],
+            daily=[
+                DailyForecastData(date="2026-07-15", temperature_max=28.0, temperature_min=15.0, weather_code=2),
+                DailyForecastData(date="2026-07-16", temperature_max=25.0, temperature_min=14.0, weather_code=1),
+                DailyForecastData(date="2026-07-17", temperature_max=30.0, temperature_min=18.0, weather_code=3),
+            ],
+        )
+    )
+    await init_integration(hass, mock_config_entry)
+
+    forecasts = await hass.services.async_call(
+        "weather",
+        "get_forecasts",
+        {"entity_id": "weather.njord_home_icon_d2", "type": "hourly"},
+        blocking=True,
+        return_response=True,
+    )
+    data = forecasts["weather.njord_home_icon_d2"]["forecast"]
+    assert data[0]["cape"] == 450.0
+    assert "cape" not in data[1]
+
+
+async def test_daily_forecast_includes_extras(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+    mock_client.get_forecast = AsyncMock(
+        side_effect=lambda loc, model: ForecastData(
+            location=loc,
+            model=model,
+            updated_at=1720000000,
+            hourly=[
+                HourlyForecastData(
+                    timestamp=datetime(2026, 7, 15, 12, 0, tzinfo=UTC),
+                    temperature=22.5,
+                    weather_code=1,
+                    is_day=True,
+                ),
+            ],
+            daily=[
+                DailyForecastData(
+                    date="2026-07-15",
+                    temperature_max=28.0,
+                    temperature_min=15.0,
+                    weather_code=2,
+                    extra={"soil_moisture": 23.5},
+                ),
+                DailyForecastData(
+                    date="2026-07-16",
+                    temperature_max=25.0,
+                    temperature_min=14.0,
+                    weather_code=1,
+                    extra={},
+                ),
+                DailyForecastData(
+                    date="2026-07-17",
+                    temperature_max=30.0,
+                    temperature_min=18.0,
+                    weather_code=3,
+                ),
+            ],
+        )
+    )
+    await init_integration(hass, mock_config_entry)
+
+    forecasts = await hass.services.async_call(
+        "weather",
+        "get_forecasts",
+        {"entity_id": "weather.njord_home_icon_d2", "type": "daily"},
+        blocking=True,
+        return_response=True,
+    )
+    data = forecasts["weather.njord_home_icon_d2"]["forecast"]
+    assert data[0]["soil_moisture"] == 23.5
+    assert "soil_moisture" not in data[1]

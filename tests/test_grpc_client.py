@@ -12,6 +12,8 @@ import pytest
 
 from custom_components.njord.grpc_client import (
     NjordClient,
+    _parse_extra,
+    _to_alert,
 )
 from custom_components.njord.models import (
     EnrichmentData,
@@ -504,3 +506,99 @@ async def test_stream_enrichments(client):
     assert len(updates[0].alerts) == 1
     assert updates[0].alerts[0].type == "heat"
     assert updates[0].alerts[0].severity == "yellow"
+
+
+# --- _parse_extra tests ---
+
+
+class TestParseExtra:
+    def test_numeric_values(self):
+        extras = [
+            forecast_service_pb2.ParameterValue(name="cape", numeric=450.0),
+            forecast_service_pb2.ParameterValue(name="uv_index", numeric=7.2),
+        ]
+        result = _parse_extra(extras)
+        assert result == {"cape": 450.0, "uv_index": 7.2}
+
+    def test_text_values(self):
+        extras = [
+            forecast_service_pb2.ParameterValue(name="pollen_level", text="high"),
+        ]
+        result = _parse_extra(extras)
+        assert result == {"pollen_level": "high"}
+
+    def test_flag_values(self):
+        extras = [
+            forecast_service_pb2.ParameterValue(name="frost_risk", flag=True),
+            forecast_service_pb2.ParameterValue(name="sunny", flag=False),
+        ]
+        result = _parse_extra(extras)
+        assert result == {"frost_risk": True, "sunny": False}
+
+    def test_mixed_types(self):
+        extras = [
+            forecast_service_pb2.ParameterValue(name="cape", numeric=450.0),
+            forecast_service_pb2.ParameterValue(name="pollen", text="low"),
+            forecast_service_pb2.ParameterValue(name="frost", flag=True),
+        ]
+        result = _parse_extra(extras)
+        assert result == {"cape": 450.0, "pollen": "low", "frost": True}
+
+    def test_empty_list(self):
+        result = _parse_extra([])
+        assert result == {}
+
+    def test_unset_value_skipped(self):
+        pv = forecast_service_pb2.ParameterValue(name="empty")
+        result = _parse_extra([pv])
+        assert result == {}
+
+
+class TestToAlert:
+    def test_all_fields_set(self):
+        pb = forecast_service_pb2.Alert(
+            type=5,  # UV
+            severity=2,  # ORANGE
+            confidence=0.95,
+            trigger_value=8.5,
+            threshold=6.0,
+            peak_value=9.2,
+            hours_until=2,
+            duration_hours=4,
+        )
+        alert = _to_alert(pb)
+        assert alert.type == "uv"
+        assert alert.severity == "orange"
+        assert alert.confidence == 0.95
+        assert alert.trigger_value == 8.5
+        assert alert.threshold == 6.0
+        assert alert.peak_value == 9.2
+        assert alert.hours_until == 2
+        assert alert.duration_hours == 4
+
+    def test_only_required_fields(self):
+        pb = forecast_service_pb2.Alert(
+            type=2,  # HEAT
+            severity=1,  # YELLOW
+            confidence=0.8,
+            trigger_value=38.2,
+            threshold=35.0,
+        )
+        alert = _to_alert(pb)
+        assert alert.type == "heat"
+        assert alert.trigger_value == 38.2
+        assert alert.threshold == 35.0
+        assert alert.peak_value is None
+        assert alert.hours_until is None
+        assert alert.duration_hours is None
+
+    def test_inactive_alert(self):
+        pb = forecast_service_pb2.Alert(
+            type=1,  # FROST
+            severity=0,  # NONE
+            confidence=0.0,
+        )
+        alert = _to_alert(pb)
+        assert alert.severity == "none"
+        assert alert.trigger_value == 0.0
+        assert alert.threshold == 0.0

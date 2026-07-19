@@ -163,3 +163,55 @@ async def test_enrichment_sensors_disabled_by_default(hass: HomeAssistant, mock_
         assert entry.disabled_by == er.RegistryEntryDisabler.INTEGRATION, f"{entity_id} should be disabled by default"
         state = hass.states.get(entity_id)
         assert state is None, f"{entity_id} should have no state when disabled"
+
+
+# --- Alert Sensor Tests ---
+
+
+async def test_alert_sensor_uv_value(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+    await init_integration(hass, mock_config_entry)
+
+    state = hass.states.get("sensor.njord_home_uv_alert")
+    assert state is not None
+    assert float(state.state) == 8.5
+    assert state.attributes["unit_of_measurement"] == "UV"
+    assert state.attributes["severity"] == "orange"
+    assert state.attributes["confidence"] == 1.0
+    assert state.attributes["threshold"] == 6.0
+    assert state.attributes["peak_value"] == 9.2
+    assert state.attributes["hours_until"] == 2
+    assert state.attributes["duration_hours"] == 4
+
+
+async def test_alert_sensor_heat_partial_attrs(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+    await init_integration(hass, mock_config_entry)
+
+    state = hass.states.get("sensor.njord_home_heat_alert")
+    assert state is not None
+    assert float(state.state) == 38.2
+    assert state.attributes["unit_of_measurement"] == "°C"
+    assert state.attributes["severity"] == "yellow"
+    assert state.attributes["threshold"] == 35.0
+    assert "peak_value" not in state.attributes
+    assert "hours_until" not in state.attributes
+
+
+async def test_alert_sensor_inactive(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+    await init_integration(hass, mock_config_entry)
+
+    state = hass.states.get("sensor.njord_home_frost_alert")
+    assert state is not None
+    assert float(state.state) == 0.0
+    assert state.attributes["unit_of_measurement"] == "°C"
+    assert state.attributes["severity"] == "none"
+
+
+async def test_alert_sensors_enabled_by_default(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+    await init_integration(hass, mock_config_entry)
+
+    registry = er.async_get(hass)
+    alert_types = ["frost", "heat", "storm", "heavy_rain", "uv", "fog", "snow", "pressure_drop", "thunderstorm"]
+    for alert_type in alert_types:
+        entry = registry.async_get(f"sensor.njord_home_{alert_type}_alert")
+        assert entry is not None, f"Missing alert sensor: {alert_type}"
+        assert entry.disabled_by is None, f"Alert sensor {alert_type} should be enabled by default"

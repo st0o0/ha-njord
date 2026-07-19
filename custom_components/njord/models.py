@@ -21,6 +21,7 @@ class HourlyForecastData:
     rain: float | None = None
     wind_gusts: float | None = None
     pressure_msl: float | None = None
+    extra: dict[str, float | str | bool] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -34,6 +35,7 @@ class DailyForecastData:
     sunrise: str | None = None
     sunset: str | None = None
     weather_code: int | None = None
+    extra: dict[str, float | str | bool] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -86,6 +88,11 @@ class AlertData:
     type: str
     severity: str = "none"
     confidence: float = 0.0
+    trigger_value: float = 0.0
+    threshold: float = 0.0
+    peak_value: float | None = None
+    hours_until: int | None = None
+    duration_hours: int | None = None
 
 
 @dataclass(frozen=True)

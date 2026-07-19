@@ -173,6 +173,16 @@ class NjordWeatherEntity(SingleCoordinatorWeatherEntity[NjordDataCoordinator]):
             return None
         return data.hourly[0].cloud_cover
 
+    @property
+    def extra_state_attributes(self) -> dict[str, object] | None:
+        data = self._forecast_data
+        if data is None or not data.hourly:
+            return None
+        extra = data.hourly[0].extra
+        if not extra:
+            return None
+        return dict(extra)
+
     @callback
     def _async_forecast_hourly(self) -> list[Forecast] | None:
         data = self._forecast_data
@@ -185,18 +195,19 @@ class NjordWeatherEntity(SingleCoordinatorWeatherEntity[NjordDataCoordinator]):
             if h.weather_code is not None:
                 condition = map_condition(h.weather_code, h.is_day if h.is_day is not None else True)
 
-            forecasts.append(
-                Forecast(
-                    datetime=h.timestamp.isoformat(),
-                    native_temperature=h.temperature,
-                    precipitation=h.precipitation,
-                    humidity=h.humidity,
-                    native_wind_speed=h.wind_speed,
-                    wind_bearing=h.wind_bearing,
-                    cloud_cover=h.cloud_cover,
-                    condition=condition,
-                )
+            entry = Forecast(
+                datetime=h.timestamp.isoformat(),
+                native_temperature=h.temperature,
+                precipitation=h.precipitation,
+                humidity=h.humidity,
+                native_wind_speed=h.wind_speed,
+                wind_bearing=h.wind_bearing,
+                cloud_cover=h.cloud_cover,
+                condition=condition,
             )
+            if h.extra:
+                entry.update(h.extra)
+            forecasts.append(entry)
         return forecasts
 
     def _daily_condition_from_hourly(self, date_str: str) -> str | None:
@@ -229,16 +240,17 @@ class NjordWeatherEntity(SingleCoordinatorWeatherEntity[NjordDataCoordinator]):
             else:
                 condition = self._daily_condition_from_hourly(d.date)
 
-            forecasts.append(
-                Forecast(
-                    datetime=f"{d.date}T00:00:00+00:00",
-                    native_temperature=d.temperature_max,
-                    native_templow=d.temperature_min,
-                    precipitation=d.precipitation_sum,
-                    native_wind_speed=d.wind_speed_max,
-                    condition=condition,
-                )
+            entry = Forecast(
+                datetime=f"{d.date}T00:00:00+00:00",
+                native_temperature=d.temperature_max,
+                native_templow=d.temperature_min,
+                precipitation=d.precipitation_sum,
+                native_wind_speed=d.wind_speed_max,
+                condition=condition,
             )
+            if d.extra:
+                entry.update(d.extra)
+            forecasts.append(entry)
         return forecasts
 
 
