@@ -6,7 +6,7 @@ DOCKER_IMAGE = python:3.12-slim
 
 proto:
 	docker run --rm -v "$(CURDIR):/work" -w /work $(DOCKER_IMAGE) \
-		sh -c "pip install --quiet 'grpcio-tools>=1.70,<1.79' 'protobuf>=5.0,<7.0' && \
+		sh -c "pip install --quiet 'grpcio-tools>=1.70,<1.79' 'protobuf>=5.0,<6.0' && \
 		python -m grpc_tools.protoc \
 			-I$(PROTO_SRC) \
 			--python_out=$(PROTO_OUT) \
