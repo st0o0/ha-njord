@@ -48,6 +48,18 @@ class ForecastData:
 
 
 @dataclass(frozen=True)
+class ModelInfoData:
+    id: str
+    display_name: str = ""
+    provider: str = ""
+    region: str = ""
+    coverage_tier: str = "unspecified"
+    max_forecast_hours: int | None = None
+    resolution_km: float | None = None
+    description: str | None = None
+
+
+@dataclass(frozen=True)
 class NjordLocation:
     name: str
     latitude: float

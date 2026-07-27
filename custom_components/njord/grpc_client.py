@@ -27,6 +27,7 @@ from .models import (
     HorizonDerivedData,
     HourlyForecastData,
     IndexData,
+    ModelInfoData,
     ModelMetricsData,
     NjordConfigData,
     NjordLocation,
@@ -105,6 +106,27 @@ def _to_forecast_data(
         updated_at=pb.updated_at,
         hourly=[_to_hourly(h) for h in pb.hourly],
         daily=[_to_daily(d) for d in pb.daily],
+    )
+
+
+_COVERAGE_TIER_MAP: dict[int, str] = {
+    0: "unspecified",
+    1: "global",
+    2: "continental",
+    3: "regional",
+}
+
+
+def _to_model_info(pb: forecast_service_pb2.ModelInfo) -> ModelInfoData:
+    return ModelInfoData(
+        id=pb.id,
+        display_name=pb.display_name,
+        provider=pb.provider,
+        region=pb.region,
+        coverage_tier=_COVERAGE_TIER_MAP.get(pb.coverage_tier, "unspecified"),
+        max_forecast_hours=pb.max_forecast_hours if pb.HasField("max_forecast_hours") else None,
+        resolution_km=pb.resolution_km if pb.HasField("resolution_km") else None,
+        description=pb.description if pb.HasField("description") else None,
     )
 
 
@@ -404,6 +426,13 @@ class NjordClient:
         assert self._forecast_stub is not None
         resp = await self._forecast_stub.GetModels(forecast_service_pb2.GetModelsRequest(location=location))
         return list(resp.models)
+
+    async def get_model_info(self, location: str) -> dict[str, ModelInfoData]:
+        """Retrieve model metadata for a location."""
+        self._ensure_connected()
+        assert self._forecast_stub is not None
+        resp = await self._forecast_stub.GetModels(forecast_service_pb2.GetModelsRequest(location=location))
+        return {info.id: _to_model_info(info) for info in resp.model_info}
 
     async def get_forecast(self, location: str, model: str) -> ForecastData:
         """Retrieve the current forecast for a location and model."""

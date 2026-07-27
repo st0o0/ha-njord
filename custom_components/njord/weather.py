@@ -23,7 +23,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .condition_mapper import map_condition
 from .const import DOMAIN
 from .coordinator import NjordDataCoordinator
-from .models import ConsensusData, ForecastData, HorizonConsensusData, NjordLocation
+from .models import ConsensusData, ForecastData, HorizonConsensusData, ModelInfoData, ModelMetricsData, NjordLocation
 
 
 async def async_setup_entry(
@@ -173,15 +173,56 @@ class NjordWeatherEntity(SingleCoordinatorWeatherEntity[NjordDataCoordinator]):
             return None
         return data.hourly[0].cloud_cover
 
+    def _model_metrics(self) -> ModelMetricsData | None:
+        if self.coordinator.data is None:
+            return None
+        enrichment = self.coordinator.data.enrichments.get(self._location)
+        if enrichment is None or enrichment.history is None:
+            return None
+        for m in enrichment.history.models:
+            if m.model == self._model:
+                return m
+        return None
+
     @property
     def extra_state_attributes(self) -> dict[str, object] | None:
+        attrs: dict[str, object] = {}
+
         data = self._forecast_data
-        if data is None or not data.hourly:
-            return None
-        extra = data.hourly[0].extra
-        if not extra:
-            return None
-        return dict(extra)
+        if data is not None and data.hourly:
+            extra = data.hourly[0].extra
+            if extra:
+                attrs.update(extra)
+
+        metrics = self._model_metrics()
+        if metrics is not None:
+            if metrics.mae_7d is not None:
+                attrs["model_mae_7d"] = round(metrics.mae_7d, 2)
+            if metrics.mae_30d is not None:
+                attrs["model_mae_30d"] = round(metrics.mae_30d, 2)
+            attrs["model_weight"] = round(metrics.weight, 3)
+            if metrics.drift is not None:
+                attrs["model_drift"] = round(metrics.drift, 2)
+
+        if self.coordinator.data is not None:
+            info = self.coordinator.data.model_info.get(self._model)
+            if info is not None:
+                if info.display_name:
+                    attrs["model_display_name"] = info.display_name
+                if info.provider:
+                    attrs["model_provider"] = info.provider
+                if info.region:
+                    attrs["model_region"] = info.region
+                if info.coverage_tier and info.coverage_tier != "unspecified":
+                    attrs["model_coverage_tier"] = info.coverage_tier
+                if info.resolution_km is not None:
+                    attrs["model_resolution_km"] = info.resolution_km
+                if info.max_forecast_hours is not None:
+                    attrs["model_max_forecast_hours"] = info.max_forecast_hours
+                if info.description:
+                    attrs["model_description"] = info.description
+
+        return attrs or None
 
     @callback
     def _async_forecast_hourly(self) -> list[Forecast] | None:

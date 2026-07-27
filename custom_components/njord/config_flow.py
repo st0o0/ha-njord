@@ -33,6 +33,26 @@ class NjordConfigFlow(ConfigFlow, domain=DOMAIN):
         self._locations: list[str] = []
         self._model_count: int = 0
 
+    async def _async_validate_connection(
+        self, host: str, port: int
+    ) -> dict[str, str]:
+        """Validate gRPC connection and populate location/model counts."""
+        errors: dict[str, str] = {}
+        client = NjordClient(host=host, port=port)
+        try:
+            await client.connect()
+            self._locations = await client.get_locations()
+            self._model_count = 0
+            for loc in self._locations:
+                models = await client.get_models(loc)
+                self._model_count += len(models)
+        except Exception:
+            _LOGGER.exception("Failed to connect to njord at %s:%s", host, port)
+            errors["base"] = "cannot_connect"
+        finally:
+            await client.close()
+        return errors
+
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Handle the initial step."""
         errors: dict[str, str] = {}
@@ -45,18 +65,7 @@ class NjordConfigFlow(ConfigFlow, domain=DOMAIN):
             await self.async_set_unique_id(unique_id)
             self._abort_if_unique_id_configured()
 
-            client = NjordClient(host=self._host, port=self._port)
-            try:
-                await client.connect()
-                self._locations = await client.get_locations()
-                for loc in self._locations:
-                    models = await client.get_models(loc)
-                    self._model_count += len(models)
-            except Exception:
-                _LOGGER.exception("Failed to connect to njord at %s:%s", self._host, self._port)
-                errors["base"] = "cannot_connect"
-            finally:
-                await client.close()
+            errors = await self._async_validate_connection(self._host, self._port)
 
             if not errors:
                 return self.async_create_entry(
@@ -71,5 +80,39 @@ class NjordConfigFlow(ConfigFlow, domain=DOMAIN):
         return self.async_show_form(
             step_id="user",
             data_schema=STEP_USER_DATA_SCHEMA,
+            errors=errors,
+        )
+
+    async def async_step_reconfigure(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        """Handle reconfiguration of the integration."""
+        errors: dict[str, str] = {}
+        entry = self._get_reconfigure_entry()
+
+        if user_input is not None:
+            host = user_input["host"]
+            port = user_input["port"]
+
+            errors = await self._async_validate_connection(host, port)
+
+            if not errors:
+                new_unique_id = f"{host}:{port}"
+                if new_unique_id != entry.unique_id:
+                    await self.async_set_unique_id(new_unique_id)
+                    self._abort_if_unique_id_configured()
+
+                return self.async_update_reload_and_abort(
+                    entry,
+                    title=f"njord ({host})",
+                    data={"host": host, "port": port},
+                )
+
+        return self.async_show_form(
+            step_id="reconfigure",
+            data_schema=vol.Schema(
+                {
+                    vol.Required("host", default=entry.data["host"]): str,
+                    vol.Required("port", default=entry.data["port"]): int,
+                }
+            ),
             errors=errors,
         )

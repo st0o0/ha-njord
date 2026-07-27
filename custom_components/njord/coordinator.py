@@ -12,7 +12,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .grpc_client import NjordClient
-from .models import EnrichmentData, ForecastData, NjordLocation
+from .models import EnrichmentData, ForecastData, ModelInfoData, NjordLocation
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -53,6 +53,7 @@ def merge_enrichment(existing: EnrichmentData | None, event: EnrichmentData) -> 
 class NjordCoordinatorData:
     forecasts: dict[tuple[str, str], ForecastData] = field(default_factory=dict)
     enrichments: dict[str, EnrichmentData] = field(default_factory=dict)
+    model_info: dict[str, ModelInfoData] = field(default_factory=dict)
 
 
 EntityFactory = Callable[[NjordLocation], list]
@@ -84,6 +85,12 @@ class NjordDataCoordinator(DataUpdateCoordinator[NjordCoordinatorData]):
 
         for location in config.locations:
             self._known_locations.add(location.name)
+
+            try:
+                info = await self.client.get_model_info(location.name)
+                result.model_info.update(info)
+            except Exception as err:
+                _LOGGER.warning("Failed to get model info for %s: %s", location.name, err)
 
             for model in location.models:
                 try:
