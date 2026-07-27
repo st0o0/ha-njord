@@ -12,7 +12,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .grpc_client import NjordClient
-from .models import EnrichmentData, ForecastData, ModelInfoData, NjordLocation
+from .models import EnrichmentData, ForecastData, ModelInfoData, NjordLocation, ServerStatusData
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -54,6 +54,7 @@ class NjordCoordinatorData:
     forecasts: dict[tuple[str, str], ForecastData] = field(default_factory=dict)
     enrichments: dict[str, EnrichmentData] = field(default_factory=dict)
     model_info: dict[str, ModelInfoData] = field(default_factory=dict)
+    server_status: ServerStatusData | None = None
 
 
 EntityFactory = Callable[[NjordLocation], list]
@@ -116,6 +117,11 @@ class NjordDataCoordinator(DataUpdateCoordinator[NjordCoordinatorData]):
                     location.name,
                     err,
                 )
+
+        try:
+            result.server_status = await self.client.get_status()
+        except Exception as err:
+            _LOGGER.warning("Failed to get server status: %s", err)
 
         return result
 

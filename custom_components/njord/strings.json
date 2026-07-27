@@ -48,7 +48,9 @@
       "hdd": { "name": "Heating Degree Days" },
       "cdd": { "name": "Cooling Degree Days" },
       "frost_hours": { "name": "Frost Hours" },
-      "frost_confidence": { "name": "Frost Confidence" }
+      "frost_confidence": { "name": "Frost Confidence" },
+      "api_budget": { "name": "API Budget" },
+      "uptime": { "name": "Uptime" }
     },
     "binary_sensor": {
       "frost_alert": { "name": "Frost Alert" },

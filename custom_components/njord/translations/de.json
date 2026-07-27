@@ -48,7 +48,9 @@
       "hdd": { "name": "Heizgradtage" },
       "cdd": { "name": "Kühlgradtage" },
       "frost_hours": { "name": "Froststunden" },
-      "frost_confidence": { "name": "Frostwahrscheinlichkeit" }
+      "frost_confidence": { "name": "Frostwahrscheinlichkeit" },
+      "api_budget": { "name": "API-Budget" },
+      "uptime": { "name": "Betriebszeit" }
     },
     "binary_sensor": {
       "frost_alert": { "name": "Frost-Warnung" },
