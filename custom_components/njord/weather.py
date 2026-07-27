@@ -93,7 +93,10 @@ class NjordWeatherEntity(SingleCoordinatorWeatherEntity[NjordDataCoordinator]):
         features = WeatherEntityFeature(0)
         if data and data.hourly:
             features |= WeatherEntityFeature.FORECAST_HOURLY
-        if data and len(data.daily) >= 3:
+        if data and any(
+            d.temperature_max is not None or d.temperature_min is not None
+            for d in data.daily
+        ):
             features |= WeatherEntityFeature.FORECAST_DAILY
         self._attr_supported_features = features
 
@@ -292,7 +295,7 @@ class NjordWeatherEntity(SingleCoordinatorWeatherEntity[NjordDataCoordinator]):
             if d.extra:
                 entry.update(d.extra)
             forecasts.append(entry)
-        return forecasts
+        return forecasts or None
 
 
 _CONSENSUS_PARAM_MAP = {
@@ -553,4 +556,4 @@ class NjordConsensusWeatherEntity(SingleCoordinatorWeatherEntity[NjordDataCoordi
                     condition=condition,
                 )
             )
-        return forecasts
+        return forecasts or None
