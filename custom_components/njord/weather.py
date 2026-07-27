@@ -93,10 +93,7 @@ class NjordWeatherEntity(SingleCoordinatorWeatherEntity[NjordDataCoordinator]):
         features = WeatherEntityFeature(0)
         if data and data.hourly:
             features |= WeatherEntityFeature.FORECAST_HOURLY
-        if data and any(
-            d.temperature_max is not None or d.temperature_min is not None
-            for d in data.daily
-        ):
+        if data and data.daily:
             features |= WeatherEntityFeature.FORECAST_DAILY
         self._attr_supported_features = features
 
@@ -271,13 +268,11 @@ class NjordWeatherEntity(SingleCoordinatorWeatherEntity[NjordDataCoordinator]):
     @callback
     def _async_forecast_daily(self) -> list[Forecast] | None:
         data = self._forecast_data
-        if data is None:
+        if data is None or not data.daily:
             return None
 
         forecasts: list[Forecast] = []
         for d in data.daily:
-            if d.temperature_max is None and d.temperature_min is None:
-                continue
             condition = None
             if d.weather_code is not None:
                 condition = map_condition(d.weather_code, True)
