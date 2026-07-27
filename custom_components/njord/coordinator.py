@@ -16,6 +16,8 @@ from .models import EnrichmentData, ForecastData, ModelInfoData, NjordLocation, 
 
 _LOGGER = logging.getLogger(__name__)
 
+_STATUS_POLL_INTERVAL = 1800
+
 _ENRICHMENT_MERGE_FIELDS = ("alerts", "indices", "trends", "energy", "derived", "history", "consensus")
 _ENRICHMENT_DEFAULTS: dict[str, object] = {
     "alerts": [],
@@ -138,6 +140,7 @@ class NjordDataCoordinator(DataUpdateCoordinator[NjordCoordinatorData]):
             self.hass.async_create_background_task(self._run_forecast_stream(), "njord_forecast_stream"),
             self.hass.async_create_background_task(self._run_enrichment_stream(), "njord_enrichment_stream"),
             self.hass.async_create_background_task(self._run_config_stream(), "njord_config_stream"),
+            self.hass.async_create_background_task(self._run_status_poll(), "njord_status_poll"),
         ]
 
     async def stop_streams(self) -> None:
@@ -169,6 +172,18 @@ class NjordDataCoordinator(DataUpdateCoordinator[NjordCoordinatorData]):
                 new_locations = [loc for loc in config.locations if loc.name not in self._known_locations]
                 for location in new_locations:
                     await self._create_entities_for_location(location)
+        except asyncio.CancelledError:
+            return
+
+    async def _run_status_poll(self) -> None:
+        try:
+            while True:
+                await asyncio.sleep(_STATUS_POLL_INTERVAL)
+                try:
+                    self.data.server_status = await self.client.get_status()
+                    self.async_set_updated_data(self.data)
+                except Exception as err:
+                    _LOGGER.warning("Failed to poll server status: %s", err)
         except asyncio.CancelledError:
             return
 
