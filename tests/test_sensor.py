@@ -25,14 +25,14 @@ async def test_index_sensors_exist(hass: HomeAssistant, mock_client, mock_config
 
     indices = ["laundry", "outdoor", "running", "cycling", "bbq", "irrigation", "solar", "ventilation"]
     for idx in indices:
-        state = hass.states.get(f"sensor.njord_home_{idx}_index")
+        state = hass.states.get(f"sensor.home_{idx}_index")
         assert state is not None, f"Missing index sensor: {idx}"
 
 
 async def test_bbq_index_value(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
     await _setup_with_sensors_enabled(hass, mock_config_entry)
 
-    state = hass.states.get("sensor.njord_home_bbq_index")
+    state = hass.states.get("sensor.home_bbq_index")
     assert state is not None
     assert state.state == "51"
 
@@ -40,7 +40,7 @@ async def test_bbq_index_value(hass: HomeAssistant, mock_client, mock_config_ent
 async def test_vpd_sensor(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
     await _setup_with_sensors_enabled(hass, mock_config_entry)
 
-    state = hass.states.get("sensor.njord_home_vpd")
+    state = hass.states.get("sensor.home_vpd")
     assert state is not None
     assert float(state.state) == pytest.approx(0.59)
     assert state.attributes["category"] == "optimal"
@@ -49,7 +49,7 @@ async def test_vpd_sensor(hass: HomeAssistant, mock_client, mock_config_entry) -
 async def test_heating_demand(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
     await _setup_with_sensors_enabled(hass, mock_config_entry)
 
-    state = hass.states.get("sensor.njord_home_heating_demand")
+    state = hass.states.get("sensor.home_heating_demand")
     assert state is not None
     assert state.state == "21"
 
@@ -57,7 +57,7 @@ async def test_heating_demand(hass: HomeAssistant, mock_client, mock_config_entr
 async def test_cop_estimate_with_optimal(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
     await _setup_with_sensors_enabled(hass, mock_config_entry)
 
-    state = hass.states.get("sensor.njord_home_cop_estimate")
+    state = hass.states.get("sensor.home_cop_estimate")
     assert state is not None
     assert float(state.state) == pytest.approx(10.95)
     assert "cop_optimal" in state.attributes
@@ -67,7 +67,7 @@ async def test_cop_estimate_with_optimal(hass: HomeAssistant, mock_client, mock_
 async def test_battery_strategy(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
     await _setup_with_sensors_enabled(hass, mock_config_entry)
 
-    state = hass.states.get("sensor.njord_home_battery_strategy")
+    state = hass.states.get("sensor.home_battery_strategy")
     assert state is not None
     assert state.state == "discharge"
 
@@ -75,7 +75,7 @@ async def test_battery_strategy(hass: HomeAssistant, mock_client, mock_config_en
 async def test_weather_trend(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
     await _setup_with_sensors_enabled(hass, mock_config_entry)
 
-    state = hass.states.get("sensor.njord_home_weather_trend")
+    state = hass.states.get("sensor.home_weather_trend")
     assert state is not None
     assert state.state == "stable"
     assert state.attributes["precip_starts_in_hours"] == 2
@@ -85,7 +85,7 @@ async def test_weather_trend(hass: HomeAssistant, mock_client, mock_config_entry
 async def test_sunshine_pct(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
     await _setup_with_sensors_enabled(hass, mock_config_entry)
 
-    state = hass.states.get("sensor.njord_home_sunshine")
+    state = hass.states.get("sensor.home_sunshine")
     assert state is not None
     assert float(state.state) == pytest.approx(66.4)
 
@@ -93,7 +93,7 @@ async def test_sunshine_pct(hass: HomeAssistant, mock_client, mock_config_entry)
 async def test_diurnal_amplitude(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
     await _setup_with_sensors_enabled(hass, mock_config_entry)
 
-    state = hass.states.get("sensor.njord_home_diurnal_amplitude")
+    state = hass.states.get("sensor.home_diurnal_amplitude")
     assert state is not None
     assert float(state.state) == pytest.approx(7.3)
 
@@ -101,7 +101,7 @@ async def test_diurnal_amplitude(hass: HomeAssistant, mock_client, mock_config_e
 async def test_model_performance_diagnostic(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
     await _setup_with_sensors_enabled(hass, mock_config_entry)
 
-    state = hass.states.get("sensor.njord_home_model_performance")
+    state = hass.states.get("sensor.home_model_performance")
     assert state is not None
     assert float(state.state) == pytest.approx(24.48)
     assert "models" in state.attributes
@@ -110,7 +110,7 @@ async def test_model_performance_diagnostic(hass: HomeAssistant, mock_client, mo
 async def test_hdd_sensor(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
     await _setup_with_sensors_enabled(hass, mock_config_entry)
 
-    state = hass.states.get("sensor.njord_home_heating_degree_days")
+    state = hass.states.get("sensor.home_heating_degree_days")
     assert state is not None
     assert float(state.state) == pytest.approx(5.2)
     assert state.attributes["unit_of_measurement"] == "°C·d"
@@ -120,7 +120,7 @@ async def test_hdd_sensor(hass: HomeAssistant, mock_client, mock_config_entry) -
 async def test_cdd_sensor(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
     await _setup_with_sensors_enabled(hass, mock_config_entry)
 
-    state = hass.states.get("sensor.njord_home_cooling_degree_days")
+    state = hass.states.get("sensor.home_cooling_degree_days")
     assert state is not None
     assert float(state.state) == pytest.approx(1.3)
     assert state.attributes["unit_of_measurement"] == "°C·d"
@@ -130,7 +130,7 @@ async def test_cdd_sensor(hass: HomeAssistant, mock_client, mock_config_entry) -
 async def test_frost_hours_sensor(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
     await _setup_with_sensors_enabled(hass, mock_config_entry)
 
-    state = hass.states.get("sensor.njord_home_frost_hours")
+    state = hass.states.get("sensor.home_frost_hours")
     assert state is not None
     assert state.state == "4"
     assert state.attributes["unit_of_measurement"] == "h"
@@ -140,7 +140,7 @@ async def test_frost_hours_sensor(hass: HomeAssistant, mock_client, mock_config_
 async def test_frost_confidence_sensor(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
     await _setup_with_sensors_enabled(hass, mock_config_entry)
 
-    state = hass.states.get("sensor.njord_home_frost_confidence")
+    state = hass.states.get("sensor.home_frost_confidence")
     assert state is not None
     assert float(state.state) == pytest.approx(85.0)
     assert state.attributes["unit_of_measurement"] == "%"
@@ -152,10 +152,10 @@ async def test_enrichment_sensors_disabled_by_default(hass: HomeAssistant, mock_
 
     registry = er.async_get(hass)
     disabled_sensors = [
-        "sensor.njord_home_bbq_index",
-        "sensor.njord_home_heating_demand",
-        "sensor.njord_home_weather_trend",
-        "sensor.njord_home_heating_degree_days",
+        "sensor.home_bbq_index",
+        "sensor.home_heating_demand",
+        "sensor.home_weather_trend",
+        "sensor.home_heating_degree_days",
     ]
     for entity_id in disabled_sensors:
         entry = registry.async_get(entity_id)
@@ -171,7 +171,7 @@ async def test_enrichment_sensors_disabled_by_default(hass: HomeAssistant, mock_
 async def test_alert_sensor_uv_value(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
     await init_integration(hass, mock_config_entry)
 
-    state = hass.states.get("sensor.njord_home_uv_alert")
+    state = hass.states.get("sensor.home_uv_alert")
     assert state is not None
     assert float(state.state) == 8.5
     assert state.attributes["unit_of_measurement"] == "UV"
@@ -186,7 +186,7 @@ async def test_alert_sensor_uv_value(hass: HomeAssistant, mock_client, mock_conf
 async def test_alert_sensor_heat_partial_attrs(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
     await init_integration(hass, mock_config_entry)
 
-    state = hass.states.get("sensor.njord_home_heat_alert")
+    state = hass.states.get("sensor.home_heat_alert")
     assert state is not None
     assert float(state.state) == 38.2
     assert state.attributes["unit_of_measurement"] == "°C"
@@ -199,7 +199,7 @@ async def test_alert_sensor_heat_partial_attrs(hass: HomeAssistant, mock_client,
 async def test_alert_sensor_inactive(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
     await init_integration(hass, mock_config_entry)
 
-    state = hass.states.get("sensor.njord_home_frost_alert")
+    state = hass.states.get("sensor.home_frost_alert")
     assert state is not None
     assert float(state.state) == 0.0
     assert state.attributes["unit_of_measurement"] == "°C"
@@ -212,6 +212,6 @@ async def test_alert_sensors_enabled_by_default(hass: HomeAssistant, mock_client
     registry = er.async_get(hass)
     alert_types = ["frost", "heat", "storm", "heavy_rain", "uv", "fog", "snow", "pressure_drop", "thunderstorm"]
     for alert_type in alert_types:
-        entry = registry.async_get(f"sensor.njord_home_{alert_type}_alert")
+        entry = registry.async_get(f"sensor.home_{alert_type}_alert")
         assert entry is not None, f"Missing alert sensor: {alert_type}"
         assert entry.disabled_by is None, f"Alert sensor {alert_type} should be enabled by default"

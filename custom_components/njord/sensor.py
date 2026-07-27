@@ -82,12 +82,20 @@ ENERGY_SENSORS = [
 ]
 
 
+def _server_device_info(entry: ConfigEntry) -> DeviceInfo:
+    return DeviceInfo(
+        identifiers={(DOMAIN, f"{entry.entry_id}_server")},
+        name="Server",
+        manufacturer="njord",
+        entry_type=None,
+    )
+
+
 def _device_info(entry: ConfigEntry, location: str) -> DeviceInfo:
     return DeviceInfo(
         identifiers={(DOMAIN, f"{entry.entry_id}_{location}")},
-        name=f"njord {location}",
+        name=location.title(),
         manufacturer="njord",
-        model=location,
         entry_type=None,
     )
 
@@ -648,12 +656,7 @@ class NjordApiBudgetSensor(CoordinatorEntity[NjordDataCoordinator], SensorEntity
         super().__init__(coordinator)
         self._attr_unique_id = f"{entry.entry_id}_api_budget"
         self._attr_name = "API Budget"
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, f"{entry.entry_id}_server")},
-            name="njord Server",
-            manufacturer="njord",
-            entry_type=None,
-        )
+        self._attr_device_info = _server_device_info(entry)
 
     @property
     def available(self) -> bool:
@@ -697,12 +700,7 @@ class NjordUptimeSensor(CoordinatorEntity[NjordDataCoordinator], SensorEntity):
         super().__init__(coordinator)
         self._attr_unique_id = f"{entry.entry_id}_uptime"
         self._attr_name = "Uptime"
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, f"{entry.entry_id}_server")},
-            name="njord Server",
-            manufacturer="njord",
-            entry_type=None,
-        )
+        self._attr_device_info = _server_device_info(entry)
 
     @property
     def available(self) -> bool:

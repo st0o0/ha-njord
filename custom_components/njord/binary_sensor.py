@@ -67,9 +67,8 @@ class NjordInversionEntity(CoordinatorEntity[NjordDataCoordinator], BinarySensor
         self._attr_name = "Inversion"
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, f"{entry.entry_id}_{location}")},
-            name=f"njord {location}",
+            name=location.title(),
             manufacturer="njord",
-            model=location,
             entry_type=None,
         )
 

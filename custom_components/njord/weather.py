@@ -80,12 +80,12 @@ class NjordWeatherEntity(SingleCoordinatorWeatherEntity[NjordDataCoordinator]):
 
         slug = f"{location}_{model}".replace("-", "_").replace(" ", "_").lower()
         self._attr_unique_id = f"{entry.entry_id}_{slug}"
-        self._attr_name = model
+        info = coordinator.data.model_info.get(model)
+        self._attr_name = info.display_name if info and info.display_name else model
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, f"{entry.entry_id}_{location}")},
-            name=f"njord {location}",
+            name=location.title(),
             manufacturer="njord",
-            model=location,
             entry_type=None,
         )
 
@@ -333,9 +333,8 @@ class NjordConsensusWeatherEntity(SingleCoordinatorWeatherEntity[NjordDataCoordi
         self._attr_name = "Consensus"
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, f"{entry.entry_id}_{location}")},
-            name=f"njord {location}",
+            name=location.title(),
             manufacturer="njord",
-            model=location,
             entry_type=None,
         )
 

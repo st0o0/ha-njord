@@ -27,7 +27,7 @@ def test_condition_mapping_night():
 async def test_weather_entity_state(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
     await init_integration(hass, mock_config_entry)
 
-    state = hass.states.get("weather.njord_home_icon_d2")
+    state = hass.states.get("weather.home_icon_d2")
     assert state is not None
     assert state.state == "partlycloudy"
     assert state.attributes["temperature"] == 22.5
@@ -40,7 +40,7 @@ async def test_weather_entity_state(hass: HomeAssistant, mock_client, mock_confi
 async def test_weather_entity_second_model(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
     await init_integration(hass, mock_config_entry)
 
-    state = hass.states.get("weather.njord_home_ecmwf_ifs025")
+    state = hass.states.get("weather.home_ecmwf_ifs_0_25deg")
     assert state is not None
     assert state.state == "partlycloudy"
 
@@ -48,7 +48,7 @@ async def test_weather_entity_second_model(hass: HomeAssistant, mock_client, moc
 async def test_consensus_current_state_from_h0(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
     await init_integration(hass, mock_config_entry)
 
-    state = hass.states.get("weather.njord_home_consensus")
+    state = hass.states.get("weather.home_consensus")
     assert state is not None
     assert state.attributes.get("temperature") == 20.0
     assert state.attributes.get("agreement") is not None
@@ -60,7 +60,7 @@ async def test_consensus_current_state_from_h0(hass: HomeAssistant, mock_client,
 async def test_consensus_supported_features(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
     await init_integration(hass, mock_config_entry)
 
-    state = hass.states.get("weather.njord_home_consensus")
+    state = hass.states.get("weather.home_consensus")
     assert state is not None
     features = WeatherEntityFeature(state.attributes["supported_features"])
     assert features & WeatherEntityFeature.FORECAST_HOURLY
@@ -70,7 +70,7 @@ async def test_consensus_supported_features(hass: HomeAssistant, mock_client, mo
 async def test_supported_features_with_hourly_and_daily(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
     await init_integration(hass, mock_config_entry)
 
-    state = hass.states.get("weather.njord_home_icon_d2")
+    state = hass.states.get("weather.home_icon_d2")
     assert state is not None
     features = WeatherEntityFeature(state.attributes["supported_features"])
     assert features & WeatherEntityFeature.FORECAST_HOURLY
@@ -96,7 +96,7 @@ async def test_supported_features_hourly_only(hass: HomeAssistant, mock_client, 
     )
     await init_integration(hass, mock_config_entry)
 
-    state = hass.states.get("weather.njord_home_icon_d2")
+    state = hass.states.get("weather.home_icon_d2")
     assert state is not None
     features = WeatherEntityFeature(state.attributes["supported_features"])
     assert features & WeatherEntityFeature.FORECAST_HOURLY
@@ -107,7 +107,7 @@ async def test_supported_features_stub_has_no_features(hass: HomeAssistant, mock
     mock_client.get_forecast = AsyncMock(side_effect=Exception("fetch error"))
     await init_integration(hass, mock_config_entry)
 
-    state = hass.states.get("weather.njord_home_icon_d2")
+    state = hass.states.get("weather.home_icon_d2")
     assert state is not None
     features = WeatherEntityFeature(state.attributes["supported_features"])
     assert not (features & WeatherEntityFeature.FORECAST_HOURLY)
@@ -117,7 +117,7 @@ async def test_supported_features_stub_has_no_features(hass: HomeAssistant, mock
 async def test_weather_entity_available_with_data(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
     await init_integration(hass, mock_config_entry)
 
-    state = hass.states.get("weather.njord_home_icon_d2")
+    state = hass.states.get("weather.home_icon_d2")
     assert state is not None
     assert state.state != "unavailable"
 
@@ -126,7 +126,7 @@ async def test_weather_entity_available_with_stub(hass: HomeAssistant, mock_clie
     mock_client.get_forecast = AsyncMock(side_effect=Exception("fetch error"))
     await init_integration(hass, mock_config_entry)
 
-    state = hass.states.get("weather.njord_home_icon_d2")
+    state = hass.states.get("weather.home_icon_d2")
     assert state is not None
     assert state.state == "unknown"
 
@@ -160,7 +160,7 @@ async def test_extra_state_attributes_with_extras(hass: HomeAssistant, mock_clie
     )
     await init_integration(hass, mock_config_entry)
 
-    state = hass.states.get("weather.njord_home_icon_d2")
+    state = hass.states.get("weather.home_icon_d2")
     assert state is not None
     assert state.attributes["cape"] == 450.0
     assert state.attributes["uv_index"] == 7.2
@@ -169,7 +169,7 @@ async def test_extra_state_attributes_with_extras(hass: HomeAssistant, mock_clie
 async def test_extra_state_attributes_empty(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
     await init_integration(hass, mock_config_entry)
 
-    state = hass.states.get("weather.njord_home_icon_d2")
+    state = hass.states.get("weather.home_icon_d2")
     assert state is not None
     assert "cape" not in state.attributes
 
@@ -208,11 +208,11 @@ async def test_hourly_forecast_includes_extras(hass: HomeAssistant, mock_client,
     forecasts = await hass.services.async_call(
         "weather",
         "get_forecasts",
-        {"entity_id": "weather.njord_home_icon_d2", "type": "hourly"},
+        {"entity_id": "weather.home_icon_d2", "type": "hourly"},
         blocking=True,
         return_response=True,
     )
-    data = forecasts["weather.njord_home_icon_d2"]["forecast"]
+    data = forecasts["weather.home_icon_d2"]["forecast"]
     assert data[0]["cape"] == 450.0
     assert "cape" not in data[1]
 
@@ -260,10 +260,10 @@ async def test_daily_forecast_includes_extras(hass: HomeAssistant, mock_client, 
     forecasts = await hass.services.async_call(
         "weather",
         "get_forecasts",
-        {"entity_id": "weather.njord_home_icon_d2", "type": "daily"},
+        {"entity_id": "weather.home_icon_d2", "type": "daily"},
         blocking=True,
         return_response=True,
     )
-    data = forecasts["weather.njord_home_icon_d2"]["forecast"]
+    data = forecasts["weather.home_icon_d2"]["forecast"]
     assert data[0]["soil_moisture"] == 23.5
     assert "soil_moisture" not in data[1]

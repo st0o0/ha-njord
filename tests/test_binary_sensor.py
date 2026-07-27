@@ -13,9 +13,9 @@ async def test_inversion_entity_disabled_by_default(hass: HomeAssistant, mock_cl
     await init_integration(hass, mock_config_entry)
 
     registry = er.async_get(hass)
-    entry = registry.async_get("binary_sensor.njord_home_inversion")
+    entry = registry.async_get("binary_sensor.home_inversion")
     assert entry is not None
     assert entry.disabled_by == er.RegistryEntryDisabler.INTEGRATION
 
-    state = hass.states.get("binary_sensor.njord_home_inversion")
+    state = hass.states.get("binary_sensor.home_inversion")
     assert state is None
