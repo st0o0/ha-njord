@@ -26,6 +26,9 @@
     }
   },
   "entity": {
+    "button": {
+      "trigger_poll": { "name": "Abfrage auslösen" }
+    },
     "sensor": {
       "laundry_index": { "name": "Wäsche-Index" },
       "outdoor_index": { "name": "Outdoor-Index" },

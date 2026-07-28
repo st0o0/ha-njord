@@ -82,10 +82,10 @@ async def test_supported_features_hourly_only(hass: HomeAssistant, mock_client, 
         side_effect=lambda loc, model: ForecastData(
             location=loc,
             model=model,
-            updated_at=1720000000,
+            updated_at=datetime(2024, 7, 3, 12, 0, tzinfo=UTC),
             hourly=[
                 HourlyForecastData(
-                    timestamp=datetime(2026, 7, 15, 12, 0, tzinfo=UTC),
+                    valid_at=datetime(2026, 7, 15, 12, 0, tzinfo=UTC),
                     temperature=22.5,
                     weather_code=1,
                     is_day=True,
@@ -136,10 +136,10 @@ async def test_extra_state_attributes_with_extras(hass: HomeAssistant, mock_clie
         side_effect=lambda loc, model: ForecastData(
             location=loc,
             model=model,
-            updated_at=1720000000,
+            updated_at=datetime(2024, 7, 3, 12, 0, tzinfo=UTC),
             hourly=[
                 HourlyForecastData(
-                    timestamp=datetime(2026, 7, 15, 12, 0, tzinfo=UTC),
+                    valid_at=datetime(2026, 7, 15, 12, 0, tzinfo=UTC),
                     temperature=22.5,
                     weather_code=1,
                     is_day=True,
@@ -179,17 +179,17 @@ async def test_hourly_forecast_includes_extras(hass: HomeAssistant, mock_client,
         side_effect=lambda loc, model: ForecastData(
             location=loc,
             model=model,
-            updated_at=1720000000,
+            updated_at=datetime(2024, 7, 3, 12, 0, tzinfo=UTC),
             hourly=[
                 HourlyForecastData(
-                    timestamp=datetime(2026, 7, 15, 12, 0, tzinfo=UTC),
+                    valid_at=datetime(2026, 7, 15, 12, 0, tzinfo=UTC),
                     temperature=22.5,
                     weather_code=1,
                     is_day=True,
                     extra={"cape": 450.0},
                 ),
                 HourlyForecastData(
-                    timestamp=datetime(2026, 7, 15, 13, 0, tzinfo=UTC),
+                    valid_at=datetime(2026, 7, 15, 13, 0, tzinfo=UTC),
                     temperature=23.0,
                     weather_code=1,
                     is_day=True,
@@ -222,10 +222,10 @@ async def test_daily_forecast_includes_extras(hass: HomeAssistant, mock_client, 
         side_effect=lambda loc, model: ForecastData(
             location=loc,
             model=model,
-            updated_at=1720000000,
+            updated_at=datetime(2024, 7, 3, 12, 0, tzinfo=UTC),
             hourly=[
                 HourlyForecastData(
-                    timestamp=datetime(2026, 7, 15, 12, 0, tzinfo=UTC),
+                    valid_at=datetime(2026, 7, 15, 12, 0, tzinfo=UTC),
                     temperature=22.5,
                     weather_code=1,
                     is_day=True,

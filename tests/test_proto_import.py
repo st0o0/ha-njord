@@ -1,29 +1,51 @@
 """Verify generated proto modules are importable."""
 
 
-def test_forecast_service_pb2_importable():
-    from custom_components.njord.proto.njord.v1 import forecast_service_pb2
+def test_common_pb2_importable():
+    from custom_components.njord.proto.njord.v2 import common_pb2
 
-    assert hasattr(forecast_service_pb2, "GetLocationsRequest")
-    assert hasattr(forecast_service_pb2, "GetForecastResponse")
-    assert hasattr(forecast_service_pb2, "HourlyForecast")
-
-
-def test_config_service_pb2_importable():
-    from custom_components.njord.proto.njord.v1 import config_service_pb2
-
-    assert hasattr(config_service_pb2, "NjordConfig")
-    assert hasattr(config_service_pb2, "LocationConfig")
-    assert hasattr(config_service_pb2, "GetConfigRequest")
+    assert hasattr(common_pb2, "HourlyForecast")
+    assert hasattr(common_pb2, "DailyForecast")
+    assert hasattr(common_pb2, "LocationInfo")
+    assert hasattr(common_pb2, "ModelInfo")
 
 
-def test_forecast_service_grpc_importable():
-    from custom_components.njord.proto.njord.v1 import forecast_service_pb2_grpc
+def test_weather_pb2_importable():
+    from custom_components.njord.proto.njord.v2 import weather_pb2
 
-    assert hasattr(forecast_service_pb2_grpc, "ForecastServiceStub")
+    assert hasattr(weather_pb2, "GetCatalogRequest")
+    assert hasattr(weather_pb2, "GetCatalogResponse")
+    assert hasattr(weather_pb2, "GetForecastResponse")
+    assert hasattr(weather_pb2, "ForecastUpdate")
 
 
-def test_config_service_grpc_importable():
-    from custom_components.njord.proto.njord.v1 import config_service_pb2_grpc
+def test_admin_pb2_importable():
+    from custom_components.njord.proto.njord.v2 import admin_pb2
 
-    assert hasattr(config_service_pb2_grpc, "ConfigServiceStub")
+    assert hasattr(admin_pb2, "NjordConfig")
+    assert hasattr(admin_pb2, "GetConfigRequest")
+
+
+def test_ops_pb2_importable():
+    from custom_components.njord.proto.njord.v2 import ops_pb2
+
+    assert hasattr(ops_pb2, "StatusResponse")
+    assert hasattr(ops_pb2, "TriggerPollRequest")
+
+
+def test_weather_grpc_importable():
+    from custom_components.njord.proto.njord.v2 import weather_pb2_grpc
+
+    assert hasattr(weather_pb2_grpc, "WeatherServiceStub")
+
+
+def test_admin_grpc_importable():
+    from custom_components.njord.proto.njord.v2 import admin_pb2_grpc
+
+    assert hasattr(admin_pb2_grpc, "AdminServiceStub")
+
+
+def test_ops_grpc_importable():
+    from custom_components.njord.proto.njord.v2 import ops_pb2_grpc
+
+    assert hasattr(ops_pb2_grpc, "OpsServiceStub")

@@ -237,7 +237,7 @@ class NjordWeatherEntity(SingleCoordinatorWeatherEntity[NjordDataCoordinator]):
                 condition = map_condition(h.weather_code, h.is_day if h.is_day is not None else True)
 
             entry = Forecast(
-                datetime=h.timestamp.isoformat(),
+                datetime=h.valid_at.isoformat(),
                 native_temperature=h.temperature,
                 precipitation=h.precipitation,
                 humidity=h.humidity,
@@ -258,8 +258,8 @@ class NjordWeatherEntity(SingleCoordinatorWeatherEntity[NjordDataCoordinator]):
             return None
         midday = None
         for h in data.hourly:
-            if h.timestamp.strftime("%Y-%m-%d") == date_str:
-                if midday is None or abs(h.timestamp.hour - 12) < abs(midday.timestamp.hour - 12):
+            if h.valid_at.strftime("%Y-%m-%d") == date_str:
+                if midday is None or abs(h.valid_at.hour - 12) < abs(midday.valid_at.hour - 12):
                     midday = h
         if midday is None or midday.weather_code is None:
             return None

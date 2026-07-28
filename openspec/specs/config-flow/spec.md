@@ -1,11 +1,11 @@
 ## MODIFIED Requirements
 
 ### Requirement: Config flow validates gRPC connection
-The config flow SHALL validate the gRPC connection by calling `get_locations()` during setup. Tests SHALL exercise the real HA config flow machinery using `hass.config_entries.flow`.
+The config flow SHALL validate the gRPC connection by calling `get_catalog()` during setup. Tests SHALL exercise the real HA config flow machinery using `hass.config_entries.flow`.
 
 #### Scenario: Successful connection creates entry
 - **WHEN** user submits host and port that connect successfully
-- **THEN** a config entry is created with `FlowResultType.CREATE_ENTRY`
+- **THEN** `get_catalog()` is called, and a config entry is created with `FlowResultType.CREATE_ENTRY`
 
 #### Scenario: Connection failure shows error
 - **WHEN** user submits host and port that fail to connect (gRPC error)

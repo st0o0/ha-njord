@@ -19,7 +19,7 @@ async def test_setup_entry(hass: HomeAssistant, mock_client, mock_config_entry) 
     assert "coordinator" in entry_data
 
     mock_client.connect.assert_awaited_once()
-    mock_client.get_config.assert_awaited()
+    mock_client.get_catalog.assert_awaited()
 
 
 async def test_unload_entry(hass: HomeAssistant, mock_client, mock_config_entry) -> None:

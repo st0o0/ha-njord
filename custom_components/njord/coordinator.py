@@ -14,6 +14,8 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from .grpc_client import NjordClient
 from .models import EnrichmentData, ForecastData, ModelInfoData, NjordLocation, ServerStatusData
 
+from datetime import UTC, datetime
+
 _LOGGER = logging.getLogger(__name__)
 
 _STATUS_POLL_INTERVAL = 1800
@@ -80,20 +82,15 @@ class NjordDataCoordinator(DataUpdateCoordinator[NjordCoordinatorData]):
     async def _async_update_data(self) -> NjordCoordinatorData:
         """Unary first-refresh: fetch all data via single calls."""
         try:
-            config = await self.client.get_config()
+            catalog = await self.client.get_catalog()
         except Exception as err:
-            raise UpdateFailed(f"Failed to get njord config: {err}") from err
+            raise UpdateFailed(f"Failed to get njord catalog: {err}") from err
 
         result = NjordCoordinatorData()
+        result.model_info.update(catalog.model_info)
 
-        for location in config.locations:
+        for location in catalog.locations:
             self._known_locations.add(location.name)
-
-            try:
-                info = await self.client.get_model_info(location.name)
-                result.model_info.update(info)
-            except Exception as err:
-                _LOGGER.warning("Failed to get model info for %s: %s", location.name, err)
 
             for model in location.models:
                 try:
@@ -107,7 +104,7 @@ class NjordDataCoordinator(DataUpdateCoordinator[NjordCoordinatorData]):
                         err,
                     )
                     result.forecasts[(location.name, model)] = ForecastData(
-                        location=location.name, model=model, updated_at=0
+                        location=location.name, model=model, updated_at=datetime.min.replace(tzinfo=UTC)
                     )
 
             try:

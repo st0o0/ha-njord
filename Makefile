@@ -11,8 +11,10 @@ proto:
 			-I$(PROTO_SRC) \
 			--python_out=$(PROTO_OUT) \
 			--grpc_python_out=$(PROTO_OUT) \
-			$(PROTO_SRC)/njord/v1/forecast_service.proto \
-			$(PROTO_SRC)/njord/v1/config_service.proto"
+			$(PROTO_SRC)/njord/v2/common.proto \
+			$(PROTO_SRC)/njord/v2/weather.proto \
+			$(PROTO_SRC)/njord/v2/admin.proto \
+			$(PROTO_SRC)/njord/v2/ops.proto"
 
 test:
 	docker run --rm -v "$(CURDIR):/work" -w /work $(DOCKER_IMAGE) \

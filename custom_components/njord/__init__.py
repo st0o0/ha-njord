@@ -2,15 +2,24 @@
 
 from __future__ import annotations
 
+import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, ServiceCall
 
 from .const import DOMAIN
 from .coordinator import NjordDataCoordinator
 from .grpc_client import NjordClient
 
-PLATFORMS = [Platform.WEATHER, Platform.BINARY_SENSOR, Platform.SENSOR]
+PLATFORMS = [Platform.WEATHER, Platform.BINARY_SENSOR, Platform.SENSOR, Platform.BUTTON]
+
+SERVICE_TRIGGER_POLL = "trigger_poll"
+SERVICE_TRIGGER_POLL_SCHEMA = vol.Schema(
+    {
+        vol.Optional("location", default=""): str,
+        vol.Optional("model", default=""): str,
+    }
+)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -34,6 +43,22 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     coordinator.start_streams()
 
+    if not hass.services.has_service(DOMAIN, SERVICE_TRIGGER_POLL):
+
+        async def handle_trigger_poll(call: ServiceCall) -> None:
+            location = call.data.get("location", "")
+            model = call.data.get("model", "")
+            for entry_data in hass.data[DOMAIN].values():
+                c: NjordClient = entry_data["client"]
+                await c.trigger_poll(location=location, model=model)
+
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_TRIGGER_POLL,
+            handle_trigger_poll,
+            schema=SERVICE_TRIGGER_POLL_SCHEMA,
+        )
+
     return True
 
 
@@ -47,5 +72,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await coordinator.stop_streams()
         client: NjordClient = entry_data["client"]
         await client.close()
+
+        if not hass.data[DOMAIN]:
+            hass.services.async_remove(DOMAIN, SERVICE_TRIGGER_POLL)
 
     return unload_ok

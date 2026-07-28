@@ -41,11 +41,9 @@ class NjordConfigFlow(ConfigFlow, domain=DOMAIN):
         client = NjordClient(host=host, port=port)
         try:
             await client.connect()
-            self._locations = await client.get_locations()
-            self._model_count = 0
-            for loc in self._locations:
-                models = await client.get_models(loc)
-                self._model_count += len(models)
+            catalog = await client.get_catalog()
+            self._locations = [loc.name for loc in catalog.locations]
+            self._model_count = sum(len(loc.models) for loc in catalog.locations)
         except Exception:
             _LOGGER.exception("Failed to connect to njord at %s:%s", host, port)
             errors["base"] = "cannot_connect"

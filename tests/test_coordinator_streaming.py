@@ -28,7 +28,7 @@ def _make_client() -> AsyncMock:
         )
     )
     client.get_forecast = AsyncMock(
-        return_value=ForecastData(location="home", model="icon_d2", updated_at=1000, hourly=[], daily=[])
+        return_value=ForecastData(location="home", model="icon_d2", updated_at=datetime(2024, 1, 1, tzinfo=UTC), hourly=[], daily=[])
     )
     client.get_enrichments = AsyncMock(return_value=EnrichmentData(location="home"))
     return client
@@ -37,7 +37,7 @@ def _make_client() -> AsyncMock:
 async def _make_coordinator(hass: HomeAssistant, client: AsyncMock) -> NjordDataCoordinator:
     coordinator = NjordDataCoordinator(hass, client)
     coordinator.data = NjordCoordinatorData(
-        forecasts={("home", "icon_d2"): ForecastData(location="home", model="icon_d2", updated_at=1000)},
+        forecasts={("home", "icon_d2"): ForecastData(location="home", model="icon_d2", updated_at=datetime(2024, 1, 1, tzinfo=UTC))},
         enrichments={"home": EnrichmentData(location="home")},
     )
     coordinator._known_locations = {"home"}
@@ -57,8 +57,8 @@ async def test_forecast_stream_updates_data(hass: HomeAssistant) -> None:
     updated = ForecastData(
         location="home",
         model="icon_d2",
-        updated_at=2000,
-        hourly=[HourlyForecastData(timestamp=datetime(2026, 7, 15, 12, 0, tzinfo=UTC), temperature=25.0)],
+        updated_at=datetime(2024, 2, 1, tzinfo=UTC),
+        hourly=[HourlyForecastData(valid_at=datetime(2026, 7, 15, 12, 0, tzinfo=UTC), temperature=25.0)],
     )
 
     async def fake_stream_forecasts(**kwargs):
@@ -74,7 +74,7 @@ async def test_forecast_stream_updates_data(hass: HomeAssistant) -> None:
     except asyncio.CancelledError:
         pass
 
-    assert coordinator.data.forecasts[("home", "icon_d2")].updated_at == 2000
+    assert coordinator.data.forecasts[("home", "icon_d2")].updated_at == datetime(2024, 2, 1, tzinfo=UTC)
 
 
 async def test_enrichment_stream_merges_correctly(hass: HomeAssistant) -> None:
@@ -120,7 +120,7 @@ async def test_config_stream_detects_new_locations(hass: HomeAssistant) -> None:
         ],
     )
 
-    client.get_forecast = AsyncMock(return_value=ForecastData(location="bern", model="gfs", updated_at=3000))
+    client.get_forecast = AsyncMock(return_value=ForecastData(location="bern", model="gfs", updated_at=datetime(2024, 3, 1, tzinfo=UTC)))
     client.get_enrichments = AsyncMock(return_value=EnrichmentData(location="bern"))
 
     factory_called_with: list[NjordLocation] = []
@@ -191,7 +191,7 @@ async def test_stop_streams_cancels_tasks(hass: HomeAssistant) -> None:
     client.stream_config = MagicMock(return_value=never_ending())
 
     coordinator.start_streams()
-    assert len(coordinator._stream_tasks) == 3
+    assert len(coordinator._stream_tasks) == 4
 
     await coordinator.stop_streams()
     assert len(coordinator._stream_tasks) == 0

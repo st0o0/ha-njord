@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock
 
 from homeassistant.core import HomeAssistant
@@ -40,7 +41,7 @@ async def test_forecast_failure_inserts_stub(hass: HomeAssistant, mock_client, m
     assert ("home", "icon_d2") in coordinator.data.forecasts
     assert ("home", "ecmwf_ifs025") in coordinator.data.forecasts
     stub = coordinator.data.forecasts[("home", "icon_d2")]
-    assert stub.updated_at == 0
+    assert stub.updated_at == datetime.min.replace(tzinfo=UTC)
     assert stub.hourly == []
     assert stub.daily == []
     assert "home" in coordinator.data.enrichments

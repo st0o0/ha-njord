@@ -24,7 +24,7 @@ async def test_config_flow_success(hass: HomeAssistant, mock_client) -> None:
 
 
 async def test_config_flow_cannot_connect(hass: HomeAssistant, mock_client) -> None:
-    mock_client.get_locations.side_effect = Exception("Connection refused")
+    mock_client.get_catalog.side_effect = Exception("Connection refused")
 
     result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": SOURCE_USER})
     result = await hass.config_entries.flow.async_configure(

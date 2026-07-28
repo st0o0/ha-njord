@@ -11,6 +11,7 @@ from custom_components.njord.const import DOMAIN
 from custom_components.njord.models import (
     AlertData,
     BudgetStatusData,
+    CatalogData,
     ConsensusData,
     CopOptimalHourData,
     DailyForecastData,
@@ -32,6 +33,25 @@ from custom_components.njord.models import (
     ServerStatusData,
     TrendData,
 )
+
+_UPDATED_AT = datetime(2024, 7, 3, 12, 0, tzinfo=UTC)
+
+
+def _default_catalog() -> CatalogData:
+    return CatalogData(
+        locations=[
+            NjordLocation(
+                name="home",
+                latitude=47.05,
+                longitude=8.31,
+                models=["icon_d2", "ecmwf_ifs025"],
+            ),
+        ],
+        model_info={
+            "icon_d2": ModelInfoData(id="icon_d2", display_name="ICON-D2", provider="DWD", region="DE, CH, AT", coverage_tier="regional", resolution_km=2.2, max_forecast_hours=60, description="DWD high-resolution convection-permitting model"),
+            "ecmwf_ifs025": ModelInfoData(id="ecmwf_ifs025", display_name="ECMWF IFS 0.25°", provider="ECMWF", region="Global", coverage_tier="global", resolution_km=25.0, max_forecast_hours=362, description="ECMWF flagship global model"),
+        },
+    )
 
 
 def _default_config() -> NjordConfigData:
@@ -55,10 +75,10 @@ def _default_forecast(location: str = "home", model: str = "icon_d2") -> Forecas
     return ForecastData(
         location=location,
         model=model,
-        updated_at=1720000000,
+        updated_at=_UPDATED_AT,
         hourly=[
             HourlyForecastData(
-                timestamp=datetime(2026, 7, 15, 12, 0, tzinfo=UTC),
+                valid_at=datetime(2026, 7, 15, 12, 0, tzinfo=UTC),
                 temperature=22.5,
                 apparent_temperature=21.0,
                 humidity=65.0,
@@ -222,20 +242,16 @@ def mock_client():
     mock = AsyncMock()
     mock.connect = AsyncMock()
     mock.close = AsyncMock()
+    mock.get_catalog = AsyncMock(return_value=_default_catalog())
     mock.get_config = AsyncMock(return_value=_default_config())
-    mock.get_locations = AsyncMock(return_value=["home"])
-    mock.get_models = AsyncMock(return_value=["icon_d2", "ecmwf_ifs025"])
     mock.get_forecast = AsyncMock(side_effect=lambda loc, model: _default_forecast(loc, model))
     mock.get_enrichments = AsyncMock(side_effect=lambda loc: _default_enrichment(loc))
-    mock.get_model_info = AsyncMock(return_value={
-        "icon_d2": ModelInfoData(id="icon_d2", display_name="ICON-D2", provider="DWD", region="DE, CH, AT", coverage_tier="regional", resolution_km=2.2, max_forecast_hours=60, description="DWD high-resolution convection-permitting model"),
-        "ecmwf_ifs025": ModelInfoData(id="ecmwf_ifs025", display_name="ECMWF IFS 0.25°", provider="ECMWF", region="Global", coverage_tier="global", resolution_km=25.0, max_forecast_hours=362, description="ECMWF flagship global model"),
-    })
     mock.get_status = AsyncMock(return_value=ServerStatusData(
         version="1.2.3",
         uptime_seconds=3600,
         budget=BudgetStatusData(monthly_limit=20000, monthly_used=5000, daily_limit=700, daily_used=100, usage_percent=25.0),
     ))
+    mock.trigger_poll = AsyncMock(return_value=6)
 
     async def _empty_async_gen(**kwargs):
         return

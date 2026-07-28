@@ -8,7 +8,7 @@ from datetime import datetime
 
 @dataclass(frozen=True)
 class HourlyForecastData:
-    timestamp: datetime
+    valid_at: datetime
     temperature: float | None = None
     apparent_temperature: float | None = None
     precipitation: float | None = None
@@ -42,7 +42,7 @@ class DailyForecastData:
 class ForecastData:
     location: str
     model: str
-    updated_at: int
+    updated_at: datetime
     hourly: list[HourlyForecastData] = field(default_factory=list)
     daily: list[DailyForecastData] = field(default_factory=list)
 
@@ -68,6 +68,12 @@ class NjordLocation:
 
 
 @dataclass(frozen=True)
+class CatalogData:
+    locations: list[NjordLocation] = field(default_factory=list)
+    model_info: dict[str, ModelInfoData] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
 class NjordConfigData:
     locations: list[NjordLocation] = field(default_factory=list)
     default_models: list[str] = field(default_factory=list)
@@ -86,10 +92,24 @@ class BudgetStatusData:
 
 
 @dataclass(frozen=True)
+class ModelStatusData:
+    location: str
+    model: str
+    phase: str = ""
+    next_poll: datetime | None = None
+    last_change: datetime | None = None
+    miss_count: int = 0
+    cycle_seconds: int | None = None
+
+
+@dataclass(frozen=True)
 class ServerStatusData:
     version: str = ""
     uptime_seconds: int = 0
     budget: BudgetStatusData | None = None
+    process_start: datetime | None = None
+    model_statuses: list[ModelStatusData] = field(default_factory=list)
+    active_enrichments: list[str] = field(default_factory=list)
 
 
 # --- Enrichment data models ---

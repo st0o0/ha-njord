@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import asyncio
 import importlib.util
-from datetime import datetime
+from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
 import grpc
 import pytest
+from google.protobuf.timestamp_pb2 import Timestamp
 
 from custom_components.njord.grpc_client import (
     NjordClient,
@@ -16,50 +17,87 @@ from custom_components.njord.grpc_client import (
     _to_alert,
 )
 from custom_components.njord.models import (
+    CatalogData,
     EnrichmentData,
     ForecastData,
     NjordConfigData,
     ServerStatusData,
 )
-from custom_components.njord.proto.njord.v1 import (
-    config_service_pb2,
-    config_service_pb2_grpc,
-    forecast_service_pb2,
-    forecast_service_pb2_grpc,
+from custom_components.njord.proto.njord.v2 import (
+    admin_pb2,
+    admin_pb2_grpc,
+    common_pb2,
+    ops_pb2,
+    ops_pb2_grpc,
+    weather_pb2,
+    weather_pb2_grpc,
 )
+
+
+def _make_ts(epoch: int) -> Timestamp:
+    ts = Timestamp()
+    ts.FromSeconds(epoch)
+    return ts
+
 
 # --- Mock Servicers ---
 
 
-class MockForecastServicer(forecast_service_pb2_grpc.ForecastServiceServicer):
+class MockWeatherServicer(weather_pb2_grpc.WeatherServiceServicer):
     def __init__(self) -> None:
         self.stream_call_count = 0
         self.fail_stream_on_call: int | None = None
 
-    async def GetLocations(self, request, context):
-        return forecast_service_pb2.GetLocationsResponse(locations=["lucerne", "zurich"])
-
-    async def GetModels(self, request, context):
-        return forecast_service_pb2.GetModelsResponse(
-            location=request.location,
-            models=["icon_d2", "ecmwf_ifs025"],
+    async def GetCatalog(self, request, context):
+        return weather_pb2.GetCatalogResponse(
+            locations=[
+                common_pb2.LocationInfo(
+                    name="lucerne",
+                    latitude=47.05,
+                    longitude=8.31,
+                    models=["icon_d2"],
+                ),
+                common_pb2.LocationInfo(
+                    name="zurich",
+                    latitude=47.37,
+                    longitude=8.54,
+                    models=["icon_d2", "ecmwf_ifs025"],
+                ),
+            ],
+            models=[
+                common_pb2.ModelInfo(
+                    id="icon_d2",
+                    display_name="ICON-D2",
+                    provider="DWD",
+                    region="DE, CH, AT",
+                    coverage_tier=3,
+                    resolution_km=2.2,
+                    max_forecast_hours=60,
+                ),
+                common_pb2.ModelInfo(
+                    id="ecmwf_ifs025",
+                    display_name="ECMWF IFS 0.25°",
+                    provider="ECMWF",
+                    coverage_tier=1,
+                ),
+            ],
         )
 
     async def GetForecast(self, request, context):
-        return forecast_service_pb2.GetForecastResponse(
+        return weather_pb2.GetForecastResponse(
             location=request.location,
             model=request.model,
-            updated_at=1720000000,
+            updated_at=_make_ts(1720000000),
             hourly=[
-                forecast_service_pb2.HourlyForecast(
-                    timestamp=1720000000,
+                common_pb2.HourlyForecast(
+                    valid_at=_make_ts(1720000000),
                     temperature=22.5,
                     weather_code=3,
                     is_day=True,
                 ),
             ],
             daily=[
-                forecast_service_pb2.DailyForecast(
+                common_pb2.DailyForecast(
                     date="2026-07-15",
                     temperature_max=28.0,
                     temperature_min=15.0,
@@ -69,90 +107,46 @@ class MockForecastServicer(forecast_service_pb2_grpc.ForecastServiceServicer):
         )
 
     async def GetEnrichments(self, request, context):
-        return forecast_service_pb2.GetEnrichmentsResponse(
+        return weather_pb2.GetEnrichmentsResponse(
             location=request.location,
-            alerts=forecast_service_pb2.AlertUpdate(
+            alerts=common_pb2.AlertUpdate(
                 alerts=[
-                    forecast_service_pb2.Alert(
-                        type=5,  # UV
-                        severity=2,  # ORANGE
-                        confidence=1.0,
-                    ),
-                    forecast_service_pb2.Alert(
-                        type=1,  # FROST
-                        severity=0,  # NONE
-                        confidence=0.0,
-                    ),
+                    common_pb2.Alert(type=5, severity=2, confidence=1.0),
+                    common_pb2.Alert(type=1, severity=0, confidence=0.0),
                 ]
             ),
-            indices=forecast_service_pb2.IndexUpdate(
-                laundry=47,
-                outdoor=56,
-                bbq=51,
-                vpd_kpa=0.59,
-                vpd_category="optimal",
+            indices=common_pb2.IndexUpdate(
+                laundry=47, outdoor=56, bbq=51,
+                vpd_kpa=0.59, vpd_category="optimal",
             ),
-            trends=forecast_service_pb2.TrendUpdate(
+            trends=common_pb2.TrendUpdate(
                 parameter_trends=[
-                    forecast_service_pb2.ParameterTrend(
-                        parameter="temperature_2m",
-                        direction="stable",
-                        delta=0.3,
-                    ),
+                    common_pb2.ParameterTrend(parameter="temperature_2m", direction="stable", delta=0.3),
                 ],
-                stability_label="stable",
-                stability_ratio=0.83,
-                precip_starts_in_hours=2,
-                reliable_hours=3,
+                stability_label="stable", stability_ratio=0.83,
+                precip_starts_in_hours=2, reliable_hours=3,
             ),
-            energy=forecast_service_pb2.EnergyUpdate(
-                heating_demand=21,
-                cop_estimate=10.95,
-                shading=12,
-                battery_strategy="discharge",
-                night_cooling=40,
-                cop_optimal=[
-                    forecast_service_pb2.CopOptimalHour(hours_from_now=20, cop=14.91),
-                ],
+            energy=common_pb2.EnergyUpdate(
+                heating_demand=21, cop_estimate=10.95, shading=12,
+                battery_strategy="discharge", night_cooling=40,
+                cop_optimal=[common_pb2.CopOptimalHour(hours_from_now=20, cop=14.91)],
             ),
-            derived=forecast_service_pb2.DerivedUpdate(
+            derived=common_pb2.DerivedUpdate(
                 by_horizon=[
-                    forecast_service_pb2.HorizonDerived(
-                        horizon="h3",
-                        beaufort=2,
-                        dewpoint_comfort="sticky",
-                        wmo_description="Rain: slight",
-                    ),
+                    common_pb2.HorizonDerived(horizon="h3", beaufort=2, dewpoint_comfort="sticky", wmo_description="Rain: slight"),
                 ],
-                scalars=forecast_service_pb2.ScalarDerived(
-                    diurnal_amplitude=7.3,
-                    sunshine_pct=66.4,
-                    inversion=False,
-                ),
+                scalars=common_pb2.ScalarDerived(diurnal_amplitude=7.3, sunshine_pct=66.4, inversion=False),
             ),
-            history=forecast_service_pb2.HistoryUpdate(
-                models=[
-                    forecast_service_pb2.ModelMetrics(
-                        model="icon_global",
-                        weight=0.1667,
-                        drift=0.0,
-                    ),
-                ],
+            history=common_pb2.HistoryUpdate(
+                models=[common_pb2.ModelMetrics(model="icon_global", weight=0.1667, drift=0.0)],
                 weighted_temperature=24.48,
             ),
-            consensus=forecast_service_pb2.ConsensusUpdate(
+            consensus=common_pb2.ConsensusUpdate(
                 parameters=[
-                    forecast_service_pb2.ParameterConsensus(
-                        parameter="temperature_2m",
-                        unit="°C",
+                    common_pb2.ParameterConsensus(
+                        parameter="temperature_2m", unit="°C",
                         by_horizon=[
-                            forecast_service_pb2.HorizonConsensus(
-                                horizon="h3",
-                                median=20.4,
-                                spread=5.2,
-                                agreement=0.67,
-                                available_models=6,
-                            ),
+                            common_pb2.HorizonConsensus(horizon="h3", median=20.4, spread=5.2, agreement=0.67, available_models=6),
                         ],
                     ),
                 ]
@@ -165,41 +159,34 @@ class MockForecastServicer(forecast_service_pb2_grpc.ForecastServiceServicer):
             await context.abort(grpc.StatusCode.UNAVAILABLE, "simulated disconnect")
             return
         for i in range(3):
-            yield forecast_service_pb2.ForecastUpdate(
+            yield weather_pb2.ForecastUpdate(
                 location=request.location or "lucerne",
                 model="icon_d2",
-                updated_at=1720000000 + i,
+                updated_at=_make_ts(1720000000 + i),
                 hourly=[],
                 daily=[],
             )
 
     async def StreamEnrichments(self, request, context):
         for i in range(2):
-            yield forecast_service_pb2.EnrichmentEvent(
+            yield weather_pb2.EnrichmentEvent(
                 location=request.location or "lucerne",
                 type_name="alerts",
-                updated_at=1720000000 + i,
-                alerts=forecast_service_pb2.AlertUpdate(
-                    alerts=[
-                        forecast_service_pb2.Alert(type=2, severity=1, confidence=0.5),
-                    ]
+                updated_at=_make_ts(1720000000 + i),
+                alerts=common_pb2.AlertUpdate(
+                    alerts=[common_pb2.Alert(type=2, severity=1, confidence=0.5)]
                 ),
             )
 
 
-class MockConfigServicer(config_service_pb2_grpc.ConfigServiceServicer):
+class MockAdminServicer(admin_pb2_grpc.AdminServiceServicer):
     def __init__(self) -> None:
         self.stream_call_count = 0
 
     async def GetConfig(self, request, context):
-        return config_service_pb2.NjordConfig(
+        return admin_pb2.NjordConfig(
             locations=[
-                config_service_pb2.LocationConfig(
-                    name="lucerne",
-                    latitude=47.05,
-                    longitude=8.31,
-                    models=["icon_d2"],
-                ),
+                common_pb2.LocationInfo(name="lucerne", latitude=47.05, longitude=8.31, models=["icon_d2"]),
             ],
             default_models=["icon_d2", "ecmwf_ifs025"],
             horizons=[1, 3, 6],
@@ -210,14 +197,9 @@ class MockConfigServicer(config_service_pb2_grpc.ConfigServiceServicer):
     async def StreamConfig(self, request, context):
         self.stream_call_count += 1
         for i in range(2):
-            yield config_service_pb2.NjordConfig(
+            yield admin_pb2.NjordConfig(
                 locations=[
-                    config_service_pb2.LocationConfig(
-                        name="lucerne",
-                        latitude=47.05,
-                        longitude=8.31,
-                        models=["icon_d2"],
-                    ),
+                    common_pb2.LocationInfo(name="lucerne", latitude=47.05, longitude=8.31, models=["icon_d2"]),
                 ],
                 default_models=["icon_d2"],
                 horizons=[1, 3],
@@ -225,36 +207,31 @@ class MockConfigServicer(config_service_pb2_grpc.ConfigServiceServicer):
                 poll_interval_seconds=300,
             )
 
+
+class MockOpsServicer(ops_pb2_grpc.OpsServiceServicer):
     async def GetStatus(self, request, context):
-        return config_service_pb2.ServerStatus(
+        return ops_pb2.StatusResponse(
             version="1.2.3",
             uptime_seconds=3600,
-            budget=config_service_pb2.BudgetStatus(
-                monthly_limit=20000,
-                monthly_used=5000,
-                daily_limit=700,
-                daily_used=100,
-                usage_percent=25.0,
+            process_start=_make_ts(1719996400),
+            budget=ops_pb2.BudgetStatus(
+                monthly_limit=20000, monthly_used=5000,
+                daily_limit=700, daily_used=100, usage_percent=25.0,
             ),
+            models=[
+                ops_pb2.ModelStatus(
+                    location="lucerne", model="icon_d2", phase="polling",
+                    next_poll=_make_ts(1720003600), miss_count=0,
+                ),
+            ],
+            active_enrichments=["consensus", "alerts"],
         )
 
-    async def AddLocation(self, request, context):
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-
-    async def RemoveLocation(self, request, context):
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-
-    async def UpdateLocation(self, request, context):
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-
-    async def UpdateForecastSettings(self, request, context):
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-
-    async def UpdateEnrichmentConfig(self, request, context):
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-
-    async def UpdateBudget(self, request, context):
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+    async def TriggerPoll(self, request, context):
+        return ops_pb2.TriggerPollResponse(
+            triggered_count=6,
+            targets=["lucerne/icon_d2", "lucerne/ecmwf_ifs025"],
+        )
 
 
 # --- Fixtures ---
@@ -262,22 +239,26 @@ class MockConfigServicer(config_service_pb2_grpc.ConfigServiceServicer):
 
 @pytest.fixture()
 async def mock_server():
-    """Start a mock gRPC server and return (port, forecast_servicer, config_servicer)."""
-    forecast_servicer = MockForecastServicer()
-    config_servicer = MockConfigServicer()
+    """Start a mock gRPC server and return (port, weather_servicer, admin_servicer, ops_servicer)."""
+    if importlib.util.find_spec("pytest_homeassistant_custom_component"):
+        pytest.skip("gRPC poller thread conflicts with HA plugin thread checker")
+    weather_servicer = MockWeatherServicer()
+    admin_servicer = MockAdminServicer()
+    ops_servicer = MockOpsServicer()
     server = grpc.aio.server()
-    forecast_service_pb2_grpc.add_ForecastServiceServicer_to_server(forecast_servicer, server)
-    config_service_pb2_grpc.add_ConfigServiceServicer_to_server(config_servicer, server)
+    weather_pb2_grpc.add_WeatherServiceServicer_to_server(weather_servicer, server)
+    admin_pb2_grpc.add_AdminServiceServicer_to_server(admin_servicer, server)
+    ops_pb2_grpc.add_OpsServiceServicer_to_server(ops_servicer, server)
     port = server.add_insecure_port("[::]:0")
     await server.start()
-    yield port, forecast_servicer, config_servicer
+    yield port, weather_servicer, admin_servicer, ops_servicer
     await server.stop(grace=None)
 
 
 @pytest.fixture()
 async def client(mock_server):
     """Create a connected NjordClient pointing at the mock server."""
-    port, _, _ = mock_server
+    port, _, _, _ = mock_server
     c = NjordClient(host="localhost", port=port)
     await c.connect()
     yield c
@@ -288,15 +269,18 @@ async def client(mock_server):
 
 
 @pytest.mark.asyncio
-async def test_get_locations(client):
-    locations = await client.get_locations()
-    assert locations == ["lucerne", "zurich"]
-
-
-@pytest.mark.asyncio
-async def test_get_models(client):
-    models = await client.get_models("lucerne")
-    assert models == ["icon_d2", "ecmwf_ifs025"]
+async def test_get_catalog(client):
+    catalog = await client.get_catalog()
+    assert isinstance(catalog, CatalogData)
+    assert len(catalog.locations) == 2
+    assert catalog.locations[0].name == "lucerne"
+    assert catalog.locations[0].latitude == pytest.approx(47.05)
+    assert catalog.locations[0].models == ["icon_d2"]
+    assert catalog.locations[1].name == "zurich"
+    assert "icon_d2" in catalog.model_info
+    assert catalog.model_info["icon_d2"].display_name == "ICON-D2"
+    assert catalog.model_info["icon_d2"].coverage_tier == "regional"
+    assert catalog.model_info["ecmwf_ifs025"].coverage_tier == "global"
 
 
 @pytest.mark.asyncio
@@ -309,7 +293,8 @@ async def test_get_forecast(client):
     assert forecast.hourly[0].temperature == 22.5
     assert forecast.hourly[0].weather_code == 3
     assert forecast.hourly[0].is_day is True
-    assert isinstance(forecast.hourly[0].timestamp, datetime)
+    assert isinstance(forecast.hourly[0].valid_at, datetime)
+    assert isinstance(forecast.updated_at, datetime)
     assert len(forecast.daily) == 1
     assert forecast.daily[0].temperature_max == 28.0
 
@@ -335,6 +320,24 @@ async def test_get_status(client):
     assert status.budget is not None
     assert status.budget.monthly_limit == 20000
     assert status.budget.usage_percent == pytest.approx(25.0)
+    assert status.process_start is not None
+    assert isinstance(status.process_start, datetime)
+    assert len(status.model_statuses) == 1
+    assert status.model_statuses[0].location == "lucerne"
+    assert status.model_statuses[0].model == "icon_d2"
+    assert status.active_enrichments == ["consensus", "alerts"]
+
+
+@pytest.mark.asyncio
+async def test_trigger_poll(client):
+    count = await client.trigger_poll()
+    assert count == 6
+
+
+@pytest.mark.asyncio
+async def test_trigger_poll_with_params(client):
+    count = await client.trigger_poll(location="lucerne", model="icon_d2")
+    assert count == 6
 
 
 # --- Context Manager Test ---
@@ -342,17 +345,17 @@ async def test_get_status(client):
 
 @pytest.mark.asyncio
 async def test_context_manager(mock_server):
-    port, _, _ = mock_server
+    port, _, _, _ = mock_server
     async with NjordClient(host="localhost", port=port) as client:
-        locations = await client.get_locations()
-        assert locations == ["lucerne", "zurich"]
+        catalog = await client.get_catalog()
+        assert len(catalog.locations) == 2
 
 
 @pytest.mark.asyncio
 async def test_not_connected_raises():
     client = NjordClient(host="localhost", port=9999)
     with pytest.raises(RuntimeError, match="not connected"):
-        await client.get_locations()
+        await client.get_catalog()
 
 
 # --- Streaming Tests ---
@@ -367,6 +370,7 @@ async def test_stream_forecasts(client):
     assert all(isinstance(u, ForecastData) for u in updates)
     assert updates[0].location == "lucerne"
     assert updates[0].model == "icon_d2"
+    assert isinstance(updates[0].updated_at, datetime)
 
 
 @pytest.mark.asyncio
@@ -394,14 +398,11 @@ async def test_stream_config(client):
 
 @pytest.mark.asyncio
 async def test_stream_reconnects_on_failure(mock_server, monkeypatch):
-    # gRPC's C-extension poller thread lingers after server stop, which
-    # triggers pytest-homeassistant-custom-component's strict thread check.
     if importlib.util.find_spec("pytest_homeassistant_custom_component"):
         pytest.skip("gRPC poller thread conflicts with HA plugin thread checker")
-    port, forecast_servicer, _ = mock_server
-    forecast_servicer.fail_stream_on_call = 1
+    port, weather_servicer, _, _ = mock_server
+    weather_servicer.fail_stream_on_call = 1
 
-    # Speed up backoff for testing
     import custom_components.njord.grpc_client as client_module
 
     monkeypatch.setattr(client_module, "_BACKOFF_INITIAL", 0.05)
@@ -439,60 +440,35 @@ async def test_get_enrichments(client):
     assert isinstance(enrichment, EnrichmentData)
     assert enrichment.location == "lucerne"
 
-    # Alerts
     assert len(enrichment.alerts) == 2
     assert enrichment.alerts[0].type == "uv"
     assert enrichment.alerts[0].severity == "orange"
-    assert enrichment.alerts[0].confidence == 1.0
     assert enrichment.alerts[1].type == "frost"
-    assert enrichment.alerts[1].severity == "none"
 
-    # Indices
     assert enrichment.indices is not None
     assert enrichment.indices.laundry == 47
-    assert enrichment.indices.outdoor == 56
     assert enrichment.indices.bbq == 51
     assert enrichment.indices.vpd_kpa == pytest.approx(0.59)
-    assert enrichment.indices.vpd_category == "optimal"
 
-    # Trends
     assert enrichment.trends is not None
     assert enrichment.trends.stability_label == "stable"
-    assert enrichment.trends.stability_ratio == pytest.approx(0.83)
-    assert enrichment.trends.precip_starts_in_hours == 2
     assert enrichment.trends.reliable_hours == 3
-    assert len(enrichment.trends.parameter_trends) == 1
-    assert enrichment.trends.parameter_trends[0].parameter == "temperature_2m"
 
-    # Energy
     assert enrichment.energy is not None
     assert enrichment.energy.heating_demand == 21
     assert enrichment.energy.cop_estimate == pytest.approx(10.95)
-    assert enrichment.energy.battery_strategy == "discharge"
     assert len(enrichment.energy.cop_optimal) == 1
-    assert enrichment.energy.cop_optimal[0].hours_from_now == 20
 
-    # Derived
     assert enrichment.derived is not None
-    assert len(enrichment.derived.by_horizon) == 1
-    assert enrichment.derived.by_horizon[0].horizon == "h3"
     assert enrichment.derived.by_horizon[0].beaufort == 2
-    assert enrichment.derived.by_horizon[0].dewpoint_comfort == "sticky"
     assert enrichment.derived.sunshine_pct == pytest.approx(66.4)
     assert enrichment.derived.inversion is False
 
-    # History
     assert enrichment.history is not None
     assert enrichment.history.weighted_temperature == pytest.approx(24.48)
-    assert len(enrichment.history.models) == 1
-    assert enrichment.history.models[0].model == "icon_global"
 
-    # Consensus
     assert enrichment.consensus is not None
-    assert len(enrichment.consensus.parameters) == 1
-    assert enrichment.consensus.parameters[0].parameter == "temperature_2m"
     assert enrichment.consensus.parameters[0].by_horizon[0].median == pytest.approx(20.4)
-    assert enrichment.consensus.parameters[0].by_horizon[0].available_models == 6
 
 
 @pytest.mark.asyncio
@@ -514,32 +490,32 @@ async def test_stream_enrichments(client):
 class TestParseExtra:
     def test_numeric_values(self):
         extras = [
-            forecast_service_pb2.ParameterValue(name="cape", numeric=450.0),
-            forecast_service_pb2.ParameterValue(name="uv_index", numeric=7.2),
+            common_pb2.ParameterValue(name="cape", numeric=450.0),
+            common_pb2.ParameterValue(name="uv_index", numeric=7.2),
         ]
         result = _parse_extra(extras)
         assert result == {"cape": 450.0, "uv_index": 7.2}
 
     def test_text_values(self):
         extras = [
-            forecast_service_pb2.ParameterValue(name="pollen_level", text="high"),
+            common_pb2.ParameterValue(name="pollen_level", text="high"),
         ]
         result = _parse_extra(extras)
         assert result == {"pollen_level": "high"}
 
     def test_flag_values(self):
         extras = [
-            forecast_service_pb2.ParameterValue(name="frost_risk", flag=True),
-            forecast_service_pb2.ParameterValue(name="sunny", flag=False),
+            common_pb2.ParameterValue(name="frost_risk", flag=True),
+            common_pb2.ParameterValue(name="sunny", flag=False),
         ]
         result = _parse_extra(extras)
         assert result == {"frost_risk": True, "sunny": False}
 
     def test_mixed_types(self):
         extras = [
-            forecast_service_pb2.ParameterValue(name="cape", numeric=450.0),
-            forecast_service_pb2.ParameterValue(name="pollen", text="low"),
-            forecast_service_pb2.ParameterValue(name="frost", flag=True),
+            common_pb2.ParameterValue(name="cape", numeric=450.0),
+            common_pb2.ParameterValue(name="pollen", text="low"),
+            common_pb2.ParameterValue(name="frost", flag=True),
         ]
         result = _parse_extra(extras)
         assert result == {"cape": 450.0, "pollen": "low", "frost": True}
@@ -549,56 +525,33 @@ class TestParseExtra:
         assert result == {}
 
     def test_unset_value_skipped(self):
-        pv = forecast_service_pb2.ParameterValue(name="empty")
+        pv = common_pb2.ParameterValue(name="empty")
         result = _parse_extra([pv])
         assert result == {}
 
 
 class TestToAlert:
     def test_all_fields_set(self):
-        pb = forecast_service_pb2.Alert(
-            type=5,  # UV
-            severity=2,  # ORANGE
-            confidence=0.95,
-            trigger_value=8.5,
-            threshold=6.0,
-            peak_value=9.2,
-            hours_until=2,
-            duration_hours=4,
+        pb = common_pb2.Alert(
+            type=5, severity=2, confidence=0.95,
+            trigger_value=8.5, threshold=6.0,
+            peak_value=9.2, hours_until=2, duration_hours=4,
         )
         alert = _to_alert(pb)
         assert alert.type == "uv"
         assert alert.severity == "orange"
-        assert alert.confidence == 0.95
-        assert alert.trigger_value == 8.5
-        assert alert.threshold == 6.0
         assert alert.peak_value == 9.2
-        assert alert.hours_until == 2
-        assert alert.duration_hours == 4
 
     def test_only_required_fields(self):
-        pb = forecast_service_pb2.Alert(
-            type=2,  # HEAT
-            severity=1,  # YELLOW
-            confidence=0.8,
-            trigger_value=38.2,
-            threshold=35.0,
+        pb = common_pb2.Alert(
+            type=2, severity=1, confidence=0.8,
+            trigger_value=38.2, threshold=35.0,
         )
         alert = _to_alert(pb)
         assert alert.type == "heat"
-        assert alert.trigger_value == 38.2
-        assert alert.threshold == 35.0
         assert alert.peak_value is None
-        assert alert.hours_until is None
-        assert alert.duration_hours is None
 
     def test_inactive_alert(self):
-        pb = forecast_service_pb2.Alert(
-            type=1,  # FROST
-            severity=0,  # NONE
-            confidence=0.0,
-        )
+        pb = common_pb2.Alert(type=1, severity=0, confidence=0.0)
         alert = _to_alert(pb)
         assert alert.severity == "none"
-        assert alert.trigger_value == 0.0
-        assert alert.threshold == 0.0

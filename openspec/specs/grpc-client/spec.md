@@ -5,11 +5,11 @@ Defines the gRPC client module for communicating with the njord weather service 
 ## Requirements
 
 ### Requirement: Channel lifecycle
-The `NjordClient` SHALL manage a gRPC channel to a njord server specified by host and port, supporting explicit connect, close, and async context manager usage.
+The `NjordClient` SHALL manage a gRPC channel to a njord server specified by host and port, supporting explicit connect, close, and async context manager usage. On connect, it SHALL create three service stubs: `WeatherServiceStub`, `AdminServiceStub`, and `OpsServiceStub`.
 
 #### Scenario: Connect and close
 - **WHEN** a caller creates a `NjordClient(host, port)` and calls `await client.connect()`
-- **THEN** an insecure gRPC channel is opened to `host:port` and the client is ready for RPC calls
+- **THEN** an insecure gRPC channel is opened to `host:port` and three service stubs (WeatherService, AdminService, OpsService) are created
 
 #### Scenario: Context manager
 - **WHEN** a caller uses `async with NjordClient(host, port) as client:`
@@ -19,47 +19,55 @@ The `NjordClient` SHALL manage a gRPC channel to a njord server specified by hos
 - **WHEN** `await client.close()` is called
 - **THEN** the gRPC channel is closed and subsequent RPC calls raise an error
 
-### Requirement: Get locations
-The client SHALL provide an async method to retrieve all configured locations from njord.
+### Requirement: Get catalog
+The client SHALL provide an async method to retrieve all locations and deduplicated model info from njord in a single call via `WeatherService.GetCatalog`.
 
 #### Scenario: Successful retrieval
-- **WHEN** `await client.get_locations()` is called
-- **THEN** a list of location name strings is returned
+- **WHEN** `await client.get_catalog()` is called
+- **THEN** a `CatalogData` object is returned containing a list of `LocationInfo` (name, latitude, longitude, models) and a dict of `ModelInfoData` keyed by model ID
 
-### Requirement: Get models
-The client SHALL provide an async method to retrieve available weather models for a given location.
-
-#### Scenario: Successful retrieval
-- **WHEN** `await client.get_models(location)` is called with a valid location name
-- **THEN** a list of model name strings for that location is returned
+#### Scenario: Replaces get_locations and get_models
+- **WHEN** the coordinator needs to discover locations and their models
+- **THEN** it calls `get_catalog()` once instead of `get_locations()` + N x `get_models(location)`
 
 ### Requirement: Get forecast
-The client SHALL provide an async method to retrieve the current forecast for a given location and model, returning typed dataclasses.
+The client SHALL provide an async method to retrieve the current forecast for a given location and model, returning typed dataclasses. The `updated_at` field SHALL be a `datetime` converted from `google.protobuf.Timestamp`.
 
 #### Scenario: Successful retrieval
 - **WHEN** `await client.get_forecast(location, model)` is called
-- **THEN** a `ForecastData` object is returned containing location, model, updated_at timestamp, hourly forecasts, and daily forecasts
+- **THEN** a `ForecastData` object is returned containing location, model, updated_at as datetime, hourly forecasts, and daily forecasts
 
 #### Scenario: Hourly forecast fields
 - **WHEN** a `HourlyForecastData` is inspected
-- **THEN** it contains timestamp, temperature, apparent_temperature, precipitation, humidity, wind_speed, wind_bearing, cloud_cover, weather_code, is_day, rain, wind_gusts, and pressure_msl as optional fields
+- **THEN** it contains valid_at (datetime), temperature, apparent_temperature, precipitation, humidity, wind_speed, wind_bearing, cloud_cover, weather_code, is_day, rain, wind_gusts, and pressure_msl as optional fields
 
 ### Requirement: Get config
-The client SHALL provide an async method to retrieve njord's current configuration.
+The client SHALL provide an async method to retrieve njord's current configuration via `AdminService.GetConfig`.
 
 #### Scenario: Successful retrieval
 - **WHEN** `await client.get_config()` is called
 - **THEN** a `NjordConfigData` object is returned containing locations (with coordinates and models), default_models, horizons, forecast_days, and poll_interval_seconds
 
 ### Requirement: Get status
-The client SHALL provide an async method to retrieve njord's server status.
+The client SHALL provide an async method to retrieve njord's server status via `OpsService.GetStatus`.
 
 #### Scenario: Successful retrieval
 - **WHEN** `await client.get_status()` is called
-- **THEN** a `ServerStatusData` object is returned containing version, uptime_seconds, and budget information
+- **THEN** a `ServerStatusData` object is returned containing version, uptime_seconds, budget information, process_start (datetime), model_statuses (list of ModelStatusData), and active_enrichments (list of strings)
+
+### Requirement: Trigger poll
+The client SHALL provide an async method to trigger a forecast poll via `OpsService.TriggerPoll`.
+
+#### Scenario: Trigger all targets
+- **WHEN** `await client.trigger_poll()` is called with no arguments
+- **THEN** `OpsService.TriggerPoll(location="", model="")` is called and the response's `triggered_count` is returned
+
+#### Scenario: Trigger specific target
+- **WHEN** `await client.trigger_poll(location="graz", model="icon_d2")` is called
+- **THEN** `OpsService.TriggerPoll(location="graz", model="icon_d2")` is called
 
 ### Requirement: Stream forecasts
-The client SHALL provide an async iterator for real-time forecast updates via server-streaming RPC.
+The client SHALL provide an async iterator for real-time forecast updates via `WeatherService.StreamForecasts` server-streaming RPC.
 
 #### Scenario: Receive updates
 - **WHEN** `async for update in client.stream_forecasts()` is used
@@ -70,7 +78,7 @@ The client SHALL provide an async iterator for real-time forecast updates via se
 - **THEN** only forecast updates for that location are received
 
 ### Requirement: Stream config
-The client SHALL provide an async iterator for real-time config change notifications via server-streaming RPC.
+The client SHALL provide an async iterator for real-time config change notifications via `AdminService.StreamConfig` server-streaming RPC.
 
 #### Scenario: Receive config changes
 - **WHEN** `async for config in client.stream_config()` is used
@@ -99,7 +107,7 @@ The client SHALL provide an async method to retrieve enrichment data for a given
 - **THEN** an `EnrichmentData` object is returned containing alerts, indices, trends, energy, derived, history, and consensus data for that location
 
 ### Requirement: Stream enrichments
-The client SHALL provide an async iterator for real-time enrichment updates via server-streaming RPC.
+The client SHALL provide an async iterator for real-time enrichment updates via `WeatherService.StreamEnrichments` server-streaming RPC.
 
 #### Scenario: Receive updates
 - **WHEN** `async for event in client.stream_enrichments()` is used
@@ -114,7 +122,7 @@ The client SHALL provide an async iterator for real-time enrichment updates via 
 - **THEN** the client reconnects with exponential backoff, same as other streaming RPCs
 
 ### Requirement: Typed data models
-All public API methods SHALL return typed Python dataclasses, never raw protobuf message objects.
+All public API methods SHALL return typed Python dataclasses, never raw protobuf message objects. Temporal fields SHALL be `datetime` objects, not integer epochs.
 
 #### Scenario: IndexData includes all proto fields
 - **WHEN** `IndexData` is returned as part of enrichment data
@@ -123,3 +131,7 @@ All public API methods SHALL return typed Python dataclasses, never raw protobuf
 #### Scenario: No protobuf leakage
 - **WHEN** a consumer uses any `NjordClient` method
 - **THEN** the return type is a dataclass from `models.py`, not a `_pb2` generated class
+
+#### Scenario: Timestamps are datetime
+- **WHEN** a `ForecastData` or `HourlyForecastData` is returned
+- **THEN** `updated_at` and `valid_at` are `datetime` objects with UTC timezone, not integers

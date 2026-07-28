@@ -3,7 +3,7 @@
 import grpc
 import warnings
 
-from njord.v1 import forecast_service_pb2 as njord_dot_v1_dot_forecast__service__pb2
+from njord.v2 import weather_pb2 as njord_dot_v2_dot_weather__pb2
 
 GRPC_GENERATED_VERSION = '1.71.2'
 GRPC_VERSION = grpc.__version__
@@ -18,14 +18,14 @@ except ImportError:
 if _version_not_supported:
     raise RuntimeError(
         f'The grpc package installed is at version {GRPC_VERSION},'
-        + f' but the generated code in njord/v1/forecast_service_pb2_grpc.py depends on'
+        + f' but the generated code in njord/v2/weather_pb2_grpc.py depends on'
         + f' grpcio>={GRPC_GENERATED_VERSION}.'
         + f' Please upgrade your grpc module to grpcio>={GRPC_GENERATED_VERSION}'
         + f' or downgrade your generated code using grpcio-tools<={GRPC_VERSION}.'
     )
 
 
-class ForecastServiceStub(object):
+class WeatherServiceStub(object):
     """Missing associated documentation comment in .proto file."""
 
     def __init__(self, channel):
@@ -34,49 +34,37 @@ class ForecastServiceStub(object):
         Args:
             channel: A grpc.Channel.
         """
-        self.GetLocations = channel.unary_unary(
-                '/njord.v1.ForecastService/GetLocations',
-                request_serializer=njord_dot_v1_dot_forecast__service__pb2.GetLocationsRequest.SerializeToString,
-                response_deserializer=njord_dot_v1_dot_forecast__service__pb2.GetLocationsResponse.FromString,
-                _registered_method=True)
-        self.GetModels = channel.unary_unary(
-                '/njord.v1.ForecastService/GetModels',
-                request_serializer=njord_dot_v1_dot_forecast__service__pb2.GetModelsRequest.SerializeToString,
-                response_deserializer=njord_dot_v1_dot_forecast__service__pb2.GetModelsResponse.FromString,
+        self.GetCatalog = channel.unary_unary(
+                '/njord.v2.WeatherService/GetCatalog',
+                request_serializer=njord_dot_v2_dot_weather__pb2.GetCatalogRequest.SerializeToString,
+                response_deserializer=njord_dot_v2_dot_weather__pb2.GetCatalogResponse.FromString,
                 _registered_method=True)
         self.GetForecast = channel.unary_unary(
-                '/njord.v1.ForecastService/GetForecast',
-                request_serializer=njord_dot_v1_dot_forecast__service__pb2.GetForecastRequest.SerializeToString,
-                response_deserializer=njord_dot_v1_dot_forecast__service__pb2.GetForecastResponse.FromString,
+                '/njord.v2.WeatherService/GetForecast',
+                request_serializer=njord_dot_v2_dot_weather__pb2.GetForecastRequest.SerializeToString,
+                response_deserializer=njord_dot_v2_dot_weather__pb2.GetForecastResponse.FromString,
                 _registered_method=True)
         self.GetEnrichments = channel.unary_unary(
-                '/njord.v1.ForecastService/GetEnrichments',
-                request_serializer=njord_dot_v1_dot_forecast__service__pb2.GetEnrichmentsRequest.SerializeToString,
-                response_deserializer=njord_dot_v1_dot_forecast__service__pb2.GetEnrichmentsResponse.FromString,
+                '/njord.v2.WeatherService/GetEnrichments',
+                request_serializer=njord_dot_v2_dot_weather__pb2.GetEnrichmentsRequest.SerializeToString,
+                response_deserializer=njord_dot_v2_dot_weather__pb2.GetEnrichmentsResponse.FromString,
                 _registered_method=True)
         self.StreamForecasts = channel.unary_stream(
-                '/njord.v1.ForecastService/StreamForecasts',
-                request_serializer=njord_dot_v1_dot_forecast__service__pb2.StreamForecastsRequest.SerializeToString,
-                response_deserializer=njord_dot_v1_dot_forecast__service__pb2.ForecastUpdate.FromString,
+                '/njord.v2.WeatherService/StreamForecasts',
+                request_serializer=njord_dot_v2_dot_weather__pb2.StreamForecastsRequest.SerializeToString,
+                response_deserializer=njord_dot_v2_dot_weather__pb2.ForecastUpdate.FromString,
                 _registered_method=True)
         self.StreamEnrichments = channel.unary_stream(
-                '/njord.v1.ForecastService/StreamEnrichments',
-                request_serializer=njord_dot_v1_dot_forecast__service__pb2.StreamEnrichmentsRequest.SerializeToString,
-                response_deserializer=njord_dot_v1_dot_forecast__service__pb2.EnrichmentEvent.FromString,
+                '/njord.v2.WeatherService/StreamEnrichments',
+                request_serializer=njord_dot_v2_dot_weather__pb2.StreamEnrichmentsRequest.SerializeToString,
+                response_deserializer=njord_dot_v2_dot_weather__pb2.EnrichmentEvent.FromString,
                 _registered_method=True)
 
 
-class ForecastServiceServicer(object):
+class WeatherServiceServicer(object):
     """Missing associated documentation comment in .proto file."""
 
-    def GetLocations(self, request, context):
-        """Unary RPCs (initial state)
-        """
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
-
-    def GetModels(self, request, context):
+    def GetCatalog(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -95,8 +83,7 @@ class ForecastServiceServicer(object):
         raise NotImplementedError('Method not implemented!')
 
     def StreamForecasts(self, request, context):
-        """Server-streaming RPCs (real-time updates)
-        """
+        """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
@@ -108,51 +95,46 @@ class ForecastServiceServicer(object):
         raise NotImplementedError('Method not implemented!')
 
 
-def add_ForecastServiceServicer_to_server(servicer, server):
+def add_WeatherServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
-            'GetLocations': grpc.unary_unary_rpc_method_handler(
-                    servicer.GetLocations,
-                    request_deserializer=njord_dot_v1_dot_forecast__service__pb2.GetLocationsRequest.FromString,
-                    response_serializer=njord_dot_v1_dot_forecast__service__pb2.GetLocationsResponse.SerializeToString,
-            ),
-            'GetModels': grpc.unary_unary_rpc_method_handler(
-                    servicer.GetModels,
-                    request_deserializer=njord_dot_v1_dot_forecast__service__pb2.GetModelsRequest.FromString,
-                    response_serializer=njord_dot_v1_dot_forecast__service__pb2.GetModelsResponse.SerializeToString,
+            'GetCatalog': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetCatalog,
+                    request_deserializer=njord_dot_v2_dot_weather__pb2.GetCatalogRequest.FromString,
+                    response_serializer=njord_dot_v2_dot_weather__pb2.GetCatalogResponse.SerializeToString,
             ),
             'GetForecast': grpc.unary_unary_rpc_method_handler(
                     servicer.GetForecast,
-                    request_deserializer=njord_dot_v1_dot_forecast__service__pb2.GetForecastRequest.FromString,
-                    response_serializer=njord_dot_v1_dot_forecast__service__pb2.GetForecastResponse.SerializeToString,
+                    request_deserializer=njord_dot_v2_dot_weather__pb2.GetForecastRequest.FromString,
+                    response_serializer=njord_dot_v2_dot_weather__pb2.GetForecastResponse.SerializeToString,
             ),
             'GetEnrichments': grpc.unary_unary_rpc_method_handler(
                     servicer.GetEnrichments,
-                    request_deserializer=njord_dot_v1_dot_forecast__service__pb2.GetEnrichmentsRequest.FromString,
-                    response_serializer=njord_dot_v1_dot_forecast__service__pb2.GetEnrichmentsResponse.SerializeToString,
+                    request_deserializer=njord_dot_v2_dot_weather__pb2.GetEnrichmentsRequest.FromString,
+                    response_serializer=njord_dot_v2_dot_weather__pb2.GetEnrichmentsResponse.SerializeToString,
             ),
             'StreamForecasts': grpc.unary_stream_rpc_method_handler(
                     servicer.StreamForecasts,
-                    request_deserializer=njord_dot_v1_dot_forecast__service__pb2.StreamForecastsRequest.FromString,
-                    response_serializer=njord_dot_v1_dot_forecast__service__pb2.ForecastUpdate.SerializeToString,
+                    request_deserializer=njord_dot_v2_dot_weather__pb2.StreamForecastsRequest.FromString,
+                    response_serializer=njord_dot_v2_dot_weather__pb2.ForecastUpdate.SerializeToString,
             ),
             'StreamEnrichments': grpc.unary_stream_rpc_method_handler(
                     servicer.StreamEnrichments,
-                    request_deserializer=njord_dot_v1_dot_forecast__service__pb2.StreamEnrichmentsRequest.FromString,
-                    response_serializer=njord_dot_v1_dot_forecast__service__pb2.EnrichmentEvent.SerializeToString,
+                    request_deserializer=njord_dot_v2_dot_weather__pb2.StreamEnrichmentsRequest.FromString,
+                    response_serializer=njord_dot_v2_dot_weather__pb2.EnrichmentEvent.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
-            'njord.v1.ForecastService', rpc_method_handlers)
+            'njord.v2.WeatherService', rpc_method_handlers)
     server.add_generic_rpc_handlers((generic_handler,))
-    server.add_registered_method_handlers('njord.v1.ForecastService', rpc_method_handlers)
+    server.add_registered_method_handlers('njord.v2.WeatherService', rpc_method_handlers)
 
 
  # This class is part of an EXPERIMENTAL API.
-class ForecastService(object):
+class WeatherService(object):
     """Missing associated documentation comment in .proto file."""
 
     @staticmethod
-    def GetLocations(request,
+    def GetCatalog(request,
             target,
             options=(),
             channel_credentials=None,
@@ -165,36 +147,9 @@ class ForecastService(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/njord.v1.ForecastService/GetLocations',
-            njord_dot_v1_dot_forecast__service__pb2.GetLocationsRequest.SerializeToString,
-            njord_dot_v1_dot_forecast__service__pb2.GetLocationsResponse.FromString,
-            options,
-            channel_credentials,
-            insecure,
-            call_credentials,
-            compression,
-            wait_for_ready,
-            timeout,
-            metadata,
-            _registered_method=True)
-
-    @staticmethod
-    def GetModels(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(
-            request,
-            target,
-            '/njord.v1.ForecastService/GetModels',
-            njord_dot_v1_dot_forecast__service__pb2.GetModelsRequest.SerializeToString,
-            njord_dot_v1_dot_forecast__service__pb2.GetModelsResponse.FromString,
+            '/njord.v2.WeatherService/GetCatalog',
+            njord_dot_v2_dot_weather__pb2.GetCatalogRequest.SerializeToString,
+            njord_dot_v2_dot_weather__pb2.GetCatalogResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -219,9 +174,9 @@ class ForecastService(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/njord.v1.ForecastService/GetForecast',
-            njord_dot_v1_dot_forecast__service__pb2.GetForecastRequest.SerializeToString,
-            njord_dot_v1_dot_forecast__service__pb2.GetForecastResponse.FromString,
+            '/njord.v2.WeatherService/GetForecast',
+            njord_dot_v2_dot_weather__pb2.GetForecastRequest.SerializeToString,
+            njord_dot_v2_dot_weather__pb2.GetForecastResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -246,9 +201,9 @@ class ForecastService(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/njord.v1.ForecastService/GetEnrichments',
-            njord_dot_v1_dot_forecast__service__pb2.GetEnrichmentsRequest.SerializeToString,
-            njord_dot_v1_dot_forecast__service__pb2.GetEnrichmentsResponse.FromString,
+            '/njord.v2.WeatherService/GetEnrichments',
+            njord_dot_v2_dot_weather__pb2.GetEnrichmentsRequest.SerializeToString,
+            njord_dot_v2_dot_weather__pb2.GetEnrichmentsResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -273,9 +228,9 @@ class ForecastService(object):
         return grpc.experimental.unary_stream(
             request,
             target,
-            '/njord.v1.ForecastService/StreamForecasts',
-            njord_dot_v1_dot_forecast__service__pb2.StreamForecastsRequest.SerializeToString,
-            njord_dot_v1_dot_forecast__service__pb2.ForecastUpdate.FromString,
+            '/njord.v2.WeatherService/StreamForecasts',
+            njord_dot_v2_dot_weather__pb2.StreamForecastsRequest.SerializeToString,
+            njord_dot_v2_dot_weather__pb2.ForecastUpdate.FromString,
             options,
             channel_credentials,
             insecure,
@@ -300,9 +255,9 @@ class ForecastService(object):
         return grpc.experimental.unary_stream(
             request,
             target,
-            '/njord.v1.ForecastService/StreamEnrichments',
-            njord_dot_v1_dot_forecast__service__pb2.StreamEnrichmentsRequest.SerializeToString,
-            njord_dot_v1_dot_forecast__service__pb2.EnrichmentEvent.FromString,
+            '/njord.v2.WeatherService/StreamEnrichments',
+            njord_dot_v2_dot_weather__pb2.StreamEnrichmentsRequest.SerializeToString,
+            njord_dot_v2_dot_weather__pb2.EnrichmentEvent.FromString,
             options,
             channel_credentials,
             insecure,

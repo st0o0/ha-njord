@@ -16,7 +16,7 @@ from custom_components.njord.models import (
 
 
 def test_hourly_forecast_defaults_to_none():
-    h = HourlyForecastData(timestamp=datetime(2026, 7, 15, tzinfo=UTC))
+    h = HourlyForecastData(valid_at=datetime(2026, 7, 15, tzinfo=UTC))
     assert h.temperature is None
     assert h.weather_code is None
     assert h.is_day is None
@@ -24,7 +24,7 @@ def test_hourly_forecast_defaults_to_none():
 
 def test_hourly_forecast_with_values():
     h = HourlyForecastData(
-        timestamp=datetime(2026, 7, 15, 12, 0, tzinfo=UTC),
+        valid_at=datetime(2026, 7, 15, 12, 0, tzinfo=UTC),
         temperature=22.5,
         weather_code=3,
         is_day=True,
@@ -35,7 +35,7 @@ def test_hourly_forecast_with_values():
 
 
 def test_hourly_forecast_frozen():
-    h = HourlyForecastData(timestamp=datetime(2026, 7, 15, tzinfo=UTC))
+    h = HourlyForecastData(valid_at=datetime(2026, 7, 15, tzinfo=UTC))
     with pytest.raises(AttributeError):
         h.temperature = 10.0
 
@@ -47,14 +47,14 @@ def test_daily_forecast_defaults():
 
 
 def test_forecast_data():
-    f = ForecastData(location="lucerne", model="icon_d2", updated_at=1000)
+    f = ForecastData(location="lucerne", model="icon_d2", updated_at=datetime(2024, 1, 1, tzinfo=UTC))
     assert f.location == "lucerne"
     assert f.hourly == []
     assert f.daily == []
 
 
 def test_forecast_data_frozen():
-    f = ForecastData(location="lucerne", model="icon_d2", updated_at=1000)
+    f = ForecastData(location="lucerne", model="icon_d2", updated_at=datetime(2024, 1, 1, tzinfo=UTC))
     with pytest.raises(AttributeError):
         f.location = "zurich"
 

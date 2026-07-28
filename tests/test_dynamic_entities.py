@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock
 
 from homeassistant.core import HomeAssistant
@@ -23,7 +24,7 @@ def _make_client() -> AsyncMock:
             locations=[NjordLocation(name="home", latitude=47.0, longitude=8.0, models=["icon_d2"])],
         )
     )
-    client.get_forecast = AsyncMock(return_value=ForecastData(location="bern", model="gfs", updated_at=5000))
+    client.get_forecast = AsyncMock(return_value=ForecastData(location="bern", model="gfs", updated_at=datetime(2024, 1, 1, tzinfo=UTC)))
     client.get_enrichments = AsyncMock(return_value=EnrichmentData(location="bern"))
     return client
 
@@ -31,7 +32,7 @@ def _make_client() -> AsyncMock:
 async def _make_coordinator(hass: HomeAssistant, client: AsyncMock) -> NjordDataCoordinator:
     coordinator = NjordDataCoordinator(hass, client)
     coordinator.data = NjordCoordinatorData(
-        forecasts={("home", "icon_d2"): ForecastData(location="home", model="icon_d2", updated_at=1000)},
+        forecasts={("home", "icon_d2"): ForecastData(location="home", model="icon_d2", updated_at=datetime(2024, 1, 1, tzinfo=UTC))},
         enrichments={"home": EnrichmentData(location="home")},
     )
     coordinator._known_locations = {"home"}
