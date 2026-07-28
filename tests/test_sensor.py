@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pytest
+from homeassistant.components.sensor import SensorDeviceClass
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 
@@ -215,3 +216,55 @@ async def test_alert_sensors_enabled_by_default(hass: HomeAssistant, mock_client
         entry = registry.async_get(f"sensor.home_{alert_type}_alert")
         assert entry is not None, f"Missing alert sensor: {alert_type}"
         assert entry.disabled_by is None, f"Alert sensor {alert_type} should be enabled by default"
+
+
+# --- Device Class and Precision Tests ---
+
+
+async def test_alert_device_classes(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+    await init_integration(hass, mock_config_entry)
+
+    expected = {
+        "frost": SensorDeviceClass.TEMPERATURE,
+        "heat": SensorDeviceClass.TEMPERATURE,
+        "storm": SensorDeviceClass.WIND_SPEED,
+        "pressure_drop": SensorDeviceClass.PRESSURE,
+        "fog": SensorDeviceClass.DISTANCE,
+        "snow": SensorDeviceClass.DISTANCE,
+    }
+    for alert_type, device_class in expected.items():
+        state = hass.states.get(f"sensor.home_{alert_type}_alert")
+        assert state is not None, f"Missing alert sensor: {alert_type}"
+        assert state.attributes.get("device_class") == device_class.value, (
+            f"{alert_type} should have device_class {device_class.value}"
+        )
+
+    no_device_class = ["uv", "heavy_rain", "thunderstorm"]
+    for alert_type in no_device_class:
+        state = hass.states.get(f"sensor.home_{alert_type}_alert")
+        assert state is not None
+        assert "device_class" not in state.attributes, f"{alert_type} should have no device_class"
+
+
+async def test_diurnal_amplitude_device_class(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+    await _setup_with_sensors_enabled(hass, mock_config_entry)
+
+    state = hass.states.get("sensor.home_diurnal_amplitude")
+    assert state is not None
+    assert state.attributes.get("device_class") == SensorDeviceClass.TEMPERATURE.value
+
+
+async def test_model_performance_device_class(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+    await _setup_with_sensors_enabled(hass, mock_config_entry)
+
+    state = hass.states.get("sensor.home_model_performance")
+    assert state is not None
+    assert state.attributes.get("device_class") == SensorDeviceClass.TEMPERATURE.value
+
+
+async def test_frost_hours_device_class(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+    await _setup_with_sensors_enabled(hass, mock_config_entry)
+
+    state = hass.states.get("sensor.home_frost_hours")
+    assert state is not None
+    assert state.attributes.get("device_class") == SensorDeviceClass.DURATION.value

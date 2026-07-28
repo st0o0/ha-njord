@@ -19,7 +19,7 @@ Every sensor entity SHALL have a `_attr_translation_key` set, and corresponding 
 - **THEN** the BBQ Index sensor shows as "Grillwetter-Index"
 
 ### Requirement: HDD sensor
-The integration SHALL expose a Heating Degree Days sensor per location, sourced from `IndexData.hdd`.
+The integration SHALL expose a Heating Degree Days sensor per location, sourced from `IndexData.hdd`. The sensor SHALL use raw string unit `"°C·d"` (no HA device class available) and `suggested_display_precision = 1`.
 
 #### Scenario: HDD sensor shows value
 - **WHEN** enrichment data contains `hdd = 5.2`
@@ -29,15 +29,23 @@ The integration SHALL expose a Heating Degree Days sensor per location, sourced 
 - **WHEN** enrichment data has no indices
 - **THEN** the HDD sensor is unavailable
 
+#### Scenario: HDD sensor has precision 1
+- **WHEN** enrichment data contains `hdd = 5.27`
+- **THEN** HA suggests displaying as `5.3`
+
 ### Requirement: CDD sensor
-The integration SHALL expose a Cooling Degree Days sensor per location, sourced from `IndexData.cdd`.
+The integration SHALL expose a Cooling Degree Days sensor per location, sourced from `IndexData.cdd`. The sensor SHALL use raw string unit `"°C·d"` (no HA device class available) and `suggested_display_precision = 1`.
 
 #### Scenario: CDD sensor shows value
 - **WHEN** enrichment data contains `cdd = 3.1`
 - **THEN** the sensor shows `3.1` with unit `°C·d` and icon `mdi:thermometer-chevron-down`
 
+#### Scenario: CDD sensor has precision 1
+- **WHEN** enrichment data contains `cdd = 3.17`
+- **THEN** HA suggests displaying as `3.2`
+
 ### Requirement: Frost hours sensor
-The integration SHALL expose a Frost Hours sensor per location, sourced from `IndexData.frost_hours`.
+The integration SHALL expose a Frost Hours sensor per location, sourced from `IndexData.frost_hours`. The sensor SHALL set `device_class = SensorDeviceClass.DURATION` and `native_unit_of_measurement = UnitOfTime.HOURS` with `suggested_display_precision = 0`.
 
 #### Scenario: Frost hours sensor shows value
 - **WHEN** enrichment data contains `frost_hours = 4`
@@ -48,7 +56,7 @@ The integration SHALL expose a Frost Hours sensor per location, sourced from `In
 - **THEN** the sensor shows unknown state
 
 ### Requirement: Frost confidence sensor
-The integration SHALL expose a Frost Confidence sensor per location, sourced from `IndexData.frost_confidence`, displayed as a percentage (0-100).
+The integration SHALL expose a Frost Confidence sensor per location, sourced from `IndexData.frost_confidence`, displayed as a percentage (0-100). The sensor SHALL use raw string unit `"%"` and `suggested_display_precision = 0`.
 
 #### Scenario: Frost confidence sensor shows percentage
 - **WHEN** enrichment data contains `frost_confidence = 0.85`

@@ -2,8 +2,15 @@
 
 from __future__ import annotations
 
-from homeassistant.components.sensor import SensorEntity
+from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import (
+    UnitOfLength,
+    UnitOfPressure,
+    UnitOfSpeed,
+    UnitOfTemperature,
+    UnitOfTime,
+)
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity import EntityCategory
@@ -49,16 +56,37 @@ ALERT_NAMES = {
     "thunderstorm": "Thunderstorm Alert",
 }
 
-ALERT_UNITS = {
-    "frost": "°C",
-    "heat": "°C",
-    "storm": "km/h",
+ALERT_UNITS: dict[str, str] = {
+    "frost": UnitOfTemperature.CELSIUS,
+    "heat": UnitOfTemperature.CELSIUS,
+    "storm": UnitOfSpeed.KILOMETERS_PER_HOUR,
     "heavy_rain": "mm",
     "uv": "UV",
-    "fog": "m",
-    "snow": "cm",
-    "pressure_drop": "hPa",
+    "fog": UnitOfLength.METERS,
+    "snow": UnitOfLength.CENTIMETERS,
+    "pressure_drop": UnitOfPressure.HPA,
     "thunderstorm": "J/kg",
+}
+
+ALERT_DEVICE_CLASSES: dict[str, SensorDeviceClass] = {
+    "frost": SensorDeviceClass.TEMPERATURE,
+    "heat": SensorDeviceClass.TEMPERATURE,
+    "storm": SensorDeviceClass.WIND_SPEED,
+    "pressure_drop": SensorDeviceClass.PRESSURE,
+    "fog": SensorDeviceClass.DISTANCE,
+    "snow": SensorDeviceClass.DISTANCE,
+}
+
+ALERT_PRECISION: dict[str, int] = {
+    "frost": 1,
+    "heat": 1,
+    "storm": 0,
+    "heavy_rain": 1,
+    "uv": 0,
+    "fog": 0,
+    "snow": 0,
+    "pressure_drop": 0,
+    "thunderstorm": 0,
 }
 
 ALERT_ICONS = {
@@ -200,6 +228,12 @@ class NjordAlertSensor(_NjordEnrichmentSensor):
         self._attr_name = ALERT_NAMES.get(alert_type, f"{alert_type} Alert")
         self._attr_icon = ALERT_ICONS.get(alert_type, "mdi:alert")
         self._attr_native_unit_of_measurement = ALERT_UNITS.get(alert_type)
+        device_class = ALERT_DEVICE_CLASSES.get(alert_type)
+        if device_class is not None:
+            self._attr_device_class = device_class
+        precision = ALERT_PRECISION.get(alert_type)
+        if precision is not None:
+            self._attr_suggested_display_precision = precision
 
     def _get_alert(self) -> AlertData | None:
         enrichment = self._enrichment()
@@ -244,6 +278,7 @@ class NjordIndexSensor(_NjordEnrichmentSensor):
     """Sensor for an activity index (0-100)."""
 
     _attr_native_unit_of_measurement = "%"
+    _attr_suggested_display_precision = 0
 
     def __init__(
         self,
@@ -279,6 +314,7 @@ class NjordVpdSensor(_NjordEnrichmentSensor):
     """Sensor for Vapour Pressure Deficit."""
 
     _attr_native_unit_of_measurement = "kPa"
+    _attr_suggested_display_precision = 2
     _attr_icon = "mdi:water-percent"
     _attr_translation_key = "vpd"
 
@@ -335,6 +371,10 @@ class NjordEnergySensor(_NjordEnrichmentSensor):
         self._attr_icon = icon
         if unit:
             self._attr_native_unit_of_measurement = unit
+        if energy_key == "cop_estimate":
+            self._attr_suggested_display_precision = 1
+        elif unit:
+            self._attr_suggested_display_precision = 0
 
     @property
     def available(self) -> bool:
@@ -421,6 +461,7 @@ class NjordSunshineSensor(_NjordEnrichmentSensor):
     """Sensor for sunshine percentage."""
 
     _attr_native_unit_of_measurement = "%"
+    _attr_suggested_display_precision = 0
     _attr_icon = "mdi:white-balance-sunny"
     _attr_translation_key = "sunshine"
 
@@ -451,7 +492,9 @@ class NjordSunshineSensor(_NjordEnrichmentSensor):
 class NjordDiurnalAmplitudeSensor(_NjordEnrichmentSensor):
     """Sensor for diurnal temperature amplitude."""
 
-    _attr_native_unit_of_measurement = "°C"
+    _attr_device_class = SensorDeviceClass.TEMPERATURE
+    _attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
+    _attr_suggested_display_precision = 1
     _attr_icon = "mdi:thermometer-lines"
     _attr_translation_key = "diurnal_amplitude"
 
@@ -483,7 +526,9 @@ class NjordHistorySensor(_NjordEnrichmentSensor):
     """Diagnostic sensor for model performance."""
 
     _attr_entity_category = EntityCategory.DIAGNOSTIC
-    _attr_native_unit_of_measurement = "°C"
+    _attr_device_class = SensorDeviceClass.TEMPERATURE
+    _attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
+    _attr_suggested_display_precision = 1
     _attr_icon = "mdi:chart-line"
     _attr_translation_key = "model_performance"
 
@@ -541,6 +586,7 @@ class NjordHddSensor(_NjordEnrichmentSensor):
     """Sensor for Heating Degree Days."""
 
     _attr_native_unit_of_measurement = "°C·d"
+    _attr_suggested_display_precision = 1
     _attr_icon = "mdi:thermometer-chevron-up"
     _attr_translation_key = "hdd"
 
@@ -567,6 +613,7 @@ class NjordCddSensor(_NjordEnrichmentSensor):
     """Sensor for Cooling Degree Days."""
 
     _attr_native_unit_of_measurement = "°C·d"
+    _attr_suggested_display_precision = 1
     _attr_icon = "mdi:thermometer-chevron-down"
     _attr_translation_key = "cdd"
 
@@ -592,7 +639,9 @@ class NjordCddSensor(_NjordEnrichmentSensor):
 class NjordFrostHoursSensor(_NjordEnrichmentSensor):
     """Sensor for frost hours."""
 
-    _attr_native_unit_of_measurement = "h"
+    _attr_device_class = SensorDeviceClass.DURATION
+    _attr_native_unit_of_measurement = UnitOfTime.HOURS
+    _attr_suggested_display_precision = 0
     _attr_icon = "mdi:snowflake-thermometer"
     _attr_translation_key = "frost_hours"
 
@@ -619,6 +668,7 @@ class NjordFrostConfidenceSensor(_NjordEnrichmentSensor):
     """Sensor for frost confidence as percentage."""
 
     _attr_native_unit_of_measurement = "%"
+    _attr_suggested_display_precision = 0
     _attr_icon = "mdi:snowflake-check"
     _attr_translation_key = "frost_confidence"
 
@@ -649,6 +699,7 @@ class NjordApiBudgetSensor(CoordinatorEntity[NjordDataCoordinator], SensorEntity
     _attr_has_entity_name = True
     _attr_entity_category = EntityCategory.DIAGNOSTIC
     _attr_native_unit_of_measurement = "%"
+    _attr_suggested_display_precision = 1
     _attr_icon = "mdi:api"
     _attr_translation_key = "api_budget"
 
@@ -692,7 +743,9 @@ class NjordUptimeSensor(CoordinatorEntity[NjordDataCoordinator], SensorEntity):
 
     _attr_has_entity_name = True
     _attr_entity_category = EntityCategory.DIAGNOSTIC
-    _attr_native_unit_of_measurement = "h"
+    _attr_device_class = SensorDeviceClass.DURATION
+    _attr_native_unit_of_measurement = UnitOfTime.HOURS
+    _attr_suggested_display_precision = 1
     _attr_icon = "mdi:server"
     _attr_translation_key = "uptime"
 
