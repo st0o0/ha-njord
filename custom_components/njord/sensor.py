@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
+from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     UnitOfLength,
@@ -231,6 +231,7 @@ class NjordAlertSensor(_NjordEnrichmentSensor):
         device_class = ALERT_DEVICE_CLASSES.get(alert_type)
         if device_class is not None:
             self._attr_device_class = device_class
+            self._attr_state_class = SensorStateClass.MEASUREMENT
         precision = ALERT_PRECISION.get(alert_type)
         if precision is not None:
             self._attr_suggested_display_precision = precision
