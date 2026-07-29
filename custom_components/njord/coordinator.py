@@ -6,6 +6,7 @@ import asyncio
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass, field, replace
+from datetime import UTC, datetime, timedelta
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -14,13 +15,9 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from .grpc_client import NjordClient
 from .models import EnrichmentData, ForecastData, ModelInfoData, NjordLocation, ServerStatusData
 
-from datetime import UTC, datetime
-
 _LOGGER = logging.getLogger(__name__)
 
-_STATUS_POLL_INTERVAL = 1800
-
-_ENRICHMENT_MERGE_FIELDS = ("alerts", "indices", "trends", "energy", "derived", "history", "consensus")
+_ENRICHMENT_MERGE_FIELDS = ("alerts", "indices", "trends", "energy", "derived", "history", "consensus", "consensus_updated_at")
 _ENRICHMENT_DEFAULTS: dict[str, object] = {
     "alerts": [],
     "indices": None,
@@ -29,6 +26,7 @@ _ENRICHMENT_DEFAULTS: dict[str, object] = {
     "derived": None,
     "history": None,
     "consensus": None,
+    "consensus_updated_at": None,
 }
 
 
@@ -58,7 +56,6 @@ class NjordCoordinatorData:
     forecasts: dict[tuple[str, str], ForecastData] = field(default_factory=dict)
     enrichments: dict[str, EnrichmentData] = field(default_factory=dict)
     model_info: dict[str, ModelInfoData] = field(default_factory=dict)
-    server_status: ServerStatusData | None = None
 
 
 EntityFactory = Callable[[NjordLocation], list]
@@ -117,11 +114,6 @@ class NjordDataCoordinator(DataUpdateCoordinator[NjordCoordinatorData]):
                     err,
                 )
 
-        try:
-            result.server_status = await self.client.get_status()
-        except Exception as err:
-            _LOGGER.warning("Failed to get server status: %s", err)
-
         return result
 
     def register_entity_factory(
@@ -137,7 +129,6 @@ class NjordDataCoordinator(DataUpdateCoordinator[NjordCoordinatorData]):
             self.hass.async_create_background_task(self._run_forecast_stream(), "njord_forecast_stream"),
             self.hass.async_create_background_task(self._run_enrichment_stream(), "njord_enrichment_stream"),
             self.hass.async_create_background_task(self._run_config_stream(), "njord_config_stream"),
-            self.hass.async_create_background_task(self._run_status_poll(), "njord_status_poll"),
         ]
 
     async def stop_streams(self) -> None:
@@ -169,18 +160,6 @@ class NjordDataCoordinator(DataUpdateCoordinator[NjordCoordinatorData]):
                 new_locations = [loc for loc in config.locations if loc.name not in self._known_locations]
                 for location in new_locations:
                     await self._create_entities_for_location(location)
-        except asyncio.CancelledError:
-            return
-
-    async def _run_status_poll(self) -> None:
-        try:
-            while True:
-                await asyncio.sleep(_STATUS_POLL_INTERVAL)
-                try:
-                    self.data.server_status = await self.client.get_status()
-                    self.async_set_updated_data(self.data)
-                except Exception as err:
-                    _LOGGER.warning("Failed to poll server status: %s", err)
         except asyncio.CancelledError:
             return
 
@@ -223,3 +202,22 @@ class NjordDataCoordinator(DataUpdateCoordinator[NjordCoordinatorData]):
                 )
 
         self.async_set_updated_data(self.data)
+
+
+class NjordStatusCoordinator(DataUpdateCoordinator[ServerStatusData]):
+    """Polling coordinator for njord server status (budget, uptime)."""
+
+    def __init__(self, hass: HomeAssistant, client: NjordClient) -> None:
+        super().__init__(
+            hass,
+            _LOGGER,
+            name="njord_status",
+            update_interval=timedelta(seconds=30),
+        )
+        self.client = client
+
+    async def _async_update_data(self) -> ServerStatusData:
+        try:
+            return await self.client.get_status()
+        except Exception as err:
+            raise UpdateFailed(f"Failed to get njord status: {err}") from err

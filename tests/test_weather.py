@@ -11,7 +11,15 @@ from homeassistant.components.weather import WeatherEntityFeature
 from homeassistant.core import HomeAssistant
 
 from custom_components.njord.condition_mapper import map_condition
-from custom_components.njord.models import DailyForecastData, ForecastData, HourlyForecastData
+from custom_components.njord.models import (
+    ConsensusData,
+    DailyForecastData,
+    EnrichmentData,
+    ForecastData,
+    HorizonConsensusData,
+    HourlyForecastData,
+    ParameterConsensusData,
+)
 from tests.conftest import init_integration
 
 
@@ -46,6 +54,7 @@ async def test_weather_entity_second_model(hass: HomeAssistant, mock_client, moc
     assert state.state == "partlycloudy"
 
 
+@freeze_time("2024-07-03T12:00:00+00:00")
 async def test_consensus_current_state_from_h0(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
     await init_integration(hass, mock_config_entry)
 
@@ -371,3 +380,99 @@ async def test_hourly_forecast_all_past_returns_none(hass: HomeAssistant, mock_c
     )
     data = forecasts["weather.home_icon_d2"]["forecast"]
     assert not data
+
+
+# --- Consensus horizon advance tests ---
+
+
+def _consensus_with_timestamp(updated_at: datetime) -> EnrichmentData:
+    """Build enrichment with consensus data and a known updated_at."""
+    temp_horizons = []
+    wmo_horizons = []
+    is_day_horizons = []
+    for i in range(49):
+        agreement = max(0.0, 0.9 - i * 0.015)
+        temp_horizons.append(
+            HorizonConsensusData(
+                horizon=f"h{i}",
+                median=20.0 + i * 0.5,
+                spread=3.0 + i * 0.1,
+                agreement=round(agreement, 2),
+                available_models=max(2, 10 - i // 10),
+            )
+        )
+        wmo_horizons.append(
+            HorizonConsensusData(horizon=f"h{i}", median=1.0, available_models=5)
+        )
+        is_day_horizons.append(
+            HorizonConsensusData(horizon=f"h{i}", median=1.0, available_models=5)
+        )
+    return EnrichmentData(
+        location="home",
+        consensus=ConsensusData(
+            parameters=[
+                ParameterConsensusData(parameter="temperature_2m", unit="°C", by_horizon=temp_horizons),
+                ParameterConsensusData(parameter="weather_code", unit="wmo code", by_horizon=wmo_horizons),
+                ParameterConsensusData(parameter="is_day", by_horizon=is_day_horizons),
+            ],
+        ),
+        consensus_updated_at=updated_at,
+    )
+
+
+@freeze_time("2026-07-15T17:00:00+00:00")
+async def test_consensus_reads_adjusted_horizon(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+    enrichment = _consensus_with_timestamp(datetime(2026, 7, 15, 14, 0, tzinfo=UTC))
+    mock_client.get_enrichments = AsyncMock(return_value=enrichment)
+    await init_integration(hass, mock_config_entry)
+
+    state = hass.states.get("weather.home_consensus")
+    assert state is not None
+    assert state.attributes["temperature"] == 20.0 + 3 * 0.5
+
+
+@freeze_time("2026-07-15T14:10:00+00:00")
+async def test_consensus_reads_h0_when_just_pushed(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+    enrichment = _consensus_with_timestamp(datetime(2026, 7, 15, 14, 0, tzinfo=UTC))
+    mock_client.get_enrichments = AsyncMock(return_value=enrichment)
+    await init_integration(hass, mock_config_entry)
+
+    state = hass.states.get("weather.home_consensus")
+    assert state is not None
+    assert state.attributes["temperature"] == 20.0
+
+
+@freeze_time("2026-07-15T14:00:00+00:00")
+async def test_consensus_falls_back_to_h0_without_timestamp(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+    enrichment = _consensus_with_timestamp(datetime(2026, 7, 15, 14, 0, tzinfo=UTC))
+    from dataclasses import replace
+    enrichment = replace(enrichment, consensus_updated_at=None)
+    mock_client.get_enrichments = AsyncMock(return_value=enrichment)
+    await init_integration(hass, mock_config_entry)
+
+    state = hass.states.get("weather.home_consensus")
+    assert state is not None
+    assert state.attributes["temperature"] == 20.0
+
+
+@freeze_time("2026-07-18T14:00:00+00:00")
+async def test_consensus_elapsed_exceeds_horizons_returns_unknown(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+    enrichment = _consensus_with_timestamp(datetime(2026, 7, 15, 14, 0, tzinfo=UTC))
+    mock_client.get_enrichments = AsyncMock(return_value=enrichment)
+    await init_integration(hass, mock_config_entry)
+
+    state = hass.states.get("weather.home_consensus")
+    assert state is not None
+    assert state.state == "unknown"
+
+
+@freeze_time("2026-07-15T17:00:00+00:00")
+async def test_consensus_extra_attrs_use_adjusted_horizon(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+    enrichment = _consensus_with_timestamp(datetime(2026, 7, 15, 14, 0, tzinfo=UTC))
+    mock_client.get_enrichments = AsyncMock(return_value=enrichment)
+    await init_integration(hass, mock_config_entry)
+
+    state = hass.states.get("weather.home_consensus")
+    assert state is not None
+    assert state.attributes["agreement"] == round(0.9 - 3 * 0.015, 2)
+    assert state.attributes["available_models"] == 10

@@ -250,3 +250,4 @@ class EnrichmentData:
     derived: DerivedData | None = None
     history: HistoryData | None = None
     consensus: ConsensusData | None = None
+    consensus_updated_at: datetime | None = None

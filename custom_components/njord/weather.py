@@ -366,6 +366,15 @@ class NjordConsensusWeatherEntity(SingleCoordinatorWeatherEntity[NjordDataCoordi
             return None
         return enrichment.consensus
 
+    def _current_horizon_offset(self) -> int:
+        if self.coordinator.data is None:
+            return 0
+        enrichment = self.coordinator.data.enrichments.get(self._location)
+        if enrichment is None or enrichment.consensus_updated_at is None:
+            return 0
+        elapsed = (datetime.now(UTC) - enrichment.consensus_updated_at).total_seconds()
+        return max(0, int(elapsed // 3600))
+
     def _sorted_horizons(self) -> list[str]:
         consensus = self._consensus()
         if consensus is None:
@@ -390,7 +399,9 @@ class NjordConsensusWeatherEntity(SingleCoordinatorWeatherEntity[NjordDataCoordi
                     break
         return result
 
-    def _get_horizon_value(self, parameter: str, horizon: str = "h0") -> float | None:
+    def _get_horizon_value(self, parameter: str, horizon: str | None = None) -> float | None:
+        if horizon is None:
+            horizon = f"h{self._current_horizon_offset()}"
         consensus = self._consensus()
         if consensus is None:
             return None
@@ -401,7 +412,9 @@ class NjordConsensusWeatherEntity(SingleCoordinatorWeatherEntity[NjordDataCoordi
                         return h.median
         return None
 
-    def _get_horizon_data(self, parameter: str, horizon: str = "h0") -> HorizonConsensusData | None:
+    def _get_horizon_data(self, parameter: str, horizon: str | None = None) -> HorizonConsensusData | None:
+        if horizon is None:
+            horizon = f"h{self._current_horizon_offset()}"
         consensus = self._consensus()
         if consensus is None:
             return None
@@ -464,9 +477,12 @@ class NjordConsensusWeatherEntity(SingleCoordinatorWeatherEntity[NjordDataCoordi
                 break
         if temp_param is None:
             return 0
+        offset = self._current_horizon_offset()
         by_hours = sorted(temp_param.by_horizon, key=lambda h: int(h.horizon[1:]))
         count = 0
         for h in by_hours:
+            if int(h.horizon[1:]) < offset:
+                continue
             if h.agreement is None or h.agreement < _AGREEMENT_THRESHOLD:
                 break
             count += 1
@@ -490,18 +506,20 @@ class NjordConsensusWeatherEntity(SingleCoordinatorWeatherEntity[NjordDataCoordi
         if consensus is None:
             return None
 
+        offset = self._current_horizon_offset()
         now = datetime.now(UTC).replace(minute=0, second=0, microsecond=0)
         forecasts: list[Forecast] = []
 
         for horizon in self._sorted_horizons():
             hours = int(horizon[1:])
-            if hours == 0:
+            if hours <= offset:
                 continue
             vals = self._horizon_values(horizon)
             if not vals:
                 continue
 
-            forecast_time = now + timedelta(hours=hours)
+            hours_from_now = hours - offset
+            forecast_time = now + timedelta(hours=hours_from_now)
             condition = None
             wmo = vals.get("weather_code")
             if wmo is not None:
@@ -527,13 +545,17 @@ class NjordConsensusWeatherEntity(SingleCoordinatorWeatherEntity[NjordDataCoordi
         if consensus is None:
             return None
 
+        offset = self._current_horizon_offset()
         now = datetime.now(UTC).replace(minute=0, second=0, microsecond=0)
         today = now.date()
 
         days: dict[str, list[tuple[int, dict[str, float | None]]]] = {}
         for horizon in self._sorted_horizons():
             hours = int(horizon[1:])
-            forecast_time = now + timedelta(hours=hours)
+            if hours <= offset:
+                continue
+            hours_from_now = hours - offset
+            forecast_time = now + timedelta(hours=hours_from_now)
             forecast_date = forecast_time.date()
             if forecast_date <= today:
                 continue

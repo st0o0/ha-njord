@@ -170,6 +170,7 @@ def _default_consensus() -> ConsensusData:
 def _default_enrichment(location: str = "home") -> EnrichmentData:
     return EnrichmentData(
         location=location,
+        consensus_updated_at=_UPDATED_AT,
         alerts=[
             AlertData(type="uv", severity="orange", confidence=1.0, trigger_value=8.5, threshold=6.0, peak_value=9.2, hours_until=2, duration_hours=4),
             AlertData(type="frost", severity="none", confidence=0.0),

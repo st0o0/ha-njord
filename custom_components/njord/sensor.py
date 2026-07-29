@@ -18,7 +18,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
-from .coordinator import NjordDataCoordinator
+from .coordinator import NjordDataCoordinator, NjordStatusCoordinator
 from .models import AlertData, EnrichmentData, NjordLocation
 
 INDEX_TYPES = [
@@ -160,8 +160,12 @@ async def async_setup_entry(
         entities.append(NjordFrostHoursSensor(coordinator, entry, location))
         entities.append(NjordFrostConfidenceSensor(coordinator, entry, location))
 
-    entities.append(NjordApiBudgetSensor(coordinator, entry))
-    entities.append(NjordUptimeSensor(coordinator, entry))
+    status_coordinator: NjordStatusCoordinator | None = hass.data[DOMAIN][entry.entry_id].get("status_coordinator")
+    if status_coordinator is not None:
+        entities.append(NjordMonthlyUsageSensor(status_coordinator, entry))
+        entities.append(NjordDailyUsageSensor(status_coordinator, entry))
+        entities.append(NjordVersionSensor(status_coordinator, entry))
+        entities.append(NjordUptimeSensor(status_coordinator, entry))
 
     async_add_entities(entities)
 
@@ -694,52 +698,116 @@ class NjordFrostConfidenceSensor(_NjordEnrichmentSensor):
         return enrichment.indices.frost_confidence * 100
 
 
-class NjordApiBudgetSensor(CoordinatorEntity[NjordDataCoordinator], SensorEntity):
-    """Diagnostic sensor for API budget usage."""
+class NjordMonthlyUsageSensor(CoordinatorEntity[NjordStatusCoordinator], SensorEntity):
+    """Diagnostic sensor for monthly API usage percentage."""
 
     _attr_has_entity_name = True
     _attr_entity_category = EntityCategory.DIAGNOSTIC
     _attr_native_unit_of_measurement = "%"
     _attr_suggested_display_precision = 1
-    _attr_icon = "mdi:api"
-    _attr_translation_key = "api_budget"
+    _attr_icon = "mdi:calendar-month"
+    _attr_state_class = SensorStateClass.MEASUREMENT
 
-    def __init__(self, coordinator: NjordDataCoordinator, entry: ConfigEntry) -> None:
+    def __init__(self, coordinator: NjordStatusCoordinator, entry: ConfigEntry) -> None:
         super().__init__(coordinator)
-        self._attr_unique_id = f"{entry.entry_id}_api_budget"
-        self._attr_name = "API Budget"
+        self._attr_unique_id = f"{entry.entry_id}_monthly_usage"
+        self._attr_name = "Monthly Usage"
         self._attr_device_info = _server_device_info(entry)
 
     @property
     def available(self) -> bool:
         return (
             self.coordinator.data is not None
-            and self.coordinator.data.server_status is not None
-            and self.coordinator.data.server_status.budget is not None
+            and self.coordinator.data.budget is not None
+            and self.coordinator.data.budget.monthly_limit > 0
         )
 
     @property
     def native_value(self) -> float | None:
-        status = self.coordinator.data.server_status
-        if status is None or status.budget is None:
+        status = self.coordinator.data
+        if status is None or status.budget is None or status.budget.monthly_limit == 0:
             return None
-        return round(status.budget.usage_percent, 1)
+        return round(status.budget.monthly_used / status.budget.monthly_limit * 100, 1)
 
     @property
     def extra_state_attributes(self) -> dict[str, object] | None:
-        status = self.coordinator.data.server_status
+        status = self.coordinator.data
         if status is None or status.budget is None:
             return None
-        b = status.budget
         return {
-            "monthly_limit": b.monthly_limit,
-            "monthly_used": b.monthly_used,
-            "daily_limit": b.daily_limit,
-            "daily_used": b.daily_used,
+            "limit": status.budget.monthly_limit,
+            "used": status.budget.monthly_used,
         }
 
 
-class NjordUptimeSensor(CoordinatorEntity[NjordDataCoordinator], SensorEntity):
+class NjordDailyUsageSensor(CoordinatorEntity[NjordStatusCoordinator], SensorEntity):
+    """Diagnostic sensor for daily API usage percentage."""
+
+    _attr_has_entity_name = True
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_native_unit_of_measurement = "%"
+    _attr_suggested_display_precision = 1
+    _attr_icon = "mdi:calendar-today"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+
+    def __init__(self, coordinator: NjordStatusCoordinator, entry: ConfigEntry) -> None:
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{entry.entry_id}_daily_usage"
+        self._attr_name = "Daily Usage"
+        self._attr_device_info = _server_device_info(entry)
+
+    @property
+    def available(self) -> bool:
+        return (
+            self.coordinator.data is not None
+            and self.coordinator.data.budget is not None
+            and self.coordinator.data.budget.daily_limit > 0
+        )
+
+    @property
+    def native_value(self) -> float | None:
+        status = self.coordinator.data
+        if status is None or status.budget is None or status.budget.daily_limit == 0:
+            return None
+        return round(status.budget.daily_used / status.budget.daily_limit * 100, 1)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, object] | None:
+        status = self.coordinator.data
+        if status is None or status.budget is None:
+            return None
+        return {
+            "limit": status.budget.daily_limit,
+            "used": status.budget.daily_used,
+        }
+
+
+class NjordVersionSensor(CoordinatorEntity[NjordStatusCoordinator], SensorEntity):
+    """Diagnostic sensor for njord server version."""
+
+    _attr_has_entity_name = True
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_icon = "mdi:tag"
+
+    def __init__(self, coordinator: NjordStatusCoordinator, entry: ConfigEntry) -> None:
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{entry.entry_id}_version"
+        self._attr_name = "Version"
+        self._attr_device_info = _server_device_info(entry)
+
+    @property
+    def available(self) -> bool:
+        return self.coordinator.data is not None
+
+    @property
+    def native_value(self) -> str | None:
+        status = self.coordinator.data
+        if status is None:
+            return None
+        return status.version.split("+")[0]
+
+
+class NjordUptimeSensor(CoordinatorEntity[NjordStatusCoordinator], SensorEntity):
     """Diagnostic sensor for njord server uptime."""
 
     _attr_has_entity_name = True
@@ -750,7 +818,7 @@ class NjordUptimeSensor(CoordinatorEntity[NjordDataCoordinator], SensorEntity):
     _attr_icon = "mdi:server"
     _attr_translation_key = "uptime"
 
-    def __init__(self, coordinator: NjordDataCoordinator, entry: ConfigEntry) -> None:
+    def __init__(self, coordinator: NjordStatusCoordinator, entry: ConfigEntry) -> None:
         super().__init__(coordinator)
         self._attr_unique_id = f"{entry.entry_id}_uptime"
         self._attr_name = "Uptime"
@@ -758,21 +826,11 @@ class NjordUptimeSensor(CoordinatorEntity[NjordDataCoordinator], SensorEntity):
 
     @property
     def available(self) -> bool:
-        return (
-            self.coordinator.data is not None
-            and self.coordinator.data.server_status is not None
-        )
+        return self.coordinator.data is not None
 
     @property
     def native_value(self) -> float | None:
-        status = self.coordinator.data.server_status
+        status = self.coordinator.data
         if status is None:
             return None
         return round(status.uptime_seconds / 3600, 1)
-
-    @property
-    def extra_state_attributes(self) -> dict[str, object] | None:
-        status = self.coordinator.data.server_status
-        if status is None:
-            return None
-        return {"version": status.version}

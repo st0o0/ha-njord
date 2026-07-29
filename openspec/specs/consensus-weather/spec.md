@@ -10,7 +10,7 @@ A weather entity per location that uses multi-model consensus values instead of 
 
 ### State Mapping
 
-The entity's current state uses the `h0` horizon consensus values. Falls back to first available horizon if h0 is missing.
+The entity's current state uses the time-adjusted horizon `h{elapsed}` consensus values, where `elapsed` is the number of full hours since `consensus_updated_at`. Falls back to `h0` if `consensus_updated_at` is `None`, and to the first available horizon if the adjusted horizon is missing.
 
 | Weather attribute | Consensus parameter | Field used |
 |-------------------|-------------------|------------|
@@ -30,16 +30,16 @@ The entity's current state uses the `h0` horizon consensus values. Falls back to
 
 | Attribute | Source | Description |
 |-----------|--------|-------------|
-| `agreement` | consensus h0 temperature `agreement` | How well models agree (0.0–1.0) |
-| `available_models` | consensus h0 `available_models` | Number of models contributing |
-| `spread` | consensus h0 temperature `spread` | Temperature spread across models (°C) |
-| `reliable_hours` | count of consecutive horizons from h0 with temperature agreement >= 0.5 | Number of hours where models reliably agree |
+| `agreement` | consensus h{elapsed} temperature `agreement` | How well models agree (0.0–1.0) |
+| `available_models` | consensus h{elapsed} `available_models` | Number of models contributing |
+| `spread` | consensus h{elapsed} temperature `spread` | Temperature spread across models (°C) |
+| `reliable_hours` | count of consecutive horizons from h{elapsed} with temperature agreement >= 0.5 | Number of hours where models reliably agree |
 
 ### Forecast Support
 
 The consensus entity supports `forecast_hourly` and `forecast_daily` via HA's weather forecast service.
 
-**Hourly forecasts**: Built from consecutive consensus horizons h1..hN (h0 is excluded as it represents current state). Each entry has timestamp = now + N hours, with median values for temperature, precipitation, wind speed, wind bearing, humidity, cloud cover, and condition (mapped from weather_code median via nearest known WMO code).
+**Hourly forecasts**: Built from consecutive consensus horizons h{elapsed+1}..hN (h0 through h{elapsed} are excluded as they represent past/current state). Each entry has timestamp = now + (N - elapsed) hours, with median values for temperature, precipitation, wind speed, wind bearing, humidity, cloud cover, and condition (mapped from weather_code median via nearest known WMO code).
 
 **Daily forecasts**: Aggregated from hourly consensus data per calendar day. The current (partial) day is excluded. Each daily entry includes: max temperature, min temperature, precipitation sum, max wind speed, and midday condition (derived from weather_code median at the horizon closest to 12:00 UTC for that day).
 
@@ -51,31 +51,37 @@ The consensus entity supports `forecast_hourly` and `forecast_daily` via HA's we
 
 ### Requirements
 
-#### Requirement: Current state uses h0 horizon
-The consensus entity's current state (temperature, humidity, wind, condition, etc.) SHALL use the `h0` horizon instead of `h3`.
+#### Requirement: Current state uses time-adjusted horizon
+The consensus entity's current state (temperature, humidity, wind, condition, etc.) SHALL use the time-adjusted horizon `h{elapsed}` instead of hardcoded `h0`, where `elapsed` is the number of full hours since `consensus_updated_at`. Falls back to `h0` if `consensus_updated_at` is `None`.
 
 ##### Scenario: Current temperature from h0
 - **WHEN** consensus data has an h0 horizon with temperature_2m median = 22.5
+- **AND** consensus was just computed (0 hours elapsed)
 - **THEN** the entity's temperature is 22.5
 
-##### Scenario: Fallback when h0 is missing
-- **WHEN** consensus data has no h0 horizon but has h1
-- **THEN** the entity uses the first available horizon for current state
+##### Scenario: Current temperature after 3 hours
+- **WHEN** consensus data has h3 with temperature_2m median = 25.0
+- **AND** 3 hours have elapsed since consensus computation
+- **THEN** the entity's temperature is 25.0
+
+##### Scenario: Fallback when adjusted horizon is missing
+- **WHEN** elapsed hours exceeds the highest available horizon
+- **THEN** the entity shows "Unknown" state
 
 #### Requirement: Hourly forecast from consecutive horizons
-The consensus entity SHALL support `FORECAST_HOURLY` by building forecast entries from h1..hN consensus horizons, each with a real timestamp.
+The consensus entity SHALL support `FORECAST_HOURLY` by building forecast entries from `h{elapsed+1}..hN` consensus horizons, each with a real timestamp.
 
-##### Scenario: Hourly forecast entries
-- **WHEN** `async_forecast_hourly` is called and consensus has horizons h0-h72
-- **THEN** 72 forecast entries are returned (h1 through h72), each with timestamp = now + N hours, and median values for temperature, precipitation, wind speed, wind bearing, humidity, cloud cover, and condition
+##### Scenario: Hourly forecast entries after elapsed time
+- **WHEN** `async_forecast_hourly` is called and 3 hours have elapsed since consensus computation
+- **THEN** forecast entries start from h4 (not h1), each with timestamp = now + (N - elapsed) hours
 
 ##### Scenario: Condition mapped from weather_code median
 - **WHEN** an hourly consensus horizon has weather_code median = 1.2
 - **THEN** the forecast entry's condition is mapped from WMO code 1 (nearest known code)
 
-##### Scenario: h0 excluded from hourly forecast
-- **WHEN** `async_forecast_hourly` is called
-- **THEN** h0 is not included (it represents the current state, not a forecast)
+##### Scenario: h0 through h{elapsed} excluded from hourly forecast
+- **WHEN** `async_forecast_hourly` is called and 3 hours have elapsed
+- **THEN** horizons h0, h1, h2, h3 are not included
 
 #### Requirement: Daily forecast aggregated from hourly
 The consensus entity SHALL support `FORECAST_DAILY` by aggregating hourly consensus data per calendar day.
@@ -93,15 +99,15 @@ The consensus entity SHALL support `FORECAST_DAILY` by aggregating hourly consen
 - **THEN** condition is derived from the weather_code median at the horizon closest to 12:00 UTC for that day
 
 #### Requirement: Reliability extra state attributes
-The consensus entity SHALL expose reliability information in extra_state_attributes.
+The consensus entity SHALL expose reliability information in extra_state_attributes using the time-adjusted horizon.
 
-##### Scenario: Reliable hours attribute
-- **WHEN** consensus data has temperature_2m agreement >= 0.5 for h0 through h36, then drops below 0.5 at h37
-- **THEN** `reliable_hours` is 37
+##### Scenario: Reliable hours attribute after elapsed time
+- **WHEN** 2 hours have elapsed and temperature agreement drops below 0.5 at h10
+- **THEN** `reliable_hours` is 8 (counting from h2 through h9)
 
-##### Scenario: Agreement and spread from h0
-- **WHEN** consensus data has h0 with temperature_2m agreement=0.8, spread=3.2, available_models=8
-- **THEN** extra_state_attributes contains `agreement=0.8`, `spread=3.2`, `available_models=8`
+##### Scenario: Agreement and spread from adjusted horizon
+- **WHEN** 2 hours have elapsed and h2 temperature has agreement=0.75, spread=2.8, available_models=7
+- **THEN** extra_state_attributes contains `agreement=0.75`, `spread=2.8`, `available_models=7`
 
 #### Requirement: Supported features set at init
 The consensus entity SHALL determine `supported_features` at init based on available consensus data.

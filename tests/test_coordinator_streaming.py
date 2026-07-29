@@ -191,7 +191,7 @@ async def test_stop_streams_cancels_tasks(hass: HomeAssistant) -> None:
     client.stream_config = MagicMock(return_value=never_ending())
 
     coordinator.start_streams()
-    assert len(coordinator._stream_tasks) == 4
+    assert len(coordinator._stream_tasks) == 3
 
     await coordinator.stop_streams()
     assert len(coordinator._stream_tasks) == 0

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 from custom_components.njord.coordinator import merge_enrichment
 from custom_components.njord.models import (
     AlertData,
@@ -114,3 +116,36 @@ def test_merge_preserves_immutability() -> None:
     assert result is not base
     assert base.alerts[0].type == "frost"
     assert result.alerts[0].type == "fog"
+
+
+def test_consensus_merge_updates_timestamp() -> None:
+    ts_old = datetime(2026, 7, 15, 14, 0, tzinfo=UTC)
+    ts_new = datetime(2026, 7, 15, 17, 0, tzinfo=UTC)
+    base = EnrichmentData(
+        location="home",
+        consensus=ConsensusData(parameters=[]),
+        consensus_updated_at=ts_old,
+    )
+    event = EnrichmentData(
+        location="home",
+        consensus=ConsensusData(parameters=[]),
+        consensus_updated_at=ts_new,
+    )
+    result = merge_enrichment(base, event)
+    assert result.consensus_updated_at == ts_new
+
+
+def test_non_consensus_merge_preserves_timestamp() -> None:
+    ts = datetime(2026, 7, 15, 14, 0, tzinfo=UTC)
+    base = EnrichmentData(
+        location="home",
+        consensus=ConsensusData(parameters=[]),
+        consensus_updated_at=ts,
+    )
+    event = EnrichmentData(
+        location="home",
+        alerts=[AlertData(type="storm", severity="red", confidence=1.0)],
+    )
+    result = merge_enrichment(base, event)
+    assert result.consensus_updated_at == ts
+    assert result.alerts == event.alerts
