@@ -34,6 +34,8 @@ The entity's current state uses the time-adjusted horizon `h{elapsed}` consensus
 | `available_models` | consensus h{elapsed} `available_models` | Number of models contributing |
 | `spread` | consensus h{elapsed} temperature `spread` | Temperature spread across models (°C) |
 | `reliable_hours` | count of consecutive horizons from h{elapsed} with temperature agreement >= 0.5 | Number of hours where models reliably agree |
+| `current_horizon` | `f"h{elapsed}"` | The horizon currently being read (e.g. "h5"); changes every hour to prevent HA staleness |
+| `consensus_age_hours` | elapsed hours since `consensus_updated_at` | Hours since njord computed the consensus; absent when `consensus_updated_at` is None |
 
 ### Forecast Support
 
@@ -99,7 +101,7 @@ The consensus entity SHALL support `FORECAST_DAILY` by aggregating hourly consen
 - **THEN** condition is derived from the weather_code median at the horizon closest to 12:00 UTC for that day
 
 #### Requirement: Reliability extra state attributes
-The consensus entity SHALL expose reliability information in extra_state_attributes using the time-adjusted horizon.
+The consensus entity SHALL expose reliability and freshness information in extra_state_attributes using the time-adjusted horizon.
 
 ##### Scenario: Reliable hours attribute after elapsed time
 - **WHEN** 2 hours have elapsed and temperature agreement drops below 0.5 at h10
@@ -108,6 +110,27 @@ The consensus entity SHALL expose reliability information in extra_state_attribu
 ##### Scenario: Agreement and spread from adjusted horizon
 - **WHEN** 2 hours have elapsed and h2 temperature has agreement=0.75, spread=2.8, available_models=7
 - **THEN** extra_state_attributes contains `agreement=0.75`, `spread=2.8`, `available_models=7`
+
+##### Scenario: Current horizon attribute reflects offset
+- **WHEN** 5 hours have elapsed since consensus computation
+- **THEN** extra_state_attributes contains `current_horizon = "h5"`
+
+##### Scenario: Current horizon at zero offset
+- **WHEN** consensus was just computed (0 hours elapsed)
+- **THEN** extra_state_attributes contains `current_horizon = "h0"`
+
+##### Scenario: Consensus age in hours
+- **WHEN** consensus was computed 3 hours ago
+- **THEN** extra_state_attributes contains `consensus_age_hours = 3`
+
+##### Scenario: Consensus age absent when no timestamp
+- **WHEN** `consensus_updated_at` is None
+- **THEN** extra_state_attributes SHALL NOT contain `consensus_age_hours`
+
+##### Scenario: Attributes change every hour to prevent staleness
+- **WHEN** the hourly refresh fires and the horizon offset advances from 4 to 5
+- **THEN** `current_horizon` changes from `"h4"` to `"h5"` and `consensus_age_hours` increments
+- **AND** HA updates `last_updated` on the entity because attributes changed
 
 #### Requirement: Supported features set at init
 The consensus entity SHALL determine `supported_features` at init based on available consensus data.

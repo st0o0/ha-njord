@@ -476,3 +476,33 @@ async def test_consensus_extra_attrs_use_adjusted_horizon(hass: HomeAssistant, m
     assert state is not None
     assert state.attributes["agreement"] == round(0.9 - 3 * 0.015, 2)
     assert state.attributes["available_models"] == 10
+    assert state.attributes["current_horizon"] == "h3"
+    assert state.attributes["consensus_age_hours"] == 3
+
+
+@freeze_time("2026-07-15T14:10:00+00:00")
+async def test_consensus_current_horizon_at_zero_offset(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+    enrichment = _consensus_with_timestamp(datetime(2026, 7, 15, 14, 0, tzinfo=UTC))
+    mock_client.get_enrichments = AsyncMock(return_value=enrichment)
+    await init_integration(hass, mock_config_entry)
+
+    state = hass.states.get("weather.home_consensus")
+    assert state is not None
+    assert state.attributes["current_horizon"] == "h0"
+    assert state.attributes["consensus_age_hours"] == 0
+
+
+@freeze_time("2026-07-15T14:00:00+00:00")
+async def test_consensus_age_absent_without_timestamp(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+    from dataclasses import replace
+    enrichment = replace(
+        _consensus_with_timestamp(datetime(2026, 7, 15, 14, 0, tzinfo=UTC)),
+        consensus_updated_at=None,
+    )
+    mock_client.get_enrichments = AsyncMock(return_value=enrichment)
+    await init_integration(hass, mock_config_entry)
+
+    state = hass.states.get("weather.home_consensus")
+    assert state is not None
+    assert state.attributes["current_horizon"] == "h0"
+    assert "consensus_age_hours" not in state.attributes

@@ -493,12 +493,19 @@ class NjordConsensusWeatherEntity(SingleCoordinatorWeatherEntity[NjordDataCoordi
         temp_h = self._get_horizon_data("temperature_2m")
         if temp_h is None:
             return None
-        return {
+        offset = self._current_horizon_offset()
+        attrs: dict[str, object] = {
             "agreement": temp_h.agreement,
             "available_models": temp_h.available_models,
             "spread": temp_h.spread,
             "reliable_hours": self._reliable_hours(),
+            "current_horizon": f"h{offset}",
         }
+        if self.coordinator.data is not None:
+            enrichment = self.coordinator.data.enrichments.get(self._location)
+            if enrichment is not None and enrichment.consensus_updated_at is not None:
+                attrs["consensus_age_hours"] = offset
+        return attrs
 
     @callback
     def _async_forecast_hourly(self) -> list[Forecast] | None:
