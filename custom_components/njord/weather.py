@@ -19,11 +19,12 @@ from homeassistant.const import (
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.event import async_track_utc_time_change
 
 from .condition_mapper import map_condition
 from .const import DOMAIN
 from .coordinator import NjordDataCoordinator
-from .models import ConsensusData, ForecastData, HorizonConsensusData, ModelInfoData, ModelMetricsData, NjordLocation
+from .models import ConsensusData, ForecastData, HorizonConsensusData, HourlyForecastData, ModelInfoData, ModelMetricsData, NjordLocation
 
 
 async def async_setup_entry(
@@ -97,6 +98,18 @@ class NjordWeatherEntity(SingleCoordinatorWeatherEntity[NjordDataCoordinator]):
             features |= WeatherEntityFeature.FORECAST_DAILY
         self._attr_supported_features = features
 
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        self.async_on_remove(
+            async_track_utc_time_change(
+                self.hass, self._async_hourly_refresh, minute=0, second=0
+            )
+        )
+
+    @callback
+    def _async_hourly_refresh(self, now: datetime) -> None:
+        self.async_write_ha_state()
+
     @property
     def available(self) -> bool:
         return self.coordinator.data is not None and (self._location, self._model) in self.coordinator.data.forecasts
@@ -108,70 +121,59 @@ class NjordWeatherEntity(SingleCoordinatorWeatherEntity[NjordDataCoordinator]):
             return None
         return self.coordinator.data.forecasts.get((self._location, self._model))
 
-    @property
-    def condition(self) -> str | None:
-        """Return the current condition."""
+    def _current_hourly(self) -> HourlyForecastData | None:
         data = self._forecast_data
         if data is None or not data.hourly:
             return None
-        h = data.hourly[0]
-        if h.weather_code is None:
+        now = datetime.now(UTC)
+        best = None
+        for h in data.hourly:
+            if h.valid_at <= now:
+                best = h
+        return best
+
+    @property
+    def condition(self) -> str | None:
+        """Return the current condition."""
+        h = self._current_hourly()
+        if h is None or h.weather_code is None:
             return None
         return map_condition(h.weather_code, h.is_day if h.is_day is not None else True)
 
     @property
     def native_temperature(self) -> float | None:
-        """Return the current temperature."""
-        data = self._forecast_data
-        if data is None or not data.hourly:
-            return None
-        return data.hourly[0].temperature
+        h = self._current_hourly()
+        return h.temperature if h is not None else None
 
     @property
     def humidity(self) -> float | None:
-        """Return the current humidity."""
-        data = self._forecast_data
-        if data is None or not data.hourly:
-            return None
-        return data.hourly[0].humidity
+        h = self._current_hourly()
+        return h.humidity if h is not None else None
 
     @property
     def native_pressure(self) -> float | None:
-        """Return the current pressure."""
-        data = self._forecast_data
-        if data is None or not data.hourly:
-            return None
-        return data.hourly[0].pressure_msl
+        h = self._current_hourly()
+        return h.pressure_msl if h is not None else None
 
     @property
     def native_wind_speed(self) -> float | None:
-        """Return the current wind speed."""
-        data = self._forecast_data
-        if data is None or not data.hourly:
-            return None
-        return data.hourly[0].wind_speed
+        h = self._current_hourly()
+        return h.wind_speed if h is not None else None
 
     @property
     def wind_bearing(self) -> float | None:
-        """Return the current wind bearing."""
-        data = self._forecast_data
-        if data is None or not data.hourly:
-            return None
-        return data.hourly[0].wind_bearing
+        h = self._current_hourly()
+        return h.wind_bearing if h is not None else None
 
     @property
     def native_apparent_temperature(self) -> float | None:
-        data = self._forecast_data
-        if data is None or not data.hourly:
-            return None
-        return data.hourly[0].apparent_temperature
+        h = self._current_hourly()
+        return h.apparent_temperature if h is not None else None
 
     @property
     def cloud_cover(self) -> float | None:
-        data = self._forecast_data
-        if data is None or not data.hourly:
-            return None
-        return data.hourly[0].cloud_cover
+        h = self._current_hourly()
+        return h.cloud_cover if h is not None else None
 
     def _model_metrics(self) -> ModelMetricsData | None:
         if self.coordinator.data is None:
@@ -188,11 +190,9 @@ class NjordWeatherEntity(SingleCoordinatorWeatherEntity[NjordDataCoordinator]):
     def extra_state_attributes(self) -> dict[str, object] | None:
         attrs: dict[str, object] = {}
 
-        data = self._forecast_data
-        if data is not None and data.hourly:
-            extra = data.hourly[0].extra
-            if extra:
-                attrs.update(extra)
+        h = self._current_hourly()
+        if h is not None and h.extra:
+            attrs.update(h.extra)
 
         metrics = self._model_metrics()
         if metrics is not None:
@@ -230,8 +230,11 @@ class NjordWeatherEntity(SingleCoordinatorWeatherEntity[NjordDataCoordinator]):
         if data is None:
             return None
 
+        now = datetime.now(UTC)
         forecasts: list[Forecast] = []
         for h in data.hourly:
+            if h.valid_at < now:
+                continue
             condition = None
             if h.weather_code is not None:
                 condition = map_condition(h.weather_code, h.is_day if h.is_day is not None else True)
@@ -249,7 +252,7 @@ class NjordWeatherEntity(SingleCoordinatorWeatherEntity[NjordDataCoordinator]):
             if h.extra:
                 entry.update(h.extra)
             forecasts.append(entry)
-        return forecasts
+        return forecasts or None
 
     def _daily_condition_from_hourly(self, date_str: str) -> str | None:
         """Derive daily condition from midday hourly entry as fallback."""
@@ -342,6 +345,18 @@ class NjordConsensusWeatherEntity(SingleCoordinatorWeatherEntity[NjordDataCoordi
         if self._sorted_horizons() and len(self._sorted_horizons()) >= 2:
             features |= WeatherEntityFeature.FORECAST_HOURLY | WeatherEntityFeature.FORECAST_DAILY
         self._attr_supported_features = features
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        self.async_on_remove(
+            async_track_utc_time_change(
+                self.hass, self._async_hourly_refresh, minute=0, second=0
+            )
+        )
+
+    @callback
+    def _async_hourly_refresh(self, now: datetime) -> None:
+        self.async_write_ha_state()
 
     def _consensus(self) -> ConsensusData | None:
         if self.coordinator.data is None:

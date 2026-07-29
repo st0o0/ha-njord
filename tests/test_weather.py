@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 from unittest.mock import AsyncMock
 
 import pytest
+from freezegun import freeze_time
 from homeassistant.components.weather import WeatherEntityFeature
 from homeassistant.core import HomeAssistant
 
@@ -174,6 +175,7 @@ async def test_extra_state_attributes_empty(hass: HomeAssistant, mock_client, mo
     assert "cape" not in state.attributes
 
 
+@freeze_time("2026-07-15T11:00:00+00:00")
 async def test_hourly_forecast_includes_extras(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
     mock_client.get_forecast = AsyncMock(
         side_effect=lambda loc, model: ForecastData(
@@ -267,3 +269,105 @@ async def test_daily_forecast_includes_extras(hass: HomeAssistant, mock_client, 
     data = forecasts["weather.home_icon_d2"]["forecast"]
     assert data[0]["soil_moisture"] == 23.5
     assert "soil_moisture" not in data[1]
+
+
+# --- Current-hour selection tests ---
+
+
+def _multi_hour_forecast(loc: str = "home", model: str = "icon_d2") -> ForecastData:
+    return ForecastData(
+        location=loc,
+        model=model,
+        updated_at=datetime(2026, 7, 15, 14, 0, tzinfo=UTC),
+        hourly=[
+            HourlyForecastData(valid_at=datetime(2026, 7, 15, 14, 0, tzinfo=UTC), temperature=20.0, weather_code=1, is_day=True, humidity=60.0, wind_speed=3.0, wind_bearing=90.0, pressure_msl=1010.0),
+            HourlyForecastData(valid_at=datetime(2026, 7, 15, 15, 0, tzinfo=UTC), temperature=21.0, weather_code=2, is_day=True, humidity=58.0, wind_speed=3.5, wind_bearing=100.0, pressure_msl=1011.0),
+            HourlyForecastData(valid_at=datetime(2026, 7, 15, 16, 0, tzinfo=UTC), temperature=22.0, weather_code=3, is_day=True, humidity=55.0, wind_speed=4.0, wind_bearing=110.0, pressure_msl=1012.0),
+            HourlyForecastData(valid_at=datetime(2026, 7, 15, 17, 0, tzinfo=UTC), temperature=23.0, weather_code=1, is_day=True, humidity=52.0, wind_speed=4.5, wind_bearing=120.0, pressure_msl=1013.0),
+            HourlyForecastData(valid_at=datetime(2026, 7, 15, 18, 0, tzinfo=UTC), temperature=22.5, weather_code=2, is_day=True, humidity=54.0, wind_speed=4.0, wind_bearing=115.0, pressure_msl=1012.5),
+        ],
+        daily=[
+            DailyForecastData(date="2026-07-15", temperature_max=28.0, temperature_min=15.0, weather_code=2),
+            DailyForecastData(date="2026-07-16", temperature_max=25.0, temperature_min=14.0, weather_code=1),
+            DailyForecastData(date="2026-07-17", temperature_max=30.0, temperature_min=18.0, weather_code=3),
+        ],
+    )
+
+
+@freeze_time("2026-07-15T16:30:00+00:00")
+async def test_current_hourly_selects_matching_hour(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+    mock_client.get_forecast = AsyncMock(side_effect=lambda loc, model: _multi_hour_forecast(loc, model))
+    await init_integration(hass, mock_config_entry)
+
+    state = hass.states.get("weather.home_icon_d2")
+    assert state is not None
+    assert state.attributes["temperature"] == 22.0
+    assert state.attributes["humidity"] == 55.0
+    assert state.attributes["pressure"] == 1012.0
+    assert state.attributes["wind_bearing"] == 110.0
+
+
+@freeze_time("2026-07-15T14:10:00+00:00")
+async def test_current_hourly_selects_first_entry(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+    mock_client.get_forecast = AsyncMock(side_effect=lambda loc, model: _multi_hour_forecast(loc, model))
+    await init_integration(hass, mock_config_entry)
+
+    state = hass.states.get("weather.home_icon_d2")
+    assert state is not None
+    assert state.attributes["temperature"] == 20.0
+
+
+@freeze_time("2026-07-15T13:00:00+00:00")
+async def test_current_hourly_all_future_returns_unknown(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+    mock_client.get_forecast = AsyncMock(side_effect=lambda loc, model: _multi_hour_forecast(loc, model))
+    await init_integration(hass, mock_config_entry)
+
+    state = hass.states.get("weather.home_icon_d2")
+    assert state is not None
+    assert state.state == "unknown"
+
+
+async def test_current_hourly_empty_returns_unknown(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+    mock_client.get_forecast = AsyncMock(side_effect=Exception("fetch error"))
+    await init_integration(hass, mock_config_entry)
+
+    state = hass.states.get("weather.home_icon_d2")
+    assert state is not None
+    assert state.state == "unknown"
+
+
+# --- Hourly forecast filter tests ---
+
+
+@freeze_time("2026-07-15T16:30:00+00:00")
+async def test_hourly_forecast_filters_past_entries(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+    mock_client.get_forecast = AsyncMock(side_effect=lambda loc, model: _multi_hour_forecast(loc, model))
+    await init_integration(hass, mock_config_entry)
+
+    forecasts = await hass.services.async_call(
+        "weather",
+        "get_forecasts",
+        {"entity_id": "weather.home_icon_d2", "type": "hourly"},
+        blocking=True,
+        return_response=True,
+    )
+    data = forecasts["weather.home_icon_d2"]["forecast"]
+    assert len(data) == 2
+    assert data[0]["temperature"] == 23.0
+    assert data[1]["temperature"] == 22.5
+
+
+@freeze_time("2026-07-15T19:00:00+00:00")
+async def test_hourly_forecast_all_past_returns_none(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+    mock_client.get_forecast = AsyncMock(side_effect=lambda loc, model: _multi_hour_forecast(loc, model))
+    await init_integration(hass, mock_config_entry)
+
+    forecasts = await hass.services.async_call(
+        "weather",
+        "get_forecasts",
+        {"entity_id": "weather.home_icon_d2", "type": "hourly"},
+        blocking=True,
+        return_response=True,
+    )
+    data = forecasts["weather.home_icon_d2"]["forecast"]
+    assert not data
