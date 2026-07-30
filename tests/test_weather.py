@@ -228,6 +228,7 @@ async def test_hourly_forecast_includes_extras(hass: HomeAssistant, mock_client,
     assert "cape" not in data[1]
 
 
+@freeze_time("2026-07-15T14:00:00+00:00")
 async def test_daily_forecast_includes_extras(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
     mock_client.get_forecast = AsyncMock(
         side_effect=lambda loc, model: ForecastData(

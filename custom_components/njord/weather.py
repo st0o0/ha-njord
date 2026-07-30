@@ -277,8 +277,11 @@ class NjordWeatherEntity(SingleCoordinatorWeatherEntity[NjordDataCoordinator]):
         if data is None or not data.daily:
             return None
 
+        today = datetime.now(UTC).date()
         forecasts: list[Forecast] = []
         for d in data.daily:
+            if datetime.strptime(d.date, "%Y-%m-%d").date() < today:
+                continue
             condition = None
             if d.weather_code is not None:
                 condition = map_condition(d.weather_code, True)
