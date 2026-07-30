@@ -52,20 +52,17 @@
       "cdd": { "name": "Cooling Degree Days" },
       "frost_hours": { "name": "Frost Hours" },
       "frost_confidence": { "name": "Frost Confidence" },
+      "beaufort": { "name": "Beaufort" },
+      "wind_chill": { "name": "Wind Chill" },
+      "dewpoint_comfort": { "name": "Dewpoint Comfort" },
       "api_budget": { "name": "API Budget" },
       "uptime": { "name": "Uptime" }
     },
     "binary_sensor": {
-      "frost_alert": { "name": "Frost Alert" },
-      "heat_alert": { "name": "Heat Alert" },
-      "storm_alert": { "name": "Storm Alert" },
-      "heavy_rain_alert": { "name": "Heavy Rain Alert" },
-      "uv_alert": { "name": "UV Alert" },
-      "fog_alert": { "name": "Fog Alert" },
-      "snow_alert": { "name": "Snow Alert" },
-      "pressure_drop_alert": { "name": "Pressure Drop Alert" },
-      "thunderstorm_alert": { "name": "Thunderstorm Alert" },
       "inversion": { "name": "Inversion" }
+    },
+    "event": {
+      "weather_alert": { "name": "Weather Alert" }
     }
   }
 }

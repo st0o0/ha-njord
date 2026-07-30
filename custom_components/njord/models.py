@@ -251,3 +251,4 @@ class EnrichmentData:
     history: HistoryData | None = None
     consensus: ConsensusData | None = None
     consensus_updated_at: datetime | None = None
+    derived_updated_at: datetime | None = None

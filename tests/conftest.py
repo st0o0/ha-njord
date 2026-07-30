@@ -202,6 +202,7 @@ def _default_enrichment(location: str = "home") -> EnrichmentData:
             parameter_trends=[
                 ParameterTrendData(parameter="temperature_2m", direction="stable", delta=0.3),
             ],
+            weather_change_description="Light rain expected in 2 hours",
             stability_label="stable",
             stability_ratio=0.83,
             precip_starts_in_hours=2,
@@ -217,12 +218,14 @@ def _default_enrichment(location: str = "home") -> EnrichmentData:
         ),
         derived=DerivedData(
             by_horizon=[
-                HorizonDerivedData(horizon="h3", beaufort=2, dewpoint_comfort="sticky"),
+                HorizonDerivedData(horizon="h0", beaufort=3, wind_chill=18.5, dewpoint_comfort="comfortable"),
+                HorizonDerivedData(horizon="h3", beaufort=2, wind_chill=16.2, dewpoint_comfort="sticky"),
             ],
             diurnal_amplitude=7.3,
             sunshine_pct=66.4,
             inversion=False,
         ),
+        derived_updated_at=datetime.now(UTC),
         history=HistoryData(
             models=[ModelMetricsData(model="icon_d2", weight=0.5)],
             weighted_temperature=24.48,

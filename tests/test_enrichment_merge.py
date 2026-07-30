@@ -149,3 +149,36 @@ def test_non_consensus_merge_preserves_timestamp() -> None:
     result = merge_enrichment(base, event)
     assert result.consensus_updated_at == ts
     assert result.alerts == event.alerts
+
+
+def test_derived_merge_updates_derived_timestamp() -> None:
+    ts_old = datetime(2026, 7, 15, 14, 0, tzinfo=UTC)
+    ts_new = datetime(2026, 7, 15, 17, 0, tzinfo=UTC)
+    base = EnrichmentData(
+        location="home",
+        derived=DerivedData(sunshine_pct=70.0),
+        derived_updated_at=ts_old,
+    )
+    event = EnrichmentData(
+        location="home",
+        derived=DerivedData(sunshine_pct=50.0),
+        derived_updated_at=ts_new,
+    )
+    result = merge_enrichment(base, event)
+    assert result.derived_updated_at == ts_new
+    assert result.derived.sunshine_pct == 50.0
+
+
+def test_non_derived_merge_preserves_derived_timestamp() -> None:
+    ts = datetime(2026, 7, 15, 14, 0, tzinfo=UTC)
+    base = EnrichmentData(
+        location="home",
+        derived=DerivedData(sunshine_pct=70.0),
+        derived_updated_at=ts,
+    )
+    event = EnrichmentData(
+        location="home",
+        alerts=[AlertData(type="storm", severity="red", confidence=1.0)],
+    )
+    result = merge_enrichment(base, event)
+    assert result.derived_updated_at == ts

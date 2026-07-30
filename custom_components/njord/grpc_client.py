@@ -367,16 +367,19 @@ def _to_consensus_data(pb: common_pb2.ConsensusUpdate) -> ConsensusData:
 
 def _to_enrichment_data(pb: weather_pb2.GetEnrichmentsResponse) -> EnrichmentData:
     has_consensus = pb.HasField("consensus")
+    has_derived = pb.HasField("derived")
+    now = datetime.now(UTC)
     return EnrichmentData(
         location=pb.location,
         alerts=[_to_alert(a) for a in pb.alerts.alerts] if pb.HasField("alerts") else [],
         indices=_to_index_data(pb.indices) if pb.HasField("indices") else None,
         trends=_to_trend_data(pb.trends) if pb.HasField("trends") else None,
         energy=_to_energy_data(pb.energy) if pb.HasField("energy") else None,
-        derived=_to_derived_data(pb.derived) if pb.HasField("derived") else None,
+        derived=_to_derived_data(pb.derived) if has_derived else None,
         history=_to_history_data(pb.history) if pb.HasField("history") else None,
         consensus=_to_consensus_data(pb.consensus) if has_consensus else None,
-        consensus_updated_at=datetime.now(UTC) if has_consensus else None,
+        consensus_updated_at=_ts_to_dt(pb.consensus_updated_at) if has_consensus and pb.HasField("consensus_updated_at") else None,
+        derived_updated_at=now if has_derived else None,
     )
 
 
@@ -385,6 +388,7 @@ def _to_enrichment_event(pb: weather_pb2.EnrichmentEvent) -> EnrichmentData:
     alerts = []
     indices = trends = energy = derived = history = consensus = None
     consensus_updated_at = None
+    derived_updated_at = None
     if payload_field == "alerts":
         alerts = [_to_alert(a) for a in pb.alerts.alerts]
     elif payload_field == "indices":
@@ -395,6 +399,7 @@ def _to_enrichment_event(pb: weather_pb2.EnrichmentEvent) -> EnrichmentData:
         energy = _to_energy_data(pb.energy)
     elif payload_field == "derived":
         derived = _to_derived_data(pb.derived)
+        derived_updated_at = _ts_to_dt(pb.updated_at)
     elif payload_field == "history":
         history = _to_history_data(pb.history)
     elif payload_field == "consensus":
@@ -410,6 +415,7 @@ def _to_enrichment_event(pb: weather_pb2.EnrichmentEvent) -> EnrichmentData:
         history=history,
         consensus=consensus,
         consensus_updated_at=consensus_updated_at,
+        derived_updated_at=derived_updated_at,
     )
 
 

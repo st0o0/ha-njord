@@ -24,6 +24,7 @@ from homeassistant.helpers.event import async_track_utc_time_change
 from .condition_mapper import map_condition
 from .const import DOMAIN
 from .coordinator import NjordDataCoordinator
+from .horizon import current_horizon_offset
 from .models import ConsensusData, ForecastData, HorizonConsensusData, HourlyForecastData, ModelInfoData, ModelMetricsData, NjordLocation
 
 
@@ -370,10 +371,9 @@ class NjordConsensusWeatherEntity(SingleCoordinatorWeatherEntity[NjordDataCoordi
         if self.coordinator.data is None:
             return 0
         enrichment = self.coordinator.data.enrichments.get(self._location)
-        if enrichment is None or enrichment.consensus_updated_at is None:
+        if enrichment is None:
             return 0
-        elapsed = (datetime.now(UTC) - enrichment.consensus_updated_at).total_seconds()
-        return max(0, int(elapsed // 3600))
+        return current_horizon_offset(enrichment.consensus_updated_at)
 
     def _sorted_horizons(self) -> list[str]:
         consensus = self._consensus()
@@ -564,7 +564,7 @@ class NjordConsensusWeatherEntity(SingleCoordinatorWeatherEntity[NjordDataCoordi
             hours_from_now = hours - offset
             forecast_time = now + timedelta(hours=hours_from_now)
             forecast_date = forecast_time.date()
-            if forecast_date <= today:
+            if forecast_date < today:
                 continue
             date_str = forecast_date.isoformat()
             vals = self._horizon_values(horizon)

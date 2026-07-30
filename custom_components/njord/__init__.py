@@ -11,7 +11,7 @@ from .const import DOMAIN
 from .coordinator import NjordDataCoordinator, NjordStatusCoordinator
 from .grpc_client import NjordClient
 
-PLATFORMS = [Platform.WEATHER, Platform.BINARY_SENSOR, Platform.SENSOR, Platform.BUTTON]
+PLATFORMS = [Platform.WEATHER, Platform.BINARY_SENSOR, Platform.SENSOR, Platform.BUTTON, Platform.EVENT]
 
 SERVICE_TRIGGER_POLL = "trigger_poll"
 SERVICE_TRIGGER_POLL_SCHEMA = vol.Schema(

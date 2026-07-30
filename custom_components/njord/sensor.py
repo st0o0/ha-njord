@@ -19,18 +19,8 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
 from .coordinator import NjordDataCoordinator, NjordStatusCoordinator
-from .models import AlertData, EnrichmentData, NjordLocation
-
-INDEX_TYPES = [
-    ("laundry", "Laundry Index", "mdi:tshirt-crew"),
-    ("outdoor", "Outdoor Index", "mdi:pine-tree"),
-    ("running", "Running Index", "mdi:run"),
-    ("cycling", "Cycling Index", "mdi:bike"),
-    ("bbq", "BBQ Index", "mdi:grill"),
-    ("irrigation", "Irrigation Index", "mdi:sprinkler"),
-    ("solar", "Solar Index", "mdi:solar-power"),
-    ("ventilation", "Ventilation Index", "mdi:air-filter"),
-]
+from .horizon import current_horizon_offset, get_horizon_entry
+from .models import AlertData, EnrichmentData, HorizonDerivedData, NjordLocation
 
 ALERT_TYPES = [
     "frost",
@@ -101,6 +91,17 @@ ALERT_ICONS = {
     "thunderstorm": "mdi:weather-lightning",
 }
 
+INDEX_TYPES = [
+    ("laundry", "Laundry Index", "mdi:tshirt-crew"),
+    ("outdoor", "Outdoor Index", "mdi:pine-tree"),
+    ("running", "Running Index", "mdi:run"),
+    ("cycling", "Cycling Index", "mdi:bike"),
+    ("bbq", "BBQ Index", "mdi:grill"),
+    ("irrigation", "Irrigation Index", "mdi:sprinkler"),
+    ("solar", "Solar Index", "mdi:solar-power"),
+    ("ventilation", "Ventilation Index", "mdi:air-filter"),
+]
+
 ENERGY_SENSORS = [
     ("heating_demand", "Heating Demand", "%", "mdi:radiator"),
     ("cop_estimate", "COP Estimate", None, "mdi:heat-pump"),
@@ -159,6 +160,9 @@ async def async_setup_entry(
         entities.append(NjordCddSensor(coordinator, entry, location))
         entities.append(NjordFrostHoursSensor(coordinator, entry, location))
         entities.append(NjordFrostConfidenceSensor(coordinator, entry, location))
+        entities.append(NjordBeaufortSensor(coordinator, entry, location))
+        entities.append(NjordWindChillSensor(coordinator, entry, location))
+        entities.append(NjordDewpointComfortSensor(coordinator, entry, location))
 
     status_coordinator: NjordStatusCoordinator | None = hass.data[DOMAIN][entry.entry_id].get("status_coordinator")
     if status_coordinator is not None:
@@ -186,6 +190,9 @@ async def async_setup_entry(
         new_entities.append(NjordCddSensor(coordinator, entry, location.name))
         new_entities.append(NjordFrostHoursSensor(coordinator, entry, location.name))
         new_entities.append(NjordFrostConfidenceSensor(coordinator, entry, location.name))
+        new_entities.append(NjordBeaufortSensor(coordinator, entry, location.name))
+        new_entities.append(NjordWindChillSensor(coordinator, entry, location.name))
+        new_entities.append(NjordDewpointComfortSensor(coordinator, entry, location.name))
         return new_entities
 
     coordinator.register_entity_factory("sensor", async_add_entities, sensor_factory)
@@ -215,8 +222,6 @@ class _NjordEnrichmentSensor(CoordinatorEntity[NjordDataCoordinator], SensorEnti
 
 class NjordAlertSensor(_NjordEnrichmentSensor):
     """Sensor for a weather alert showing the trigger value."""
-
-    _attr_entity_registry_enabled_default = True
 
     def __init__(
         self,
@@ -432,7 +437,7 @@ class NjordTrendSensor(_NjordEnrichmentSensor):
         enrichment = self._enrichment()
         if enrichment is None or enrichment.trends is None:
             return None
-        return enrichment.trends.stability_label
+        return enrichment.trends.weather_change_description
 
     @property
     def extra_state_attributes(self) -> dict[str, object] | None:
@@ -441,6 +446,8 @@ class NjordTrendSensor(_NjordEnrichmentSensor):
             return None
         t = enrichment.trends
         attrs: dict[str, object] = {}
+        if t.stability_label is not None:
+            attrs["stability_label"] = t.stability_label
         if t.precip_starts_in_hours is not None:
             attrs["precip_starts_in_hours"] = t.precip_starts_in_hours
         if t.precip_ends_in_hours is not None:
@@ -834,3 +841,77 @@ class NjordUptimeSensor(CoordinatorEntity[NjordStatusCoordinator], SensorEntity)
         if status is None:
             return None
         return round(status.uptime_seconds / 3600, 1)
+
+
+class _NjordDerivedHorizonSensor(_NjordEnrichmentSensor):
+    """Base class for sensors reading from DerivedData.by_horizon."""
+
+    def _current_derived_horizon(self) -> HorizonDerivedData | None:
+        enrichment = self._enrichment()
+        if enrichment is None or enrichment.derived is None:
+            return None
+        offset = current_horizon_offset(enrichment.derived_updated_at)
+        return get_horizon_entry(enrichment.derived.by_horizon, offset)
+
+    @property
+    def available(self) -> bool:
+        enrichment = self._enrichment()
+        return enrichment is not None and enrichment.derived is not None
+
+
+class NjordBeaufortSensor(_NjordDerivedHorizonSensor):
+    """Sensor for Beaufort wind scale (0-12)."""
+
+    _attr_suggested_display_precision = 0
+    _attr_icon = "mdi:windsock"
+    _attr_translation_key = "beaufort"
+
+    def __init__(self, coordinator, entry, location):
+        super().__init__(coordinator, entry, location)
+        slug = f"{location}_beaufort".replace("-", "_").replace(" ", "_").lower()
+        self._attr_unique_id = f"{entry.entry_id}_{slug}"
+        self._attr_name = "Beaufort"
+
+    @property
+    def native_value(self) -> int | None:
+        h = self._current_derived_horizon()
+        return h.beaufort if h is not None else None
+
+
+class NjordWindChillSensor(_NjordDerivedHorizonSensor):
+    """Sensor for wind chill temperature."""
+
+    _attr_device_class = SensorDeviceClass.TEMPERATURE
+    _attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
+    _attr_suggested_display_precision = 1
+    _attr_icon = "mdi:snowflake-thermometer"
+    _attr_translation_key = "wind_chill"
+
+    def __init__(self, coordinator, entry, location):
+        super().__init__(coordinator, entry, location)
+        slug = f"{location}_wind_chill".replace("-", "_").replace(" ", "_").lower()
+        self._attr_unique_id = f"{entry.entry_id}_{slug}"
+        self._attr_name = "Wind Chill"
+
+    @property
+    def native_value(self) -> float | None:
+        h = self._current_derived_horizon()
+        return h.wind_chill if h is not None else None
+
+
+class NjordDewpointComfortSensor(_NjordDerivedHorizonSensor):
+    """Sensor for dewpoint comfort category."""
+
+    _attr_icon = "mdi:water-thermometer"
+    _attr_translation_key = "dewpoint_comfort"
+
+    def __init__(self, coordinator, entry, location):
+        super().__init__(coordinator, entry, location)
+        slug = f"{location}_dewpoint_comfort".replace("-", "_").replace(" ", "_").lower()
+        self._attr_unique_id = f"{entry.entry_id}_{slug}"
+        self._attr_name = "Dewpoint Comfort"
+
+    @property
+    def native_value(self) -> str | None:
+        h = self._current_derived_horizon()
+        return h.dewpoint_comfort if h is not None else None

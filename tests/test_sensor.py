@@ -78,7 +78,8 @@ async def test_weather_trend(hass: HomeAssistant, mock_client, mock_config_entry
 
     state = hass.states.get("sensor.home_weather_trend")
     assert state is not None
-    assert state.state == "stable"
+    assert state.state == "Light rain expected in 2 hours"
+    assert state.attributes["stability_label"] == "stable"
     assert state.attributes["precip_starts_in_hours"] == 2
     assert state.attributes["reliable_hours"] == 3
 
@@ -157,6 +158,9 @@ async def test_enrichment_sensors_disabled_by_default(hass: HomeAssistant, mock_
         "sensor.home_heating_demand",
         "sensor.home_weather_trend",
         "sensor.home_heating_degree_days",
+        "sensor.home_beaufort",
+        "sensor.home_wind_chill",
+        "sensor.home_dewpoint_comfort",
     ]
     for entity_id in disabled_sensors:
         entry = registry.async_get(entity_id)
@@ -166,84 +170,37 @@ async def test_enrichment_sensors_disabled_by_default(hass: HomeAssistant, mock_
         assert state is None, f"{entity_id} should have no state when disabled"
 
 
-# --- Alert Sensor Tests ---
+# --- Derived Sensor Tests ---
 
 
-async def test_alert_sensor_uv_value(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
-    await init_integration(hass, mock_config_entry)
+async def test_beaufort_sensor(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+    await _setup_with_sensors_enabled(hass, mock_config_entry)
 
-    state = hass.states.get("sensor.home_uv_alert")
+    state = hass.states.get("sensor.home_beaufort")
     assert state is not None
-    assert float(state.state) == 8.5
-    assert state.attributes["unit_of_measurement"] == "UV"
-    assert state.attributes["severity"] == "orange"
-    assert state.attributes["confidence"] == 1.0
-    assert state.attributes["threshold"] == 6.0
-    assert state.attributes["peak_value"] == 9.2
-    assert state.attributes["hours_until"] == 2
-    assert state.attributes["duration_hours"] == 4
+    assert state.state == "3"
+    assert state.attributes["icon"] == "mdi:windsock"
 
 
-async def test_alert_sensor_heat_partial_attrs(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
-    await init_integration(hass, mock_config_entry)
+async def test_wind_chill_sensor(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+    await _setup_with_sensors_enabled(hass, mock_config_entry)
 
-    state = hass.states.get("sensor.home_heat_alert")
+    state = hass.states.get("sensor.home_wind_chill")
     assert state is not None
-    assert float(state.state) == 38.2
-    assert state.attributes["unit_of_measurement"] == "°C"
-    assert state.attributes["severity"] == "yellow"
-    assert state.attributes["threshold"] == 35.0
-    assert "peak_value" not in state.attributes
-    assert "hours_until" not in state.attributes
+    assert float(state.state) == pytest.approx(18.5)
+    assert state.attributes.get("device_class") == SensorDeviceClass.TEMPERATURE.value
 
 
-async def test_alert_sensor_inactive(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
-    await init_integration(hass, mock_config_entry)
+async def test_dewpoint_comfort_sensor(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+    await _setup_with_sensors_enabled(hass, mock_config_entry)
 
-    state = hass.states.get("sensor.home_frost_alert")
+    state = hass.states.get("sensor.home_dewpoint_comfort")
     assert state is not None
-    assert float(state.state) == 0.0
-    assert state.attributes["unit_of_measurement"] == "°C"
-    assert state.attributes["severity"] == "none"
-
-
-async def test_alert_sensors_enabled_by_default(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
-    await init_integration(hass, mock_config_entry)
-
-    registry = er.async_get(hass)
-    alert_types = ["frost", "heat", "storm", "heavy_rain", "uv", "fog", "snow", "pressure_drop", "thunderstorm"]
-    for alert_type in alert_types:
-        entry = registry.async_get(f"sensor.home_{alert_type}_alert")
-        assert entry is not None, f"Missing alert sensor: {alert_type}"
-        assert entry.disabled_by is None, f"Alert sensor {alert_type} should be enabled by default"
+    assert state.state == "comfortable"
+    assert state.attributes["icon"] == "mdi:water-thermometer"
 
 
 # --- Device Class and Precision Tests ---
-
-
-async def test_alert_device_classes(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
-    await init_integration(hass, mock_config_entry)
-
-    expected = {
-        "frost": SensorDeviceClass.TEMPERATURE,
-        "heat": SensorDeviceClass.TEMPERATURE,
-        "storm": SensorDeviceClass.WIND_SPEED,
-        "pressure_drop": SensorDeviceClass.PRESSURE,
-        "fog": SensorDeviceClass.DISTANCE,
-        "snow": SensorDeviceClass.DISTANCE,
-    }
-    for alert_type, device_class in expected.items():
-        state = hass.states.get(f"sensor.home_{alert_type}_alert")
-        assert state is not None, f"Missing alert sensor: {alert_type}"
-        assert state.attributes.get("device_class") == device_class.value, (
-            f"{alert_type} should have device_class {device_class.value}"
-        )
-
-    no_device_class = ["uv", "heavy_rain", "thunderstorm"]
-    for alert_type in no_device_class:
-        state = hass.states.get(f"sensor.home_{alert_type}_alert")
-        assert state is not None
-        assert "device_class" not in state.attributes, f"{alert_type} should have no device_class"
 
 
 async def test_diurnal_amplitude_device_class(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
