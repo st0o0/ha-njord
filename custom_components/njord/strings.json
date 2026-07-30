@@ -62,7 +62,19 @@
       "inversion": { "name": "Inversion" }
     },
     "event": {
-      "weather_alert": { "name": "Weather Alert" }
+      "weather_alert": {
+        "name": "Weather Alert",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "alert_started": "Alert started",
+              "alert_escalated": "Alert escalated",
+              "alert_deescalated": "Alert de-escalated",
+              "alert_cleared": "Alert cleared"
+            }
+          }
+        }
+      }
     }
   }
 }
