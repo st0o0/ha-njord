@@ -243,5 +243,6 @@ message ParameterConsensus {
 }
 
 message ConsensusUpdate {
-  repeated ParameterConsensus parameters = 1;
+  repeated ParameterConsensus hourly_parameters = 1;
+  repeated ParameterConsensus daily_parameters = 2;
 }

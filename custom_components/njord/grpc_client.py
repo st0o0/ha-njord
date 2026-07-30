@@ -361,7 +361,8 @@ def _to_parameter_consensus(pb: common_pb2.ParameterConsensus) -> ParameterConse
 
 def _to_consensus_data(pb: common_pb2.ConsensusUpdate) -> ConsensusData:
     return ConsensusData(
-        parameters=[_to_parameter_consensus(p) for p in pb.parameters],
+        hourly_parameters=[_to_parameter_consensus(p) for p in pb.hourly_parameters],
+        daily_parameters=[_to_parameter_consensus(p) for p in pb.daily_parameters],
     )
 
 

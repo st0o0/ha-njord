@@ -408,13 +408,26 @@ def _consensus_with_timestamp(updated_at: datetime) -> EnrichmentData:
         is_day_horizons.append(
             HorizonConsensusData(horizon=f"h{i}", median=1.0, available_models=5)
         )
+    daily_temp_max = []
+    daily_temp_min = []
+    daily_wmo = []
+    for d in range(3):
+        daily_temp_max.append(HorizonConsensusData(horizon=f"d{d}", median=28.0 + d, available_models=5))
+        daily_temp_min.append(HorizonConsensusData(horizon=f"d{d}", median=15.0 + d * 0.5, available_models=5))
+        daily_wmo.append(HorizonConsensusData(horizon=f"d{d}", median=1.0, available_models=5))
+
     return EnrichmentData(
         location="home",
         consensus=ConsensusData(
-            parameters=[
+            hourly_parameters=[
                 ParameterConsensusData(parameter="temperature_2m", unit="°C", by_horizon=temp_horizons),
                 ParameterConsensusData(parameter="weather_code", unit="wmo code", by_horizon=wmo_horizons),
                 ParameterConsensusData(parameter="is_day", by_horizon=is_day_horizons),
+            ],
+            daily_parameters=[
+                ParameterConsensusData(parameter="temperature_2m_max", unit="°C", by_horizon=daily_temp_max),
+                ParameterConsensusData(parameter="temperature_2m_min", unit="°C", by_horizon=daily_temp_min),
+                ParameterConsensusData(parameter="weather_code", unit="wmo code", by_horizon=daily_wmo),
             ],
         ),
         consensus_updated_at=updated_at,
@@ -507,3 +520,30 @@ async def test_consensus_age_absent_without_timestamp(hass: HomeAssistant, mock_
     assert state is not None
     assert state.attributes["current_horizon"] == "h0"
     assert "consensus_age_hours" not in state.attributes
+
+
+@freeze_time("2026-07-15T14:00:00+00:00")
+async def test_consensus_daily_forecast_from_server(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+    enrichment = _consensus_with_timestamp(datetime(2026, 7, 15, 14, 0, tzinfo=UTC))
+    mock_client.get_enrichments = AsyncMock(return_value=enrichment)
+    await init_integration(hass, mock_config_entry)
+
+    entity = hass.states.get("weather.home_consensus")
+    assert entity is not None
+
+    forecasts = await hass.services.async_call(
+        "weather", "get_forecasts",
+        {"entity_id": "weather.home_consensus", "type": "daily"},
+        blocking=True, return_response=True,
+    )
+    daily = forecasts["weather.home_consensus"]["forecast"]
+    assert len(daily) == 3
+
+    assert daily[0]["temperature"] == 28.0
+    assert daily[0]["templow"] == 15.0
+    assert daily[0]["datetime"] == "2026-07-15T00:00:00+00:00"
+    assert daily[0]["condition"] == "partlycloudy"
+
+    assert daily[1]["temperature"] == 29.0
+    assert daily[1]["templow"] == 15.5
+    assert daily[1]["datetime"] == "2026-07-16T00:00:00+00:00"

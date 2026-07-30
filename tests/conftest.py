@@ -156,13 +156,32 @@ def _default_consensus() -> ConsensusData:
         wind_horizons.append(
             HorizonConsensusData(horizon=f"h{i}", median=5.0 + (i % 8), available_models=max(2, 10 - i // 10))
         )
+    daily_temp_max = []
+    daily_temp_min = []
+    daily_precip = []
+    daily_wind = []
+    daily_wmo = []
+    for d in range(7):
+        daily_temp_max.append(HorizonConsensusData(horizon=f"d{d}", median=25.0 + d, available_models=5))
+        daily_temp_min.append(HorizonConsensusData(horizon=f"d{d}", median=14.0 + d * 0.5, available_models=5))
+        daily_precip.append(HorizonConsensusData(horizon=f"d{d}", median=0.0 if d < 3 else 2.5, available_models=5))
+        daily_wind.append(HorizonConsensusData(horizon=f"d{d}", median=8.0 + d, available_models=5))
+        daily_wmo.append(HorizonConsensusData(horizon=f"d{d}", median=1.0 if d < 3 else 61.0, available_models=5))
+
     return ConsensusData(
-        parameters=[
+        hourly_parameters=[
             ParameterConsensusData(parameter="temperature_2m", unit="°C", by_horizon=temp_horizons),
             ParameterConsensusData(parameter="weather_code", unit="wmo code", by_horizon=wmo_horizons),
             ParameterConsensusData(parameter="is_day", by_horizon=is_day_horizons),
             ParameterConsensusData(parameter="precipitation", unit="mm", by_horizon=precip_horizons),
             ParameterConsensusData(parameter="wind_speed_10m", unit="m/s", by_horizon=wind_horizons),
+        ],
+        daily_parameters=[
+            ParameterConsensusData(parameter="temperature_2m_max", unit="°C", by_horizon=daily_temp_max),
+            ParameterConsensusData(parameter="temperature_2m_min", unit="°C", by_horizon=daily_temp_min),
+            ParameterConsensusData(parameter="precipitation_sum", unit="mm", by_horizon=daily_precip),
+            ParameterConsensusData(parameter="wind_speed_10m_max", unit="m/s", by_horizon=daily_wind),
+            ParameterConsensusData(parameter="weather_code", unit="wmo code", by_horizon=daily_wmo),
         ],
     )
 

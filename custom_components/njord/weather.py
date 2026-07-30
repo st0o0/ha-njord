@@ -385,7 +385,7 @@ class NjordConsensusWeatherEntity(SingleCoordinatorWeatherEntity[NjordDataCoordi
         consensus = self._consensus()
         if consensus is None:
             return []
-        for param in consensus.parameters:
+        for param in consensus.hourly_parameters:
             if param.parameter == "temperature_2m":
                 return sorted(
                     [h.horizon for h in param.by_horizon],
@@ -398,7 +398,7 @@ class NjordConsensusWeatherEntity(SingleCoordinatorWeatherEntity[NjordDataCoordi
         if consensus is None:
             return {}
         result: dict[str, float | None] = {}
-        for param in consensus.parameters:
+        for param in consensus.hourly_parameters:
             for h in param.by_horizon:
                 if h.horizon == horizon:
                     result[param.parameter] = h.median
@@ -411,7 +411,7 @@ class NjordConsensusWeatherEntity(SingleCoordinatorWeatherEntity[NjordDataCoordi
         consensus = self._consensus()
         if consensus is None:
             return None
-        for param in consensus.parameters:
+        for param in consensus.hourly_parameters:
             if param.parameter == parameter:
                 for h in param.by_horizon:
                     if h.horizon == horizon:
@@ -424,7 +424,7 @@ class NjordConsensusWeatherEntity(SingleCoordinatorWeatherEntity[NjordDataCoordi
         consensus = self._consensus()
         if consensus is None:
             return None
-        for param in consensus.parameters:
+        for param in consensus.hourly_parameters:
             if param.parameter == parameter:
                 for h in param.by_horizon:
                     if h.horizon == horizon:
@@ -477,7 +477,7 @@ class NjordConsensusWeatherEntity(SingleCoordinatorWeatherEntity[NjordDataCoordi
         if consensus is None:
             return 0
         temp_param = None
-        for param in consensus.parameters:
+        for param in consensus.hourly_parameters:
             if param.parameter == "temperature_2m":
                 temp_param = param
                 break
@@ -552,51 +552,56 @@ class NjordConsensusWeatherEntity(SingleCoordinatorWeatherEntity[NjordDataCoordi
             )
         return forecasts
 
+    def _daily_horizon_values(self, horizon: str) -> dict[str, float | None]:
+        consensus = self._consensus()
+        if consensus is None:
+            return {}
+        result: dict[str, float | None] = {}
+        for param in consensus.daily_parameters:
+            for h in param.by_horizon:
+                if h.horizon == horizon:
+                    result[param.parameter] = h.median
+                    break
+        return result
+
+    def _sorted_daily_horizons(self) -> list[str]:
+        consensus = self._consensus()
+        if consensus is None:
+            return []
+        horizons: set[str] = set()
+        for param in consensus.daily_parameters:
+            for h in param.by_horizon:
+                horizons.add(h.horizon)
+        return sorted(horizons, key=lambda x: int(x[1:]))
+
     @callback
     def _async_forecast_daily(self) -> list[Forecast] | None:
         consensus = self._consensus()
-        if consensus is None:
+        if consensus is None or not consensus.daily_parameters:
             return None
 
-        offset = self._current_horizon_offset()
-        now = datetime.now(UTC).replace(minute=0, second=0, microsecond=0)
-        today = now.date()
-
-        days: dict[str, list[tuple[int, dict[str, float | None]]]] = {}
-        for horizon in self._sorted_horizons():
-            hours = int(horizon[1:])
-            if hours <= offset:
-                continue
-            hours_from_now = hours - offset
-            forecast_time = now + timedelta(hours=hours_from_now)
-            forecast_date = forecast_time.date()
-            if forecast_date < today:
-                continue
-            date_str = forecast_date.isoformat()
-            vals = self._horizon_values(horizon)
-            if vals:
-                days.setdefault(date_str, []).append((forecast_time.hour, vals))
-
+        today = datetime.now(UTC).date()
         forecasts: list[Forecast] = []
-        for date_str in sorted(days.keys()):
-            entries = days[date_str]
-            temps = [v.get("temperature_2m") for _, v in entries if v.get("temperature_2m") is not None]
-            precips = [v.get("precipitation") for _, v in entries if v.get("precipitation") is not None]
-            winds = [v.get("wind_speed_10m") for _, v in entries if v.get("wind_speed_10m") is not None]
 
-            midday_entry = min(entries, key=lambda e: abs(e[0] - 12))
-            midday_wmo = midday_entry[1].get("weather_code")
+        for horizon in self._sorted_daily_horizons():
+            day_offset = int(horizon[1:])
+            forecast_date = today + timedelta(days=day_offset)
+            vals = self._daily_horizon_values(horizon)
+            if not vals:
+                continue
+
             condition = None
-            if midday_wmo is not None:
-                condition = map_condition(int(round(midday_wmo)), True)
+            wmo = vals.get("weather_code")
+            if wmo is not None:
+                condition = map_condition(int(round(wmo)), True)
 
             forecasts.append(
                 Forecast(
-                    datetime=f"{date_str}T00:00:00+00:00",
-                    native_temperature=max(temps) if temps else None,
-                    native_templow=min(temps) if temps else None,
-                    precipitation=sum(precips) if precips else None,
-                    native_wind_speed=max(winds) if winds else None,
+                    datetime=f"{forecast_date.isoformat()}T00:00:00+00:00",
+                    native_temperature=vals.get("temperature_2m_max"),
+                    native_templow=vals.get("temperature_2m_min"),
+                    precipitation=vals.get("precipitation_sum"),
+                    native_wind_speed=vals.get("wind_speed_10m_max"),
                     condition=condition,
                 )
             )

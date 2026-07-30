@@ -26,7 +26,7 @@ def _base_enrichment() -> EnrichmentData:
         energy=EnergyData(heating_demand=30),
         derived=DerivedData(sunshine_pct=70.0),
         history=HistoryData(seasonal_best="icon_d2"),
-        consensus=ConsensusData(parameters=[]),
+        consensus=ConsensusData(hourly_parameters=[]),
     )
 
 
@@ -65,7 +65,7 @@ def test_all_enrichment_types_merge_independently() -> None:
         ("energy", EnergyData(heating_demand=50)),
         ("derived", DerivedData(sunshine_pct=20.0)),
         ("history", HistoryData(seasonal_best="gfs")),
-        ("consensus", ConsensusData(parameters=[])),
+        ("consensus", ConsensusData(hourly_parameters=[])),
     ]
 
     for field_name, value in fields_and_values:
@@ -123,12 +123,12 @@ def test_consensus_merge_updates_timestamp() -> None:
     ts_new = datetime(2026, 7, 15, 17, 0, tzinfo=UTC)
     base = EnrichmentData(
         location="home",
-        consensus=ConsensusData(parameters=[]),
+        consensus=ConsensusData(hourly_parameters=[]),
         consensus_updated_at=ts_old,
     )
     event = EnrichmentData(
         location="home",
-        consensus=ConsensusData(parameters=[]),
+        consensus=ConsensusData(hourly_parameters=[]),
         consensus_updated_at=ts_new,
     )
     result = merge_enrichment(base, event)
@@ -139,7 +139,7 @@ def test_non_consensus_merge_preserves_timestamp() -> None:
     ts = datetime(2026, 7, 15, 14, 0, tzinfo=UTC)
     base = EnrichmentData(
         location="home",
-        consensus=ConsensusData(parameters=[]),
+        consensus=ConsensusData(hourly_parameters=[]),
         consensus_updated_at=ts,
     )
     event = EnrichmentData(

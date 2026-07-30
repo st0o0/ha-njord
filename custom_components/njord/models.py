@@ -237,7 +237,8 @@ class ParameterConsensusData:
 
 @dataclass(frozen=True)
 class ConsensusData:
-    parameters: list[ParameterConsensusData] = field(default_factory=list)
+    hourly_parameters: list[ParameterConsensusData] = field(default_factory=list)
+    daily_parameters: list[ParameterConsensusData] = field(default_factory=list)
 
 
 @dataclass(frozen=True)

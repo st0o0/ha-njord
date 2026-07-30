@@ -189,7 +189,8 @@ def test_parameter_consensus_data():
 
 def test_consensus_data_defaults():
     c = ConsensusData()
-    assert c.parameters == []
+    assert c.hourly_parameters == []
+    assert c.daily_parameters == []
 
 
 def test_enrichment_data_defaults():

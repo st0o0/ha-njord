@@ -142,14 +142,22 @@ class MockWeatherServicer(weather_pb2_grpc.WeatherServiceServicer):
                 weighted_temperature=24.48,
             ),
             consensus=common_pb2.ConsensusUpdate(
-                parameters=[
+                hourly_parameters=[
                     common_pb2.ParameterConsensus(
                         parameter="temperature_2m", unit="°C",
                         by_horizon=[
                             common_pb2.HorizonConsensus(horizon="h3", median=20.4, spread=5.2, agreement=0.67, available_models=6),
                         ],
                     ),
-                ]
+                ],
+                daily_parameters=[
+                    common_pb2.ParameterConsensus(
+                        parameter="temperature_2m_max", unit="°C",
+                        by_horizon=[
+                            common_pb2.HorizonConsensus(horizon="d0", median=28.5, available_models=5),
+                        ],
+                    ),
+                ],
             ),
         )
 
@@ -468,7 +476,9 @@ async def test_get_enrichments(client):
     assert enrichment.history.weighted_temperature == pytest.approx(24.48)
 
     assert enrichment.consensus is not None
-    assert enrichment.consensus.parameters[0].by_horizon[0].median == pytest.approx(20.4)
+    assert enrichment.consensus.hourly_parameters[0].by_horizon[0].median == pytest.approx(20.4)
+    assert enrichment.consensus.daily_parameters[0].parameter == "temperature_2m_max"
+    assert enrichment.consensus.daily_parameters[0].by_horizon[0].median == pytest.approx(28.5)
 
 
 @pytest.mark.asyncio
