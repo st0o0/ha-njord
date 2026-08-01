@@ -17,7 +17,17 @@ from .models import EnrichmentData, ForecastData, ModelInfoData, NjordLocation, 
 
 _LOGGER = logging.getLogger(__name__)
 
-_ENRICHMENT_MERGE_FIELDS = ("alerts", "indices", "trends", "energy", "derived", "history", "consensus", "consensus_updated_at", "derived_updated_at")
+_ENRICHMENT_MERGE_FIELDS = (
+    "alerts",
+    "indices",
+    "trends",
+    "energy",
+    "derived",
+    "history",
+    "consensus",
+    "consensus_updated_at",
+    "derived_updated_at",
+)
 _ENRICHMENT_DEFAULTS: dict[str, object] = {
     "alerts": [],
     "indices": None,

@@ -3,9 +3,6 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import TypeVar
-
-T = TypeVar("T")
 
 
 def current_horizon_offset(updated_at: datetime | None) -> int:
@@ -15,7 +12,7 @@ def current_horizon_offset(updated_at: datetime | None) -> int:
     return max(0, int(elapsed // 3600))
 
 
-def get_horizon_entry(horizons: list[T], offset: int) -> T | None:
+def get_horizon_entry[T](horizons: list[T], offset: int) -> T | None:
     target = f"h{offset}"
     for entry in horizons:
         if entry.horizon == target:  # type: ignore[attr-defined]

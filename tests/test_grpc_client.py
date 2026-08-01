@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import importlib.util
-from datetime import UTC, datetime
+from datetime import datetime
 from unittest.mock import MagicMock
 
 import grpc
@@ -116,24 +116,34 @@ class MockWeatherServicer(weather_pb2_grpc.WeatherServiceServicer):
                 ]
             ),
             indices=common_pb2.IndexUpdate(
-                laundry=47, outdoor=56, bbq=51,
-                vpd_kpa=0.59, vpd_category="optimal",
+                laundry=47,
+                outdoor=56,
+                bbq=51,
+                vpd_kpa=0.59,
+                vpd_category="optimal",
             ),
             trends=common_pb2.TrendUpdate(
                 parameter_trends=[
                     common_pb2.ParameterTrend(parameter="temperature_2m", direction="stable", delta=0.3),
                 ],
-                stability_label="stable", stability_ratio=0.83,
-                precip_starts_in_hours=2, reliable_hours=3,
+                stability_label="stable",
+                stability_ratio=0.83,
+                precip_starts_in_hours=2,
+                reliable_hours=3,
             ),
             energy=common_pb2.EnergyUpdate(
-                heating_demand=21, cop_estimate=10.95, shading=12,
-                battery_strategy="discharge", night_cooling=40,
+                heating_demand=21,
+                cop_estimate=10.95,
+                shading=12,
+                battery_strategy="discharge",
+                night_cooling=40,
                 cop_optimal=[common_pb2.CopOptimalHour(hours_from_now=20, cop=14.91)],
             ),
             derived=common_pb2.DerivedUpdate(
                 by_horizon=[
-                    common_pb2.HorizonDerived(horizon="h3", beaufort=2, dewpoint_comfort="sticky", wmo_description="Rain: slight"),
+                    common_pb2.HorizonDerived(
+                        horizon="h3", beaufort=2, dewpoint_comfort="sticky", wmo_description="Rain: slight"
+                    ),
                 ],
                 scalars=common_pb2.ScalarDerived(diurnal_amplitude=7.3, sunshine_pct=66.4, inversion=False),
             ),
@@ -144,15 +154,19 @@ class MockWeatherServicer(weather_pb2_grpc.WeatherServiceServicer):
             consensus=common_pb2.ConsensusUpdate(
                 hourly_parameters=[
                     common_pb2.ParameterConsensus(
-                        parameter="temperature_2m", unit="°C",
+                        parameter="temperature_2m",
+                        unit="°C",
                         by_horizon=[
-                            common_pb2.HorizonConsensus(horizon="h3", median=20.4, spread=5.2, agreement=0.67, available_models=6),
+                            common_pb2.HorizonConsensus(
+                                horizon="h3", median=20.4, spread=5.2, agreement=0.67, available_models=6
+                            ),
                         ],
                     ),
                 ],
                 daily_parameters=[
                     common_pb2.ParameterConsensus(
-                        parameter="temperature_2m_max", unit="°C",
+                        parameter="temperature_2m_max",
+                        unit="°C",
                         by_horizon=[
                             common_pb2.HorizonConsensus(horizon="d0", median=28.5, available_models=5),
                         ],
@@ -181,9 +195,7 @@ class MockWeatherServicer(weather_pb2_grpc.WeatherServiceServicer):
                 location=request.location or "lucerne",
                 type_name="alerts",
                 updated_at=_make_ts(1720000000 + i),
-                alerts=common_pb2.AlertUpdate(
-                    alerts=[common_pb2.Alert(type=2, severity=1, confidence=0.5)]
-                ),
+                alerts=common_pb2.AlertUpdate(alerts=[common_pb2.Alert(type=2, severity=1, confidence=0.5)]),
             )
 
 
@@ -223,13 +235,19 @@ class MockOpsServicer(ops_pb2_grpc.OpsServiceServicer):
             uptime_seconds=3600,
             process_start=_make_ts(1719996400),
             budget=ops_pb2.BudgetStatus(
-                monthly_limit=20000, monthly_used=5000,
-                daily_limit=700, daily_used=100, usage_percent=25.0,
+                monthly_limit=20000,
+                monthly_used=5000,
+                daily_limit=700,
+                daily_used=100,
+                usage_percent=25.0,
             ),
             models=[
                 ops_pb2.ModelStatus(
-                    location="lucerne", model="icon_d2", phase="polling",
-                    next_poll=_make_ts(1720003600), miss_count=0,
+                    location="lucerne",
+                    model="icon_d2",
+                    phase="polling",
+                    next_poll=_make_ts(1720003600),
+                    miss_count=0,
                 ),
             ],
             active_enrichments=["consensus", "alerts"],
@@ -543,9 +561,14 @@ class TestParseExtra:
 class TestToAlert:
     def test_all_fields_set(self):
         pb = common_pb2.Alert(
-            type=5, severity=2, confidence=0.95,
-            trigger_value=8.5, threshold=6.0,
-            peak_value=9.2, hours_until=2, duration_hours=4,
+            type=5,
+            severity=2,
+            confidence=0.95,
+            trigger_value=8.5,
+            threshold=6.0,
+            peak_value=9.2,
+            hours_until=2,
+            duration_hours=4,
         )
         alert = _to_alert(pb)
         assert alert.type == "uv"
@@ -554,8 +577,11 @@ class TestToAlert:
 
     def test_only_required_fields(self):
         pb = common_pb2.Alert(
-            type=2, severity=1, confidence=0.8,
-            trigger_value=38.2, threshold=35.0,
+            type=2,
+            severity=1,
+            confidence=0.8,
+            trigger_value=38.2,
+            threshold=35.0,
         )
         alert = _to_alert(pb)
         assert alert.type == "heat"

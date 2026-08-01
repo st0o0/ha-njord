@@ -6,7 +6,6 @@ import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, ServiceCall
-
 from homeassistant.core import callback as ha_callback
 
 from .const import DOMAIN
@@ -66,13 +65,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             current = frozenset(status_coordinator.data.active_enrichments)
             if current != _previous_enrichments:
                 _previous_enrichments = current
-                hass.async_create_task(
-                    hass.config_entries.async_reload(entry.entry_id)
-                )
+                hass.async_create_task(hass.config_entries.async_reload(entry.entry_id))
 
-        entry.async_on_unload(
-            status_coordinator.async_add_listener(_check_enrichment_changes)
-        )
+        entry.async_on_unload(status_coordinator.async_add_listener(_check_enrichment_changes))
 
     if not hass.services.has_service(DOMAIN, SERVICE_TRIGGER_POLL):
 

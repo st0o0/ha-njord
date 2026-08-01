@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
-from unittest.mock import patch
 
 from custom_components.njord.horizon import current_horizon_offset, get_horizon_entry
 from custom_components.njord.models import HorizonDerivedData
