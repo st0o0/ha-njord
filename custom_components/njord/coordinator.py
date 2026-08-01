@@ -57,6 +57,7 @@ class NjordCoordinatorData:
     forecasts: dict[tuple[str, str], ForecastData] = field(default_factory=dict)
     enrichments: dict[str, EnrichmentData] = field(default_factory=dict)
     model_info: dict[str, ModelInfoData] = field(default_factory=dict)
+    active_enrichments: set[str] | None = None
 
 
 EntityFactory = Callable[[NjordLocation], list]

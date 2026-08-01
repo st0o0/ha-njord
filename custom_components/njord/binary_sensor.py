@@ -25,21 +25,24 @@ async def async_setup_entry(
     coordinator: NjordDataCoordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
 
     entities: list[BinarySensorEntity] = []
+    active = coordinator.data.active_enrichments
 
-    locations = {loc for loc, _ in coordinator.data.forecasts}
-
-    for location in sorted(locations):
-        enrichment = coordinator.data.enrichments.get(location)
-        if enrichment and enrichment.derived is not None:
-            entities.append(NjordInversionEntity(coordinator, entry, location))
+    if active is None or "derived" in active:
+        locations = {loc for loc, _ in coordinator.data.forecasts}
+        for location in sorted(locations):
+            enrichment = coordinator.data.enrichments.get(location)
+            if enrichment and enrichment.derived is not None:
+                entities.append(NjordInversionEntity(coordinator, entry, location))
 
     async_add_entities(entities)
 
     def binary_sensor_factory(location: NjordLocation) -> list[BinarySensorEntity]:
         new_entities: list[BinarySensorEntity] = []
-        enrichment = coordinator.data.enrichments.get(location.name)
-        if enrichment and enrichment.derived is not None:
-            new_entities.append(NjordInversionEntity(coordinator, entry, location.name))
+        act = coordinator.data.active_enrichments
+        if act is None or "derived" in act:
+            enrichment = coordinator.data.enrichments.get(location.name)
+            if enrichment and enrichment.derived is not None:
+                new_entities.append(NjordInversionEntity(coordinator, entry, location.name))
         return new_entities
 
     coordinator.register_entity_factory("binary_sensor", async_add_entities, binary_sensor_factory)

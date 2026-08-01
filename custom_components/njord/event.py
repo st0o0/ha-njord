@@ -28,14 +28,19 @@ async def async_setup_entry(
     coordinator: NjordDataCoordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
 
     entities: list[EventEntity] = []
-    locations = {loc for loc, _ in coordinator.data.forecasts}
+    active = coordinator.data.active_enrichments
 
-    for location in sorted(locations):
-        entities.append(NjordWeatherAlertEvent(coordinator, entry, location))
+    if active is None or "alerts" in active:
+        locations = {loc for loc, _ in coordinator.data.forecasts}
+        for location in sorted(locations):
+            entities.append(NjordWeatherAlertEvent(coordinator, entry, location))
 
     async_add_entities(entities)
 
     def event_factory(location: NjordLocation) -> list[EventEntity]:
+        act = coordinator.data.active_enrichments
+        if act is not None and "alerts" not in act:
+            return []
         return [NjordWeatherAlertEvent(coordinator, entry, location.name)]
 
     coordinator.register_entity_factory("event", async_add_entities, event_factory)

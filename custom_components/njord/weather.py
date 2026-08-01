@@ -41,11 +41,13 @@ async def async_setup_entry(
     for location, model in coordinator.data.forecasts:
         entities.append(NjordWeatherEntity(coordinator, entry, location, model))
 
-    locations = {loc for loc, _ in coordinator.data.forecasts}
-    for location in sorted(locations):
-        enrichment = coordinator.data.enrichments.get(location)
-        if enrichment and enrichment.consensus:
-            entities.append(NjordConsensusWeatherEntity(coordinator, entry, location))
+    active = coordinator.data.active_enrichments
+    if active is None or "consensus" in active:
+        locations = {loc for loc, _ in coordinator.data.forecasts}
+        for location in sorted(locations):
+            enrichment = coordinator.data.enrichments.get(location)
+            if enrichment and enrichment.consensus:
+                entities.append(NjordConsensusWeatherEntity(coordinator, entry, location))
 
     async_add_entities(entities)
 
@@ -53,9 +55,11 @@ async def async_setup_entry(
         new_entities: list[WeatherEntity] = []
         for model in location.models:
             new_entities.append(NjordWeatherEntity(coordinator, entry, location.name, model))
-        enrichment = coordinator.data.enrichments.get(location.name)
-        if enrichment and enrichment.consensus:
-            new_entities.append(NjordConsensusWeatherEntity(coordinator, entry, location.name))
+        act = coordinator.data.active_enrichments
+        if act is None or "consensus" in act:
+            enrichment = coordinator.data.enrichments.get(location.name)
+            if enrichment and enrichment.consensus:
+                new_entities.append(NjordConsensusWeatherEntity(coordinator, entry, location.name))
         return new_entities
 
     coordinator.register_entity_factory("weather", async_add_entities, weather_factory)

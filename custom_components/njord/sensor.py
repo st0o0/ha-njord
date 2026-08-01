@@ -139,30 +139,38 @@ async def async_setup_entry(
 
     entities: list[SensorEntity] = []
     locations = {loc for loc, _ in coordinator.data.forecasts}
+    active = coordinator.data.active_enrichments
 
     for location in sorted(locations):
-        for alert_type in ALERT_TYPES:
-            entities.append(NjordAlertSensor(coordinator, entry, location, alert_type))
+        if active is None or "alerts" in active:
+            for alert_type in ALERT_TYPES:
+                entities.append(NjordAlertSensor(coordinator, entry, location, alert_type))
 
-        for key, name, icon in INDEX_TYPES:
-            entities.append(NjordIndexSensor(coordinator, entry, location, key, name, icon))
+        if active is None or "indices" in active:
+            for key, name, icon in INDEX_TYPES:
+                entities.append(NjordIndexSensor(coordinator, entry, location, key, name, icon))
+            entities.append(NjordVpdSensor(coordinator, entry, location))
+            entities.append(NjordHddSensor(coordinator, entry, location))
+            entities.append(NjordCddSensor(coordinator, entry, location))
+            entities.append(NjordFrostHoursSensor(coordinator, entry, location))
+            entities.append(NjordFrostConfidenceSensor(coordinator, entry, location))
 
-        entities.append(NjordVpdSensor(coordinator, entry, location))
+        if active is None or "energy" in active:
+            for key, name, unit, icon in ENERGY_SENSORS:
+                entities.append(NjordEnergySensor(coordinator, entry, location, key, name, unit, icon))
 
-        for key, name, unit, icon in ENERGY_SENSORS:
-            entities.append(NjordEnergySensor(coordinator, entry, location, key, name, unit, icon))
+        if active is None or "trends" in active:
+            entities.append(NjordTrendSensor(coordinator, entry, location))
 
-        entities.append(NjordTrendSensor(coordinator, entry, location))
-        entities.append(NjordSunshineSensor(coordinator, entry, location))
-        entities.append(NjordDiurnalAmplitudeSensor(coordinator, entry, location))
-        entities.append(NjordHistorySensor(coordinator, entry, location))
-        entities.append(NjordHddSensor(coordinator, entry, location))
-        entities.append(NjordCddSensor(coordinator, entry, location))
-        entities.append(NjordFrostHoursSensor(coordinator, entry, location))
-        entities.append(NjordFrostConfidenceSensor(coordinator, entry, location))
-        entities.append(NjordBeaufortSensor(coordinator, entry, location))
-        entities.append(NjordWindChillSensor(coordinator, entry, location))
-        entities.append(NjordDewpointComfortSensor(coordinator, entry, location))
+        if active is None or "derived" in active:
+            entities.append(NjordSunshineSensor(coordinator, entry, location))
+            entities.append(NjordDiurnalAmplitudeSensor(coordinator, entry, location))
+            entities.append(NjordBeaufortSensor(coordinator, entry, location))
+            entities.append(NjordWindChillSensor(coordinator, entry, location))
+            entities.append(NjordDewpointComfortSensor(coordinator, entry, location))
+
+        if active is None or "history" in active:
+            entities.append(NjordHistorySensor(coordinator, entry, location))
 
     status_coordinator: NjordStatusCoordinator | None = hass.data[DOMAIN][entry.entry_id].get("status_coordinator")
     if status_coordinator is not None:
@@ -174,25 +182,32 @@ async def async_setup_entry(
     async_add_entities(entities)
 
     def sensor_factory(location: NjordLocation) -> list[SensorEntity]:
+        act = coordinator.data.active_enrichments
         new_entities: list[SensorEntity] = []
-        for alert_type in ALERT_TYPES:
-            new_entities.append(NjordAlertSensor(coordinator, entry, location.name, alert_type))
-        for key, name, icon in INDEX_TYPES:
-            new_entities.append(NjordIndexSensor(coordinator, entry, location.name, key, name, icon))
-        new_entities.append(NjordVpdSensor(coordinator, entry, location.name))
-        for key, name, unit, icon in ENERGY_SENSORS:
-            new_entities.append(NjordEnergySensor(coordinator, entry, location.name, key, name, unit, icon))
-        new_entities.append(NjordTrendSensor(coordinator, entry, location.name))
-        new_entities.append(NjordSunshineSensor(coordinator, entry, location.name))
-        new_entities.append(NjordDiurnalAmplitudeSensor(coordinator, entry, location.name))
-        new_entities.append(NjordHistorySensor(coordinator, entry, location.name))
-        new_entities.append(NjordHddSensor(coordinator, entry, location.name))
-        new_entities.append(NjordCddSensor(coordinator, entry, location.name))
-        new_entities.append(NjordFrostHoursSensor(coordinator, entry, location.name))
-        new_entities.append(NjordFrostConfidenceSensor(coordinator, entry, location.name))
-        new_entities.append(NjordBeaufortSensor(coordinator, entry, location.name))
-        new_entities.append(NjordWindChillSensor(coordinator, entry, location.name))
-        new_entities.append(NjordDewpointComfortSensor(coordinator, entry, location.name))
+        if act is None or "alerts" in act:
+            for alert_type in ALERT_TYPES:
+                new_entities.append(NjordAlertSensor(coordinator, entry, location.name, alert_type))
+        if act is None or "indices" in act:
+            for key, name, icon in INDEX_TYPES:
+                new_entities.append(NjordIndexSensor(coordinator, entry, location.name, key, name, icon))
+            new_entities.append(NjordVpdSensor(coordinator, entry, location.name))
+            new_entities.append(NjordHddSensor(coordinator, entry, location.name))
+            new_entities.append(NjordCddSensor(coordinator, entry, location.name))
+            new_entities.append(NjordFrostHoursSensor(coordinator, entry, location.name))
+            new_entities.append(NjordFrostConfidenceSensor(coordinator, entry, location.name))
+        if act is None or "energy" in act:
+            for key, name, unit, icon in ENERGY_SENSORS:
+                new_entities.append(NjordEnergySensor(coordinator, entry, location.name, key, name, unit, icon))
+        if act is None or "trends" in act:
+            new_entities.append(NjordTrendSensor(coordinator, entry, location.name))
+        if act is None or "derived" in act:
+            new_entities.append(NjordSunshineSensor(coordinator, entry, location.name))
+            new_entities.append(NjordDiurnalAmplitudeSensor(coordinator, entry, location.name))
+            new_entities.append(NjordBeaufortSensor(coordinator, entry, location.name))
+            new_entities.append(NjordWindChillSensor(coordinator, entry, location.name))
+            new_entities.append(NjordDewpointComfortSensor(coordinator, entry, location.name))
+        if act is None or "history" in act:
+            new_entities.append(NjordHistorySensor(coordinator, entry, location.name))
         return new_entities
 
     coordinator.register_entity_factory("sensor", async_add_entities, sensor_factory)

@@ -7,6 +7,8 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, ServiceCall
 
+from homeassistant.core import callback as ha_callback
+
 from .const import DOMAIN
 from .coordinator import NjordDataCoordinator, NjordStatusCoordinator
 from .grpc_client import NjordClient
@@ -39,6 +41,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     except Exception:
         status_coordinator = None
 
+    if status_coordinator is not None:
+        coordinator.data.active_enrichments = set(status_coordinator.data.active_enrichments)
+
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = {
         "client": client,
@@ -49,6 +54,25 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     coordinator.start_streams()
+
+    if status_coordinator is not None:
+        _previous_enrichments: frozenset[str] = frozenset(status_coordinator.data.active_enrichments)
+
+        @ha_callback
+        def _check_enrichment_changes() -> None:
+            nonlocal _previous_enrichments
+            if status_coordinator.data is None:
+                return
+            current = frozenset(status_coordinator.data.active_enrichments)
+            if current != _previous_enrichments:
+                _previous_enrichments = current
+                hass.async_create_task(
+                    hass.config_entries.async_reload(entry.entry_id)
+                )
+
+        entry.async_on_unload(
+            status_coordinator.async_add_listener(_check_enrichment_changes)
+        )
 
     if not hass.services.has_service(DOMAIN, SERVICE_TRIGGER_POLL):
 

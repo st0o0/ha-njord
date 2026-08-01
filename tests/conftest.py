@@ -273,6 +273,7 @@ def mock_client():
         version="1.2.3",
         uptime_seconds=3600,
         budget=BudgetStatusData(monthly_limit=20000, monthly_used=5000, daily_limit=700, daily_used=100, usage_percent=25.0),
+        active_enrichments=["consensus", "alerts", "derived", "trends", "indices", "energy", "history"],
     ))
     mock.trigger_poll = AsyncMock(return_value=6)
 
