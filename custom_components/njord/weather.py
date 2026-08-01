@@ -26,7 +26,15 @@ from .condition_mapper import map_condition
 from .const import DOMAIN
 from .coordinator import NjordDataCoordinator
 from .horizon import current_horizon_offset
-from .models import ConsensusData, ForecastData, HorizonConsensusData, HourlyForecastData, ModelInfoData, ModelMetricsData, NjordLocation
+from .models import (
+    ConsensusData,
+    ForecastData,
+    HorizonConsensusData,
+    HourlyForecastData,
+    ModelInfoData,
+    ModelMetricsData,
+    NjordLocation,
+)
 
 
 async def async_setup_entry(
@@ -107,11 +115,7 @@ class NjordWeatherEntity(SingleCoordinatorWeatherEntity[NjordDataCoordinator]):
 
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
-        self.async_on_remove(
-            async_track_utc_time_change(
-                self.hass, self._async_hourly_refresh, minute=0, second=0
-            )
-        )
+        self.async_on_remove(async_track_utc_time_change(self.hass, self._async_hourly_refresh, minute=0, second=0))
 
     @callback
     def _async_hourly_refresh(self, now: datetime) -> None:
@@ -359,11 +363,7 @@ class NjordConsensusWeatherEntity(SingleCoordinatorWeatherEntity[NjordDataCoordi
 
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
-        self.async_on_remove(
-            async_track_utc_time_change(
-                self.hass, self._async_hourly_refresh, minute=0, second=0
-            )
-        )
+        self.async_on_remove(async_track_utc_time_change(self.hass, self._async_hourly_refresh, minute=0, second=0))
 
     @callback
     def _async_hourly_refresh(self, now: datetime) -> None:

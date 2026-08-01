@@ -85,11 +85,7 @@ class NjordWeatherAlertEvent(CoordinatorEntity[NjordDataCoordinator], EventEntit
         enrichment: EnrichmentData | None = self.coordinator.data.enrichments.get(self._location)
         if enrichment is None:
             return {}
-        return {
-            a.type: a.severity
-            for a in enrichment.alerts
-            if a.severity != "none"
-        }
+        return {a.type: a.severity for a in enrichment.alerts if a.severity != "none"}
 
     def _alert_data(self, alert_type: str) -> dict[str, object]:
         base: dict[str, object] = {"type": alert_type, "location": self._location}
@@ -132,11 +128,14 @@ class NjordWeatherAlertEvent(CoordinatorEntity[NjordDataCoordinator], EventEntit
             if prev_severity is None and curr_severity is not None:
                 self._trigger_event(EVENT_ALERT_STARTED, self._alert_data(alert_type))
             elif prev_severity is not None and curr_severity is None:
-                self._trigger_event(EVENT_ALERT_CLEARED, {
-                    "type": alert_type,
-                    "location": self._location,
-                    "previous_severity": prev_severity,
-                })
+                self._trigger_event(
+                    EVENT_ALERT_CLEARED,
+                    {
+                        "type": alert_type,
+                        "location": self._location,
+                        "previous_severity": prev_severity,
+                    },
+                )
             elif prev_severity is not None and curr_severity is not None:
                 severity_order = {"yellow": 1, "orange": 2, "red": 3}
                 prev_rank = severity_order.get(prev_severity, 0)

@@ -33,9 +33,7 @@ class NjordConfigFlow(ConfigFlow, domain=DOMAIN):
         self._locations: list[str] = []
         self._model_count: int = 0
 
-    async def _async_validate_connection(
-        self, host: str, port: int
-    ) -> dict[str, str]:
+    async def _async_validate_connection(self, host: str, port: int) -> dict[str, str]:
         """Validate gRPC connection and populate location/model counts."""
         errors: dict[str, str] = {}
         client = NjordClient(host=host, port=port)

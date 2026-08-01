@@ -379,7 +379,9 @@ def _to_enrichment_data(pb: weather_pb2.GetEnrichmentsResponse) -> EnrichmentDat
         derived=_to_derived_data(pb.derived) if has_derived else None,
         history=_to_history_data(pb.history) if pb.HasField("history") else None,
         consensus=_to_consensus_data(pb.consensus) if has_consensus else None,
-        consensus_updated_at=_ts_to_dt(pb.consensus_updated_at) if has_consensus and pb.HasField("consensus_updated_at") else None,
+        consensus_updated_at=_ts_to_dt(pb.consensus_updated_at)
+        if has_consensus and pb.HasField("consensus_updated_at")
+        else None,
         derived_updated_at=now if has_derived else None,
     )
 
@@ -475,9 +477,7 @@ class NjordClient:
         """Retrieve the current forecast for a location and model."""
         self._ensure_connected()
         assert self._weather_stub is not None
-        resp = await self._weather_stub.GetForecast(
-            weather_pb2.GetForecastRequest(location=location, model=model)
-        )
+        resp = await self._weather_stub.GetForecast(weather_pb2.GetForecastRequest(location=location, model=model))
         return _to_forecast_data(resp)
 
     async def get_config(self) -> NjordConfigData:

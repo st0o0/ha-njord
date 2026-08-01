@@ -290,11 +290,56 @@ def _multi_hour_forecast(loc: str = "home", model: str = "icon_d2") -> ForecastD
         model=model,
         updated_at=datetime(2026, 7, 15, 14, 0, tzinfo=UTC),
         hourly=[
-            HourlyForecastData(valid_at=datetime(2026, 7, 15, 14, 0, tzinfo=UTC), temperature=20.0, weather_code=1, is_day=True, humidity=60.0, wind_speed=3.0, wind_bearing=90.0, pressure_msl=1010.0),
-            HourlyForecastData(valid_at=datetime(2026, 7, 15, 15, 0, tzinfo=UTC), temperature=21.0, weather_code=2, is_day=True, humidity=58.0, wind_speed=3.5, wind_bearing=100.0, pressure_msl=1011.0),
-            HourlyForecastData(valid_at=datetime(2026, 7, 15, 16, 0, tzinfo=UTC), temperature=22.0, weather_code=3, is_day=True, humidity=55.0, wind_speed=4.0, wind_bearing=110.0, pressure_msl=1012.0),
-            HourlyForecastData(valid_at=datetime(2026, 7, 15, 17, 0, tzinfo=UTC), temperature=23.0, weather_code=1, is_day=True, humidity=52.0, wind_speed=4.5, wind_bearing=120.0, pressure_msl=1013.0),
-            HourlyForecastData(valid_at=datetime(2026, 7, 15, 18, 0, tzinfo=UTC), temperature=22.5, weather_code=2, is_day=True, humidity=54.0, wind_speed=4.0, wind_bearing=115.0, pressure_msl=1012.5),
+            HourlyForecastData(
+                valid_at=datetime(2026, 7, 15, 14, 0, tzinfo=UTC),
+                temperature=20.0,
+                weather_code=1,
+                is_day=True,
+                humidity=60.0,
+                wind_speed=3.0,
+                wind_bearing=90.0,
+                pressure_msl=1010.0,
+            ),
+            HourlyForecastData(
+                valid_at=datetime(2026, 7, 15, 15, 0, tzinfo=UTC),
+                temperature=21.0,
+                weather_code=2,
+                is_day=True,
+                humidity=58.0,
+                wind_speed=3.5,
+                wind_bearing=100.0,
+                pressure_msl=1011.0,
+            ),
+            HourlyForecastData(
+                valid_at=datetime(2026, 7, 15, 16, 0, tzinfo=UTC),
+                temperature=22.0,
+                weather_code=3,
+                is_day=True,
+                humidity=55.0,
+                wind_speed=4.0,
+                wind_bearing=110.0,
+                pressure_msl=1012.0,
+            ),
+            HourlyForecastData(
+                valid_at=datetime(2026, 7, 15, 17, 0, tzinfo=UTC),
+                temperature=23.0,
+                weather_code=1,
+                is_day=True,
+                humidity=52.0,
+                wind_speed=4.5,
+                wind_bearing=120.0,
+                pressure_msl=1013.0,
+            ),
+            HourlyForecastData(
+                valid_at=datetime(2026, 7, 15, 18, 0, tzinfo=UTC),
+                temperature=22.5,
+                weather_code=2,
+                is_day=True,
+                humidity=54.0,
+                wind_speed=4.0,
+                wind_bearing=115.0,
+                pressure_msl=1012.5,
+            ),
         ],
         daily=[
             DailyForecastData(date="2026-07-15", temperature_max=28.0, temperature_min=15.0, weather_code=2),
@@ -402,12 +447,8 @@ def _consensus_with_timestamp(updated_at: datetime) -> EnrichmentData:
                 available_models=max(2, 10 - i // 10),
             )
         )
-        wmo_horizons.append(
-            HorizonConsensusData(horizon=f"h{i}", median=1.0, available_models=5)
-        )
-        is_day_horizons.append(
-            HorizonConsensusData(horizon=f"h{i}", median=1.0, available_models=5)
-        )
+        wmo_horizons.append(HorizonConsensusData(horizon=f"h{i}", median=1.0, available_models=5))
+        is_day_horizons.append(HorizonConsensusData(horizon=f"h{i}", median=1.0, available_models=5))
     daily_temp_max = []
     daily_temp_min = []
     daily_wmo = []
@@ -457,9 +498,12 @@ async def test_consensus_reads_h0_when_just_pushed(hass: HomeAssistant, mock_cli
 
 
 @freeze_time("2026-07-15T14:00:00+00:00")
-async def test_consensus_falls_back_to_h0_without_timestamp(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+async def test_consensus_falls_back_to_h0_without_timestamp(
+    hass: HomeAssistant, mock_client, mock_config_entry
+) -> None:
     enrichment = _consensus_with_timestamp(datetime(2026, 7, 15, 14, 0, tzinfo=UTC))
     from dataclasses import replace
+
     enrichment = replace(enrichment, consensus_updated_at=None)
     mock_client.get_enrichments = AsyncMock(return_value=enrichment)
     await init_integration(hass, mock_config_entry)
@@ -470,7 +514,9 @@ async def test_consensus_falls_back_to_h0_without_timestamp(hass: HomeAssistant,
 
 
 @freeze_time("2026-07-18T14:00:00+00:00")
-async def test_consensus_elapsed_exceeds_horizons_returns_unknown(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+async def test_consensus_elapsed_exceeds_horizons_returns_unknown(
+    hass: HomeAssistant, mock_client, mock_config_entry
+) -> None:
     enrichment = _consensus_with_timestamp(datetime(2026, 7, 15, 14, 0, tzinfo=UTC))
     mock_client.get_enrichments = AsyncMock(return_value=enrichment)
     await init_integration(hass, mock_config_entry)
@@ -509,6 +555,7 @@ async def test_consensus_current_horizon_at_zero_offset(hass: HomeAssistant, moc
 @freeze_time("2026-07-15T14:00:00+00:00")
 async def test_consensus_age_absent_without_timestamp(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
     from dataclasses import replace
+
     enrichment = replace(
         _consensus_with_timestamp(datetime(2026, 7, 15, 14, 0, tzinfo=UTC)),
         consensus_updated_at=None,
@@ -532,9 +579,11 @@ async def test_consensus_daily_forecast_from_server(hass: HomeAssistant, mock_cl
     assert entity is not None
 
     forecasts = await hass.services.async_call(
-        "weather", "get_forecasts",
+        "weather",
+        "get_forecasts",
         {"entity_id": "weather.home_consensus", "type": "daily"},
-        blocking=True, return_response=True,
+        blocking=True,
+        return_response=True,
     )
     daily = forecasts["weather.home_consensus"]["forecast"]
     assert len(daily) == 3
