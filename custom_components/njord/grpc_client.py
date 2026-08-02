@@ -599,12 +599,14 @@ class NjordClient:
     ) -> AsyncIterator[T]:
         """Generic reconnecting stream wrapper with exponential backoff."""
         backoff = _BACKOFF_INITIAL
+        connected = False
 
         while True:
             try:
                 call = call_factory()
-                if on_reconnect:
+                if not connected and on_reconnect:
                     on_reconnect()
+                    connected = True
 
                 async for message in call:
                     backoff = _BACKOFF_INITIAL
@@ -621,9 +623,9 @@ class NjordClient:
                     err.code(),
                     backoff,
                 )
-
-            if on_disconnect:
-                on_disconnect()
+                if connected and on_disconnect:
+                    on_disconnect()
+                    connected = False
 
             await asyncio.sleep(backoff)
             backoff = min(backoff * _BACKOFF_FACTOR, _BACKOFF_MAX)

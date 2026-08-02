@@ -459,8 +459,8 @@ async def test_stream_reconnects_on_normal_end(mock_server, monkeypatch):
 
     assert len(updates) == 6
     assert weather_servicer.stream_call_count >= 2
-    assert on_disconnect.call_count >= 1
-    assert on_reconnect.call_count >= 1
+    assert on_disconnect.call_count == 0
+    assert on_reconnect.call_count == 1
 
 
 @pytest.mark.asyncio
@@ -494,8 +494,41 @@ async def test_stream_reconnects_on_failure(mock_server, monkeypatch):
     await asyncio.sleep(1.0)
 
     assert len(updates) == 3
-    assert on_disconnect.call_count >= 1
-    assert on_reconnect.call_count >= 1
+    assert on_disconnect.call_count == 1
+    assert on_reconnect.call_count == 2
+
+
+@pytest.mark.asyncio
+async def test_repeated_errors_do_not_spam_disconnect(mock_server, monkeypatch):
+    """Repeated gRPC errors should only fire on_disconnect once."""
+    if importlib.util.find_spec("pytest_homeassistant_custom_component"):
+        pytest.skip("gRPC poller thread conflicts with HA plugin thread checker")
+    port, weather_servicer, _, _ = mock_server
+    weather_servicer.fail_stream_on_call = 1
+
+    import custom_components.njord.grpc_client as client_module
+
+    monkeypatch.setattr(client_module, "_BACKOFF_INITIAL", 0.05)
+    monkeypatch.setattr(client_module, "_BACKOFF_MAX", 0.1)
+
+    on_disconnect = MagicMock()
+    on_reconnect = MagicMock()
+
+    client = NjordClient(host="localhost", port=port)
+    await client.connect()
+
+    updates: list[ForecastData] = []
+    async for update in client.stream_forecasts(
+        on_disconnect=on_disconnect,
+        on_reconnect=on_reconnect,
+    ):
+        updates.append(update)
+        if len(updates) >= 3:
+            break
+
+    await client.close()
+
+    assert on_disconnect.call_count == 1
 
 
 # --- Enrichment Tests ---
