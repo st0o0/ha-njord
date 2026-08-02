@@ -103,6 +103,17 @@ class ModelStatusData:
 
 
 @dataclass(frozen=True)
+class TargetData:
+    location: str
+    model: str
+    phase: str = ""
+    next_poll: datetime | None = None
+    last_change: datetime | None = None
+    miss_count: int = 0
+    cycle_seconds: int | None = None
+
+
+@dataclass(frozen=True)
 class ServerStatusData:
     version: str = ""
     uptime_seconds: int = 0
@@ -110,6 +121,7 @@ class ServerStatusData:
     process_start: datetime | None = None
     model_statuses: list[ModelStatusData] = field(default_factory=list)
     active_enrichments: list[str] = field(default_factory=list)
+    targets: list[TargetData] = field(default_factory=list)
 
 
 # --- Enrichment data models ---

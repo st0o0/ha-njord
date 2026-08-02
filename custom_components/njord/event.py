@@ -5,18 +5,25 @@ from __future__ import annotations
 from homeassistant.components.event import EventEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
-from .coordinator import NjordDataCoordinator
+from .helpers import device_info
+from .coordinator import NjordDataCoordinator, NjordStatusCoordinator
 from .models import EnrichmentData, NjordLocation
 
 EVENT_ALERT_STARTED = "alert_started"
 EVENT_ALERT_ESCALATED = "alert_escalated"
 EVENT_ALERT_DEESCALATED = "alert_deescalated"
 EVENT_ALERT_CLEARED = "alert_cleared"
+
+
+def _get_sw_version(hass: HomeAssistant, entry: ConfigEntry) -> str | None:
+    status_coordinator: NjordStatusCoordinator | None = hass.data[DOMAIN][entry.entry_id].get("status_coordinator")
+    if status_coordinator is not None and status_coordinator.data is not None:
+        return status_coordinator.data.version or None
+    return None
 
 
 async def async_setup_entry(
@@ -26,14 +33,16 @@ async def async_setup_entry(
 ) -> None:
     """Set up njord event entities."""
     coordinator: NjordDataCoordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
+    sw_version = _get_sw_version(hass, entry)
+    disabled_groups: list[str] = entry.options.get("disabled_enrichment_groups", [])
 
     entities: list[EventEntity] = []
     active = coordinator.data.active_enrichments
 
-    if active is None or "alerts" in active:
+    if (active is None or "alerts" in active) and "alerts" not in disabled_groups:
         locations = {loc for loc, _ in coordinator.data.forecasts}
         for location in sorted(locations):
-            entities.append(NjordWeatherAlertEvent(coordinator, entry, location))
+            entities.append(NjordWeatherAlertEvent(coordinator, entry, location, sw_version))
 
     async_add_entities(entities)
 
@@ -41,7 +50,9 @@ async def async_setup_entry(
         act = coordinator.data.active_enrichments
         if act is not None and "alerts" not in act:
             return []
-        return [NjordWeatherAlertEvent(coordinator, entry, location.name)]
+        if "alerts" in disabled_groups:
+            return []
+        return [NjordWeatherAlertEvent(coordinator, entry, location.name, sw_version)]
 
     coordinator.register_entity_factory("event", async_add_entities, event_factory)
 
@@ -64,6 +75,7 @@ class NjordWeatherAlertEvent(CoordinatorEntity[NjordDataCoordinator], EventEntit
         coordinator: NjordDataCoordinator,
         entry: ConfigEntry,
         location: str,
+        sw_version: str | None = None,
     ) -> None:
         super().__init__(coordinator)
         self._location = location
@@ -72,12 +84,7 @@ class NjordWeatherAlertEvent(CoordinatorEntity[NjordDataCoordinator], EventEntit
         slug = f"{location}_weather_alert".replace("-", "_").replace(" ", "_").lower()
         self._attr_unique_id = f"{entry.entry_id}_{slug}"
         self._attr_name = "Weather Alert"
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, f"{entry.entry_id}_{location}")},
-            name=location.title(),
-            manufacturer="njord",
-            entry_type=None,
-        )
+        self._attr_device_info = device_info(entry, location, sw_version)
 
     def _current_alert_map(self) -> dict[str, str]:
         if self.coordinator.data is None:

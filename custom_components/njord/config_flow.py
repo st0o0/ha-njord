@@ -6,7 +6,8 @@ import logging
 from typing import Any
 
 import voluptuous as vol
-from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
+from homeassistant.config_entries import ConfigFlow, ConfigFlowResult, OptionsFlow
+from homeassistant.core import callback as ha_callback
 
 from .const import DEFAULT_PORT, DOMAIN
 from .grpc_client import NjordClient
@@ -20,11 +21,28 @@ STEP_USER_DATA_SCHEMA = vol.Schema(
     }
 )
 
+ENRICHMENT_GROUPS = [
+    "alerts",
+    "indices",
+    "trends",
+    "energy",
+    "derived",
+    "history",
+    "consensus",
+]
+
+DEFAULT_STATUS_POLL_INTERVAL = 30
+
 
 class NjordConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle a config flow for njord."""
 
     VERSION = 1
+
+    @staticmethod
+    @ha_callback
+    def async_get_options_flow(config_entry):
+        return NjordOptionsFlow(config_entry)
 
     def __init__(self) -> None:
         """Initialize the config flow."""
@@ -111,4 +129,51 @@ class NjordConfigFlow(ConfigFlow, domain=DOMAIN):
                 }
             ),
             errors=errors,
+        )
+
+
+class NjordOptionsFlow(OptionsFlow):
+    """Handle options for njord."""
+
+    def __init__(self, config_entry) -> None:
+        self._config_entry = config_entry
+
+    async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        if user_input is not None:
+            old_disabled = set(self._config_entry.options.get("disabled_enrichment_groups", []))
+            new_disabled = set(ENRICHMENT_GROUPS) - set(user_input.get("enabled_enrichment_groups", ENRICHMENT_GROUPS))
+
+            options = {
+                "status_poll_interval": user_input["status_poll_interval"],
+                "disabled_enrichment_groups": sorted(new_disabled),
+            }
+            result = self.async_create_entry(title="", data=options)
+
+            if new_disabled != old_disabled:
+                self.hass.async_create_task(self.hass.config_entries.async_reload(self._config_entry.entry_id))
+
+            return result
+
+        current_disabled = set(self._config_entry.options.get("disabled_enrichment_groups", []))
+        current_enabled = [g for g in ENRICHMENT_GROUPS if g not in current_disabled]
+
+        return self.async_show_form(
+            step_id="init",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(
+                        "status_poll_interval",
+                        default=self._config_entry.options.get(
+                            "status_poll_interval", DEFAULT_STATUS_POLL_INTERVAL
+                        ),
+                    ): vol.All(int, vol.Range(min=10, max=300)),
+                    vol.Required(
+                        "enabled_enrichment_groups",
+                        default=current_enabled,
+                    ): vol.All(
+                        vol.Coerce(list),
+                        [vol.In(ENRICHMENT_GROUPS)],
+                    ),
+                }
+            ),
         )

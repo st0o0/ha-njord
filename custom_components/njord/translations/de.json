@@ -25,6 +25,36 @@
       "already_configured": "Diese njord-Instanz ist bereits konfiguriert."
     }
   },
+  "options": {
+    "step": {
+      "init": {
+        "title": "njord Optionen",
+        "description": "Status-Abfrageintervall und Enrichment-Gruppen konfigurieren.",
+        "data": {
+          "status_poll_interval": "Status-Abfrageintervall (Sekunden)",
+          "enabled_enrichment_groups": "Aktivierte Enrichment-Gruppen"
+        },
+        "data_description": {
+          "status_poll_interval": "Wie oft der Server-Status abgefragt wird (10–300 Sekunden, Standard 30).",
+          "enabled_enrichment_groups": "Wähle welche Enrichment-Gruppen aktiviert sein sollen. Deaktivierte Gruppen erzeugen keine Entitäten."
+        }
+      }
+    }
+  },
+  "issues": {
+    "stream_forecast_disconnected": {
+      "title": "Vorhersage-Stream getrennt",
+      "description": "Der njord Vorhersage-Stream ist seit über 60 Sekunden getrennt. Daten könnten veraltet sein."
+    },
+    "stream_enrichment_disconnected": {
+      "title": "Enrichment-Stream getrennt",
+      "description": "Der njord Enrichment-Stream ist seit über 60 Sekunden getrennt. Enrichment-Daten könnten veraltet sein."
+    },
+    "stream_config_disconnected": {
+      "title": "Konfigurations-Stream getrennt",
+      "description": "Der njord Konfigurations-Stream ist seit über 60 Sekunden getrennt. Neue Standorte werden nicht erkannt."
+    }
+  },
   "entity": {
     "button": {
       "trigger_poll": { "name": "Abfrage auslösen" }
@@ -56,10 +86,14 @@
       "wind_chill": { "name": "Windchill" },
       "dewpoint_comfort": { "name": "Taupunkt-Komfort" },
       "api_budget": { "name": "API-Budget" },
-      "uptime": { "name": "Betriebszeit" }
+      "uptime": { "name": "Betriebszeit" },
+      "target_poll": { "name": "Abfrage-Ziel" }
     },
     "binary_sensor": {
-      "inversion": { "name": "Inversion" }
+      "inversion": { "name": "Inversion" },
+      "forecast_stream": { "name": "Vorhersage-Stream" },
+      "enrichment_stream": { "name": "Enrichment-Stream" },
+      "config_stream": { "name": "Konfigurations-Stream" }
     },
     "event": {
       "weather_alert": {

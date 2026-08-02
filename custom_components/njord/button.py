@@ -7,10 +7,11 @@ from datetime import UTC, datetime
 from homeassistant.components.button import ButtonEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
+from .helpers import server_device_info
+from .coordinator import NjordStatusCoordinator
 from .grpc_client import NjordClient
 
 
@@ -21,7 +22,11 @@ async def async_setup_entry(
 ) -> None:
     """Set up njord button entities."""
     client: NjordClient = hass.data[DOMAIN][entry.entry_id]["client"]
-    async_add_entities([NjordTriggerPollButton(entry, client)])
+    status_coordinator: NjordStatusCoordinator | None = hass.data[DOMAIN][entry.entry_id].get("status_coordinator")
+    sw_version: str | None = None
+    if status_coordinator is not None and status_coordinator.data is not None:
+        sw_version = status_coordinator.data.version or None
+    async_add_entities([NjordTriggerPollButton(entry, client, sw_version)])
 
 
 class NjordTriggerPollButton(ButtonEntity):
@@ -30,12 +35,10 @@ class NjordTriggerPollButton(ButtonEntity):
     _attr_has_entity_name = True
     _attr_name = "Trigger Poll"
 
-    def __init__(self, entry: ConfigEntry, client: NjordClient) -> None:
+    def __init__(self, entry: ConfigEntry, client: NjordClient, sw_version: str | None = None) -> None:
         self._client = client
         self._attr_unique_id = f"{entry.entry_id}_trigger_poll"
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, f"{entry.entry_id}_server")},
-        )
+        self._attr_device_info = server_device_info(entry, sw_version)
         self._triggered_count: int | None = None
         self._last_triggered: datetime | None = None
 

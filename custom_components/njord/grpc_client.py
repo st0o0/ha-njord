@@ -36,6 +36,7 @@ from .models import (
     ParameterConsensusData,
     ParameterTrendData,
     ServerStatusData,
+    TargetData,
     TrendData,
 )
 from .proto.njord.v2 import (
@@ -200,6 +201,18 @@ def _to_server_status(pb: ops_pb2.StatusResponse) -> ServerStatusData:
         process_start=_ts_to_dt(pb.process_start) if pb.process_start.seconds or pb.process_start.nanos else None,
         model_statuses=[_to_model_status(m) for m in pb.models],
         active_enrichments=list(pb.active_enrichments),
+    )
+
+
+def _to_target_data(pb: ops_pb2.TriggerTarget) -> TargetData:
+    return TargetData(
+        location=pb.location,
+        model=pb.model,
+        phase=pb.phase,
+        next_poll=_ts_to_dt(pb.next_poll) if pb.next_poll.seconds or pb.next_poll.nanos else None,
+        last_change=_ts_to_dt(pb.last_change) if pb.HasField("last_change") else None,
+        miss_count=pb.miss_count,
+        cycle_seconds=pb.cycle_seconds if pb.HasField("cycle_seconds") else None,
     )
 
 
@@ -501,6 +514,13 @@ class NjordClient:
         resp = await self._weather_stub.GetEnrichments(weather_pb2.GetEnrichmentsRequest(location=location))
         return _to_enrichment_data(resp)
 
+    async def get_targets(self) -> list[TargetData]:
+        """Retrieve all poll targets and their state."""
+        self._ensure_connected()
+        assert self._ops_stub is not None
+        resp = await self._ops_stub.GetTargets(ops_pb2.GetTargetsRequest())
+        return [_to_target_data(t) for t in resp.targets]
+
     async def trigger_poll(self, location: str = "", model: str = "") -> int:
         """Trigger a forecast poll and return triggered_count."""
         self._ensure_connected()
@@ -579,20 +599,18 @@ class NjordClient:
     ) -> AsyncIterator[T]:
         """Generic reconnecting stream wrapper with exponential backoff."""
         backoff = _BACKOFF_INITIAL
-        first_connect = True
 
         while True:
             try:
                 call = call_factory()
-                if not first_connect and on_reconnect:
+                if on_reconnect:
                     on_reconnect()
-                first_connect = False
 
                 async for message in call:
                     backoff = _BACKOFF_INITIAL
                     yield converter(message)
 
-                return
+                _LOGGER.debug("Stream ended normally, reconnecting in %.1fs", backoff)
 
             except grpc.aio.AioRpcError as err:
                 if err.code() == grpc.StatusCode.CANCELLED:
@@ -603,8 +621,9 @@ class NjordClient:
                     err.code(),
                     backoff,
                 )
-                if on_disconnect:
-                    on_disconnect()
 
-                await asyncio.sleep(backoff)
-                backoff = min(backoff * _BACKOFF_FACTOR, _BACKOFF_MAX)
+            if on_disconnect:
+                on_disconnect()
+
+            await asyncio.sleep(backoff)
+            backoff = min(backoff * _BACKOFF_FACTOR, _BACKOFF_MAX)

@@ -392,6 +392,8 @@ async def test_stream_forecasts(client):
     updates: list[ForecastData] = []
     async for update in client.stream_forecasts():
         updates.append(update)
+        if len(updates) >= 3:
+            break
     assert len(updates) == 3
     assert all(isinstance(u, ForecastData) for u in updates)
     assert updates[0].location == "lucerne"
@@ -404,6 +406,8 @@ async def test_stream_forecasts_with_location(client):
     updates: list[ForecastData] = []
     async for update in client.stream_forecasts(location="zurich"):
         updates.append(update)
+        if len(updates) >= 3:
+            break
     assert len(updates) == 3
     assert all(u.location == "zurich" for u in updates)
 
@@ -413,6 +417,8 @@ async def test_stream_config(client):
     configs: list[NjordConfigData] = []
     async for config in client.stream_config():
         configs.append(config)
+        if len(configs) >= 2:
+            break
     assert len(configs) == 2
     assert all(isinstance(c, NjordConfigData) for c in configs)
     assert configs[0].forecast_days == 7
@@ -420,6 +426,41 @@ async def test_stream_config(client):
 
 
 # --- Reconnect Tests ---
+
+
+@pytest.mark.asyncio
+async def test_stream_reconnects_on_normal_end(mock_server, monkeypatch):
+    """Stream that ends normally (EOF) should reconnect, not exit."""
+    if importlib.util.find_spec("pytest_homeassistant_custom_component"):
+        pytest.skip("gRPC poller thread conflicts with HA plugin thread checker")
+    port, weather_servicer, _, _ = mock_server
+
+    import custom_components.njord.grpc_client as client_module
+
+    monkeypatch.setattr(client_module, "_BACKOFF_INITIAL", 0.05)
+    monkeypatch.setattr(client_module, "_BACKOFF_MAX", 0.1)
+
+    on_disconnect = MagicMock()
+    on_reconnect = MagicMock()
+
+    client = NjordClient(host="localhost", port=port)
+    await client.connect()
+
+    updates: list[ForecastData] = []
+    async for update in client.stream_forecasts(
+        on_disconnect=on_disconnect,
+        on_reconnect=on_reconnect,
+    ):
+        updates.append(update)
+        if len(updates) >= 6:
+            break
+
+    await client.close()
+
+    assert len(updates) == 6
+    assert weather_servicer.stream_call_count >= 2
+    assert on_disconnect.call_count >= 1
+    assert on_reconnect.call_count >= 1
 
 
 @pytest.mark.asyncio
@@ -504,6 +545,8 @@ async def test_stream_enrichments(client):
     updates: list[EnrichmentData] = []
     async for update in client.stream_enrichments():
         updates.append(update)
+        if len(updates) >= 2:
+            break
     assert len(updates) == 2
     assert all(isinstance(u, EnrichmentData) for u in updates)
     assert updates[0].location == "lucerne"

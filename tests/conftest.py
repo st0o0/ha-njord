@@ -31,6 +31,7 @@ from custom_components.njord.models import (
     ParameterConsensusData,
     ParameterTrendData,
     ServerStatusData,
+    TargetData,
     TrendData,
 )
 
@@ -307,6 +308,24 @@ def mock_client():
         )
     )
     mock.trigger_poll = AsyncMock(return_value=6)
+    mock.get_targets = AsyncMock(
+        return_value=[
+            TargetData(
+                location="home",
+                model="icon_d2",
+                phase="polling",
+                next_poll=datetime(2026, 7, 15, 12, 30, tzinfo=UTC),
+                miss_count=0,
+            ),
+            TargetData(
+                location="home",
+                model="ecmwf_ifs025",
+                phase="polling",
+                next_poll=datetime(2026, 7, 15, 13, 0, tzinfo=UTC),
+                miss_count=1,
+            ),
+        ]
+    )
 
     async def _empty_async_gen(**kwargs):
         return

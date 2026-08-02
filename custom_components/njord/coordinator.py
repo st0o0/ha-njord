@@ -10,12 +10,16 @@ from datetime import UTC, datetime, timedelta
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.issue_registry import IssueSeverity, async_create_issue, async_delete_issue
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
+from .const import DOMAIN
 from .grpc_client import NjordClient
 from .models import EnrichmentData, ForecastData, ModelInfoData, NjordLocation, ServerStatusData
 
 _LOGGER = logging.getLogger(__name__)
+
+_STREAM_DISCONNECT_GRACE = 60.0
 
 _ENRICHMENT_MERGE_FIELDS = (
     "alerts",
@@ -87,6 +91,13 @@ class NjordDataCoordinator(DataUpdateCoordinator[NjordCoordinatorData]):
         self._known_locations: set[str] = set()
         self._stream_tasks: list[asyncio.Task] = []
         self._entity_factories: dict[str, tuple[AddEntitiesCallback, EntityFactory]] = {}
+        self.stream_states: dict[str, bool] = {
+            "forecast": False,
+            "enrichment": False,
+            "config": False,
+        }
+        self._stream_disconnect_times: dict[str, float] = {}
+        self._stream_issue_created: dict[str, bool] = {}
 
     async def _async_update_data(self) -> NjordCoordinatorData:
         """Unary first-refresh: fetch all data via single calls."""
@@ -149,31 +160,77 @@ class NjordDataCoordinator(DataUpdateCoordinator[NjordCoordinatorData]):
         await asyncio.gather(*self._stream_tasks, return_exceptions=True)
         self._stream_tasks.clear()
 
+    def _on_stream_connect(self, name: str) -> None:
+        self.stream_states[name] = True
+        self._stream_disconnect_times.pop(name, None)
+        if self._stream_issue_created.get(name):
+            async_delete_issue(self.hass, DOMAIN, f"stream_{name}_disconnected")
+            self._stream_issue_created[name] = False
+        self.async_set_updated_data(self.data)
+
+    def _on_stream_disconnect(self, name: str) -> None:
+        self.stream_states[name] = False
+        if name not in self._stream_disconnect_times:
+            self._stream_disconnect_times[name] = self.hass.loop.time()
+        elif not self._stream_issue_created.get(name):
+            elapsed = self.hass.loop.time() - self._stream_disconnect_times[name]
+            if elapsed >= _STREAM_DISCONNECT_GRACE:
+                async_create_issue(
+                    self.hass,
+                    DOMAIN,
+                    f"stream_{name}_disconnected",
+                    is_fixable=False,
+                    severity=IssueSeverity.WARNING,
+                    translation_key=f"stream_{name}_disconnected",
+                )
+                self._stream_issue_created[name] = True
+        self.async_set_updated_data(self.data)
+
     async def _run_forecast_stream(self) -> None:
         try:
-            async for update in self.client.stream_forecasts(location=None):
+            async for update in self.client.stream_forecasts(
+                location=None,
+                on_reconnect=lambda: self._on_stream_connect("forecast"),
+                on_disconnect=lambda: self._on_stream_disconnect("forecast"),
+            ):
                 self.data.forecasts[(update.location, update.model)] = update
                 self.async_set_updated_data(self.data)
         except asyncio.CancelledError:
             return
+        except Exception:
+            _LOGGER.exception("Forecast stream task failed")
+            self._on_stream_disconnect("forecast")
 
     async def _run_enrichment_stream(self) -> None:
         try:
-            async for event in self.client.stream_enrichments(location=None):
+            async for event in self.client.stream_enrichments(
+                location=None,
+                on_reconnect=lambda: self._on_stream_connect("enrichment"),
+                on_disconnect=lambda: self._on_stream_disconnect("enrichment"),
+            ):
                 existing = self.data.enrichments.get(event.location)
                 self.data.enrichments[event.location] = merge_enrichment(existing, event)
                 self.async_set_updated_data(self.data)
         except asyncio.CancelledError:
             return
+        except Exception:
+            _LOGGER.exception("Enrichment stream task failed")
+            self._on_stream_disconnect("enrichment")
 
     async def _run_config_stream(self) -> None:
         try:
-            async for config in self.client.stream_config():
+            async for config in self.client.stream_config(
+                on_reconnect=lambda: self._on_stream_connect("config"),
+                on_disconnect=lambda: self._on_stream_disconnect("config"),
+            ):
                 new_locations = [loc for loc in config.locations if loc.name not in self._known_locations]
                 for location in new_locations:
                     await self._create_entities_for_location(location)
         except asyncio.CancelledError:
             return
+        except Exception:
+            _LOGGER.exception("Config stream task failed")
+            self._on_stream_disconnect("config")
 
     async def _create_entities_for_location(self, location: NjordLocation) -> None:
         self._known_locations.add(location.name)
@@ -219,17 +276,24 @@ class NjordDataCoordinator(DataUpdateCoordinator[NjordCoordinatorData]):
 class NjordStatusCoordinator(DataUpdateCoordinator[ServerStatusData]):
     """Polling coordinator for njord server status (budget, uptime)."""
 
-    def __init__(self, hass: HomeAssistant, client: NjordClient) -> None:
+    def __init__(self, hass: HomeAssistant, client: NjordClient, poll_interval: int = 30) -> None:
         super().__init__(
             hass,
             _LOGGER,
             name="njord_status",
-            update_interval=timedelta(seconds=30),
+            update_interval=timedelta(seconds=poll_interval),
         )
         self.client = client
 
     async def _async_update_data(self) -> ServerStatusData:
         try:
-            return await self.client.get_status()
+            status = await self.client.get_status()
         except Exception as err:
             raise UpdateFailed(f"Failed to get njord status: {err}") from err
+
+        try:
+            targets = await self.client.get_targets()
+        except Exception:
+            targets = []
+
+        return replace(status, targets=targets)

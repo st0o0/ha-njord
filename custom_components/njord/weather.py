@@ -18,14 +18,15 @@ from homeassistant.const import (
     UnitOfTemperature,
 )
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_track_utc_time_change
 
 from .condition_mapper import map_condition
 from .const import DOMAIN
 from .coordinator import NjordDataCoordinator
+from .helpers import device_info
 from .horizon import current_horizon_offset
+from .coordinator import NjordStatusCoordinator
 from .models import (
     ConsensusData,
     ForecastData,
@@ -36,6 +37,13 @@ from .models import (
 )
 
 
+def _get_sw_version(hass: HomeAssistant, entry: ConfigEntry) -> str | None:
+    status_coordinator: NjordStatusCoordinator | None = hass.data[DOMAIN][entry.entry_id].get("status_coordinator")
+    if status_coordinator is not None and status_coordinator.data is not None:
+        return status_coordinator.data.version or None
+    return None
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
@@ -43,30 +51,32 @@ async def async_setup_entry(
 ) -> None:
     """Set up njord weather entities."""
     coordinator: NjordDataCoordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
+    sw_version = _get_sw_version(hass, entry)
 
     entities: list[WeatherEntity] = []
     for location, model in coordinator.data.forecasts:
-        entities.append(NjordWeatherEntity(coordinator, entry, location, model))
+        entities.append(NjordWeatherEntity(coordinator, entry, location, model, sw_version))
 
+    disabled_groups: list[str] = entry.options.get("disabled_enrichment_groups", [])
     active = coordinator.data.active_enrichments
-    if active is None or "consensus" in active:
+    if (active is None or "consensus" in active) and "consensus" not in disabled_groups:
         locations = {loc for loc, _ in coordinator.data.forecasts}
         for location in sorted(locations):
             enrichment = coordinator.data.enrichments.get(location)
             if enrichment and enrichment.consensus:
-                entities.append(NjordConsensusWeatherEntity(coordinator, entry, location))
+                entities.append(NjordConsensusWeatherEntity(coordinator, entry, location, sw_version))
 
     async_add_entities(entities)
 
     def weather_factory(location: NjordLocation) -> list[WeatherEntity]:
         new_entities: list[WeatherEntity] = []
         for model in location.models:
-            new_entities.append(NjordWeatherEntity(coordinator, entry, location.name, model))
+            new_entities.append(NjordWeatherEntity(coordinator, entry, location.name, model, sw_version))
         act = coordinator.data.active_enrichments
-        if act is None or "consensus" in act:
+        if (act is None or "consensus" in act) and "consensus" not in disabled_groups:
             enrichment = coordinator.data.enrichments.get(location.name)
             if enrichment and enrichment.consensus:
-                new_entities.append(NjordConsensusWeatherEntity(coordinator, entry, location.name))
+                new_entities.append(NjordConsensusWeatherEntity(coordinator, entry, location.name, sw_version))
         return new_entities
 
     coordinator.register_entity_factory("weather", async_add_entities, weather_factory)
@@ -87,6 +97,7 @@ class NjordWeatherEntity(SingleCoordinatorWeatherEntity[NjordDataCoordinator]):
         entry: ConfigEntry,
         location: str,
         model: str,
+        sw_version: str | None = None,
     ) -> None:
         """Initialize the weather entity."""
         super().__init__(coordinator)
@@ -97,12 +108,7 @@ class NjordWeatherEntity(SingleCoordinatorWeatherEntity[NjordDataCoordinator]):
         self._attr_unique_id = f"{entry.entry_id}_{slug}"
         info = coordinator.data.model_info.get(model)
         self._attr_name = info.display_name if info and info.display_name else model
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, f"{entry.entry_id}_{location}")},
-            name=location.title(),
-            manufacturer="njord",
-            entry_type=None,
-        )
+        self._attr_device_info = device_info(entry, location, sw_version)
 
         data = coordinator.data.forecasts.get((location, model))
         features = WeatherEntityFeature(0)
@@ -341,6 +347,7 @@ class NjordConsensusWeatherEntity(SingleCoordinatorWeatherEntity[NjordDataCoordi
         coordinator: NjordDataCoordinator,
         entry: ConfigEntry,
         location: str,
+        sw_version: str | None = None,
     ) -> None:
         super().__init__(coordinator)
         self._location = location
@@ -348,12 +355,7 @@ class NjordConsensusWeatherEntity(SingleCoordinatorWeatherEntity[NjordDataCoordi
         slug = f"{location}_consensus".replace("-", "_").replace(" ", "_").lower()
         self._attr_unique_id = f"{entry.entry_id}_{slug}"
         self._attr_name = "Consensus"
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, f"{entry.entry_id}_{location}")},
-            name=location.title(),
-            manufacturer="njord",
-            entry_type=None,
-        )
+        self._attr_device_info = device_info(entry, location, sw_version)
 
         features = WeatherEntityFeature(0)
         if self._sorted_horizons() and len(self._sorted_horizons()) >= 2:

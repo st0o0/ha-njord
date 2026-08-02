@@ -5,11 +5,11 @@ Defines a dedicated status coordinator that polls server status independently fr
 ## Requirements
 
 ### Requirement: Dedicated status coordinator polls server status
-A `NjordStatusCoordinator` SHALL poll `OpsService.GetStatus` every 30 seconds using HA's `DataUpdateCoordinator` with `update_interval=timedelta(seconds=30)`. Its data type SHALL be `ServerStatusData`.
+A `NjordStatusCoordinator` SHALL poll `OpsService.GetStatus` and `OpsService.GetTargets` using HA's `DataUpdateCoordinator`. Its `update_interval` SHALL default to `timedelta(seconds=30)` but SHALL be configurable via `ConfigEntry.options["status_poll_interval"]`. Its data type SHALL be `ServerStatusData` which includes a `targets: list[TargetData]` field.
 
 #### Scenario: Normal polling cycle
-- **WHEN** 30 seconds have elapsed since the last update
-- **THEN** the coordinator calls `OpsService.GetStatus` and updates its data
+- **WHEN** the configured interval has elapsed since the last update
+- **THEN** the coordinator calls both `GetStatus` and `GetTargets` and updates its data
 
 #### Scenario: First refresh on startup
 - **WHEN** the integration is set up
@@ -18,6 +18,14 @@ A `NjordStatusCoordinator` SHALL poll `OpsService.GetStatus` every 30 seconds us
 #### Scenario: Server unreachable
 - **WHEN** `GetStatus` raises an exception
 - **THEN** the coordinator raises `UpdateFailed` and HA applies exponential backoff automatically
+
+#### Scenario: Custom poll interval from options
+- **WHEN** `entry.options["status_poll_interval"]` is 60
+- **THEN** the coordinator uses a 60-second update interval
+
+#### Scenario: Poll interval updated without reload
+- **WHEN** the user changes the poll interval via OptionsFlow without changing enrichment groups
+- **THEN** the coordinator's `update_interval` is updated in-place
 
 ### Requirement: Status coordinator failure does not block integration setup
 If the status coordinator's first refresh fails, the integration SHALL still load. Weather entities and the data coordinator SHALL function independently.

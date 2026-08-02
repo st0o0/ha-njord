@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import timedelta
+
 import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
@@ -22,6 +24,8 @@ SERVICE_TRIGGER_POLL_SCHEMA = vol.Schema(
     }
 )
 
+DEFAULT_STATUS_POLL_INTERVAL = 30
+
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up njord from a config entry."""
@@ -34,7 +38,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     coordinator = NjordDataCoordinator(hass, client)
     await coordinator.async_config_entry_first_refresh()
 
-    status_coordinator = NjordStatusCoordinator(hass, client)
+    poll_interval = entry.options.get("status_poll_interval", DEFAULT_STATUS_POLL_INTERVAL)
+    status_coordinator = NjordStatusCoordinator(hass, client, poll_interval=poll_interval)
     try:
         await status_coordinator.async_config_entry_first_refresh()
     except Exception:
@@ -68,6 +73,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 hass.async_create_task(hass.config_entries.async_reload(entry.entry_id))
 
         entry.async_on_unload(status_coordinator.async_add_listener(_check_enrichment_changes))
+
+    async def _async_options_updated(hass: HomeAssistant, config_entry: ConfigEntry) -> None:
+        new_interval = config_entry.options.get("status_poll_interval", DEFAULT_STATUS_POLL_INTERVAL)
+        if status_coordinator is not None:
+            status_coordinator.update_interval = timedelta(seconds=new_interval)
+
+    entry.async_on_unload(entry.add_update_listener(_async_options_updated))
 
     if not hass.services.has_service(DOMAIN, SERVICE_TRIGGER_POLL):
 

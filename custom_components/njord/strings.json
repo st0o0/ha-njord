@@ -25,6 +25,36 @@
       "already_configured": "This njord instance is already configured."
     }
   },
+  "options": {
+    "step": {
+      "init": {
+        "title": "njord Options",
+        "description": "Configure status polling and enrichment groups.",
+        "data": {
+          "status_poll_interval": "Status poll interval (seconds)",
+          "enabled_enrichment_groups": "Enabled enrichment groups"
+        },
+        "data_description": {
+          "status_poll_interval": "How often to poll server status (10–300 seconds, default 30).",
+          "enabled_enrichment_groups": "Select which enrichment groups to enable. Disabled groups will not create entities."
+        }
+      }
+    }
+  },
+  "issues": {
+    "stream_forecast_disconnected": {
+      "title": "Forecast stream disconnected",
+      "description": "The njord forecast stream has been disconnected for over 60 seconds. Data may be stale."
+    },
+    "stream_enrichment_disconnected": {
+      "title": "Enrichment stream disconnected",
+      "description": "The njord enrichment stream has been disconnected for over 60 seconds. Enrichment data may be stale."
+    },
+    "stream_config_disconnected": {
+      "title": "Config stream disconnected",
+      "description": "The njord config stream has been disconnected for over 60 seconds. New locations will not be detected."
+    }
+  },
   "entity": {
     "button": {
       "trigger_poll": { "name": "Trigger Poll" }
@@ -56,10 +86,14 @@
       "wind_chill": { "name": "Wind Chill" },
       "dewpoint_comfort": { "name": "Dewpoint Comfort" },
       "api_budget": { "name": "API Budget" },
-      "uptime": { "name": "Uptime" }
+      "uptime": { "name": "Uptime" },
+      "target_poll": { "name": "Poll Target" }
     },
     "binary_sensor": {
-      "inversion": { "name": "Inversion" }
+      "inversion": { "name": "Inversion" },
+      "forecast_stream": { "name": "Forecast Stream" },
+      "enrichment_stream": { "name": "Enrichment Stream" },
+      "config_stream": { "name": "Config Stream" }
     },
     "event": {
       "weather_alert": {
