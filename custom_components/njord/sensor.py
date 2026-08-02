@@ -12,12 +12,12 @@ from homeassistant.const import (
     UnitOfTime,
 )
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
+from .helpers import device_info, server_device_info
 from .coordinator import NjordDataCoordinator, NjordStatusCoordinator
 from .horizon import current_horizon_offset, get_horizon_entry
 from .models import AlertData, EnrichmentData, HorizonDerivedData, NjordLocation
@@ -111,22 +111,13 @@ ENERGY_SENSORS = [
 ]
 
 
-def _server_device_info(entry: ConfigEntry) -> DeviceInfo:
-    return DeviceInfo(
-        identifiers={(DOMAIN, f"{entry.entry_id}_server")},
-        name="Server",
-        manufacturer="njord",
-        entry_type=None,
-    )
 
 
-def _device_info(entry: ConfigEntry, location: str) -> DeviceInfo:
-    return DeviceInfo(
-        identifiers={(DOMAIN, f"{entry.entry_id}_{location}")},
-        name=location.title(),
-        manufacturer="njord",
-        entry_type=None,
-    )
+def _get_sw_version(hass: HomeAssistant, entry: ConfigEntry) -> str | None:
+    status_coordinator: NjordStatusCoordinator | None = hass.data[DOMAIN][entry.entry_id].get("status_coordinator")
+    if status_coordinator is not None and status_coordinator.data is not None:
+        return status_coordinator.data.version or None
+    return None
 
 
 async def async_setup_entry(
@@ -136,78 +127,86 @@ async def async_setup_entry(
 ) -> None:
     """Set up njord sensor entities."""
     coordinator: NjordDataCoordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
+    sw_version = _get_sw_version(hass, entry)
+    disabled_groups: list[str] = entry.options.get("disabled_enrichment_groups", [])
 
     entities: list[SensorEntity] = []
     locations = {loc for loc, _ in coordinator.data.forecasts}
     active = coordinator.data.active_enrichments
 
     for location in sorted(locations):
-        if active is None or "alerts" in active:
+        if (active is None or "alerts" in active) and "alerts" not in disabled_groups:
             for alert_type in ALERT_TYPES:
-                entities.append(NjordAlertSensor(coordinator, entry, location, alert_type))
+                entities.append(NjordAlertSensor(coordinator, entry, location, alert_type, sw_version))
 
-        if active is None or "indices" in active:
+        if (active is None or "indices" in active) and "indices" not in disabled_groups:
             for key, name, icon in INDEX_TYPES:
-                entities.append(NjordIndexSensor(coordinator, entry, location, key, name, icon))
-            entities.append(NjordVpdSensor(coordinator, entry, location))
-            entities.append(NjordHddSensor(coordinator, entry, location))
-            entities.append(NjordCddSensor(coordinator, entry, location))
-            entities.append(NjordFrostHoursSensor(coordinator, entry, location))
-            entities.append(NjordFrostConfidenceSensor(coordinator, entry, location))
+                entities.append(NjordIndexSensor(coordinator, entry, location, key, name, icon, sw_version))
+            entities.append(NjordVpdSensor(coordinator, entry, location, sw_version))
+            entities.append(NjordHddSensor(coordinator, entry, location, sw_version))
+            entities.append(NjordCddSensor(coordinator, entry, location, sw_version))
+            entities.append(NjordFrostHoursSensor(coordinator, entry, location, sw_version))
+            entities.append(NjordFrostConfidenceSensor(coordinator, entry, location, sw_version))
 
-        if active is None or "energy" in active:
+        if (active is None or "energy" in active) and "energy" not in disabled_groups:
             for key, name, unit, icon in ENERGY_SENSORS:
-                entities.append(NjordEnergySensor(coordinator, entry, location, key, name, unit, icon))
+                entities.append(NjordEnergySensor(coordinator, entry, location, key, name, unit, icon, sw_version))
 
-        if active is None or "trends" in active:
-            entities.append(NjordTrendSensor(coordinator, entry, location))
+        if (active is None or "trends" in active) and "trends" not in disabled_groups:
+            entities.append(NjordTrendSensor(coordinator, entry, location, sw_version))
 
-        if active is None or "derived" in active:
-            entities.append(NjordSunshineSensor(coordinator, entry, location))
-            entities.append(NjordDiurnalAmplitudeSensor(coordinator, entry, location))
-            entities.append(NjordBeaufortSensor(coordinator, entry, location))
-            entities.append(NjordWindChillSensor(coordinator, entry, location))
-            entities.append(NjordDewpointComfortSensor(coordinator, entry, location))
+        if (active is None or "derived" in active) and "derived" not in disabled_groups:
+            entities.append(NjordSunshineSensor(coordinator, entry, location, sw_version))
+            entities.append(NjordDiurnalAmplitudeSensor(coordinator, entry, location, sw_version))
+            entities.append(NjordBeaufortSensor(coordinator, entry, location, sw_version))
+            entities.append(NjordWindChillSensor(coordinator, entry, location, sw_version))
+            entities.append(NjordDewpointComfortSensor(coordinator, entry, location, sw_version))
 
-        if active is None or "history" in active:
-            entities.append(NjordHistorySensor(coordinator, entry, location))
+        if (active is None or "history" in active) and "history" not in disabled_groups:
+            entities.append(NjordModelPerformanceSensor(coordinator, entry, location, sw_version))
 
     status_coordinator: NjordStatusCoordinator | None = hass.data[DOMAIN][entry.entry_id].get("status_coordinator")
     if status_coordinator is not None:
-        entities.append(NjordMonthlyUsageSensor(status_coordinator, entry))
-        entities.append(NjordDailyUsageSensor(status_coordinator, entry))
-        entities.append(NjordVersionSensor(status_coordinator, entry))
-        entities.append(NjordUptimeSensor(status_coordinator, entry))
+        entities.append(NjordMonthlyUsageSensor(status_coordinator, entry, sw_version))
+        entities.append(NjordDailyUsageSensor(status_coordinator, entry, sw_version))
+        entities.append(NjordVersionSensor(status_coordinator, entry, sw_version))
+        entities.append(NjordUptimeSensor(status_coordinator, entry, sw_version))
+
+        if status_coordinator.data is not None:
+            for target in status_coordinator.data.targets:
+                entities.append(
+                    NjordTargetSensor(status_coordinator, entry, target.location, target.model, sw_version)
+                )
 
     async_add_entities(entities)
 
     def sensor_factory(location: NjordLocation) -> list[SensorEntity]:
         act = coordinator.data.active_enrichments
         new_entities: list[SensorEntity] = []
-        if act is None or "alerts" in act:
+        if (act is None or "alerts" in act) and "alerts" not in disabled_groups:
             for alert_type in ALERT_TYPES:
-                new_entities.append(NjordAlertSensor(coordinator, entry, location.name, alert_type))
-        if act is None or "indices" in act:
+                new_entities.append(NjordAlertSensor(coordinator, entry, location.name, alert_type, sw_version))
+        if (act is None or "indices" in act) and "indices" not in disabled_groups:
             for key, name, icon in INDEX_TYPES:
-                new_entities.append(NjordIndexSensor(coordinator, entry, location.name, key, name, icon))
-            new_entities.append(NjordVpdSensor(coordinator, entry, location.name))
-            new_entities.append(NjordHddSensor(coordinator, entry, location.name))
-            new_entities.append(NjordCddSensor(coordinator, entry, location.name))
-            new_entities.append(NjordFrostHoursSensor(coordinator, entry, location.name))
-            new_entities.append(NjordFrostConfidenceSensor(coordinator, entry, location.name))
-        if act is None or "energy" in act:
+                new_entities.append(NjordIndexSensor(coordinator, entry, location.name, key, name, icon, sw_version))
+            new_entities.append(NjordVpdSensor(coordinator, entry, location.name, sw_version))
+            new_entities.append(NjordHddSensor(coordinator, entry, location.name, sw_version))
+            new_entities.append(NjordCddSensor(coordinator, entry, location.name, sw_version))
+            new_entities.append(NjordFrostHoursSensor(coordinator, entry, location.name, sw_version))
+            new_entities.append(NjordFrostConfidenceSensor(coordinator, entry, location.name, sw_version))
+        if (act is None or "energy" in act) and "energy" not in disabled_groups:
             for key, name, unit, icon in ENERGY_SENSORS:
-                new_entities.append(NjordEnergySensor(coordinator, entry, location.name, key, name, unit, icon))
-        if act is None or "trends" in act:
-            new_entities.append(NjordTrendSensor(coordinator, entry, location.name))
-        if act is None or "derived" in act:
-            new_entities.append(NjordSunshineSensor(coordinator, entry, location.name))
-            new_entities.append(NjordDiurnalAmplitudeSensor(coordinator, entry, location.name))
-            new_entities.append(NjordBeaufortSensor(coordinator, entry, location.name))
-            new_entities.append(NjordWindChillSensor(coordinator, entry, location.name))
-            new_entities.append(NjordDewpointComfortSensor(coordinator, entry, location.name))
-        if act is None or "history" in act:
-            new_entities.append(NjordHistorySensor(coordinator, entry, location.name))
+                new_entities.append(NjordEnergySensor(coordinator, entry, location.name, key, name, unit, icon, sw_version))
+        if (act is None or "trends" in act) and "trends" not in disabled_groups:
+            new_entities.append(NjordTrendSensor(coordinator, entry, location.name, sw_version))
+        if (act is None or "derived" in act) and "derived" not in disabled_groups:
+            new_entities.append(NjordSunshineSensor(coordinator, entry, location.name, sw_version))
+            new_entities.append(NjordDiurnalAmplitudeSensor(coordinator, entry, location.name, sw_version))
+            new_entities.append(NjordBeaufortSensor(coordinator, entry, location.name, sw_version))
+            new_entities.append(NjordWindChillSensor(coordinator, entry, location.name, sw_version))
+            new_entities.append(NjordDewpointComfortSensor(coordinator, entry, location.name, sw_version))
+        if (act is None or "history" in act) and "history" not in disabled_groups:
+            new_entities.append(NjordModelPerformanceSensor(coordinator, entry, location.name, sw_version))
         return new_entities
 
     coordinator.register_entity_factory("sensor", async_add_entities, sensor_factory)
@@ -224,10 +223,11 @@ class _NjordEnrichmentSensor(CoordinatorEntity[NjordDataCoordinator], SensorEnti
         coordinator: NjordDataCoordinator,
         entry: ConfigEntry,
         location: str,
+        sw_version: str | None = None,
     ) -> None:
         super().__init__(coordinator)
         self._location = location
-        self._attr_device_info = _device_info(entry, location)
+        self._attr_device_info = device_info(entry, location, sw_version)
 
     def _enrichment(self) -> EnrichmentData | None:
         if self.coordinator.data is None:
@@ -244,8 +244,9 @@ class NjordAlertSensor(_NjordEnrichmentSensor):
         entry: ConfigEntry,
         location: str,
         alert_type: str,
+        sw_version: str | None = None,
     ) -> None:
-        super().__init__(coordinator, entry, location)
+        super().__init__(coordinator, entry, location, sw_version)
         self._alert_type = alert_type
         slug = f"{location}_{alert_type}_alert".replace("-", "_").replace(" ", "_").lower()
         self._attr_unique_id = f"{entry.entry_id}_{slug}"
@@ -313,8 +314,9 @@ class NjordIndexSensor(_NjordEnrichmentSensor):
         index_key: str,
         index_name: str,
         icon: str,
+        sw_version: str | None = None,
     ) -> None:
-        super().__init__(coordinator, entry, location)
+        super().__init__(coordinator, entry, location, sw_version)
         self._index_key = index_key
         slug = f"{location}_{index_key}_index".replace("-", "_").replace(" ", "_").lower()
         self._attr_unique_id = f"{entry.entry_id}_{slug}"
@@ -348,8 +350,9 @@ class NjordVpdSensor(_NjordEnrichmentSensor):
         coordinator: NjordDataCoordinator,
         entry: ConfigEntry,
         location: str,
+        sw_version: str | None = None,
     ) -> None:
-        super().__init__(coordinator, entry, location)
+        super().__init__(coordinator, entry, location, sw_version)
         slug = f"{location}_vpd".replace("-", "_").replace(" ", "_").lower()
         self._attr_unique_id = f"{entry.entry_id}_{slug}"
         self._attr_name = "VPD"
@@ -386,10 +389,11 @@ class NjordEnergySensor(_NjordEnrichmentSensor):
         energy_name: str,
         unit: str | None,
         icon: str,
+        sw_version: str | None = None,
     ) -> None:
-        super().__init__(coordinator, entry, location)
+        super().__init__(coordinator, entry, location, sw_version)
         self._energy_key = energy_key
-        slug = f"{location}_{energy_key}".replace("-", "_").replace(" ", "_").lower()
+        slug = f"{location}_{energy_key}_energy".replace("-", "_").replace(" ", "_").lower()
         self._attr_unique_id = f"{entry.entry_id}_{slug}"
         self._attr_translation_key = energy_key
         self._attr_name = energy_name
@@ -436,8 +440,9 @@ class NjordTrendSensor(_NjordEnrichmentSensor):
         coordinator: NjordDataCoordinator,
         entry: ConfigEntry,
         location: str,
+        sw_version: str | None = None,
     ) -> None:
-        super().__init__(coordinator, entry, location)
+        super().__init__(coordinator, entry, location, sw_version)
         slug = f"{location}_weather_trend".replace("-", "_").replace(" ", "_").lower()
         self._attr_unique_id = f"{entry.entry_id}_{slug}"
         self._attr_name = "Weather Trend"
@@ -497,9 +502,10 @@ class NjordSunshineSensor(_NjordEnrichmentSensor):
         coordinator: NjordDataCoordinator,
         entry: ConfigEntry,
         location: str,
+        sw_version: str | None = None,
     ) -> None:
-        super().__init__(coordinator, entry, location)
-        slug = f"{location}_sunshine_pct".replace("-", "_").replace(" ", "_").lower()
+        super().__init__(coordinator, entry, location, sw_version)
+        slug = f"{location}_sunshine".replace("-", "_").replace(" ", "_").lower()
         self._attr_unique_id = f"{entry.entry_id}_{slug}"
         self._attr_name = "Sunshine"
 
@@ -530,8 +536,9 @@ class NjordDiurnalAmplitudeSensor(_NjordEnrichmentSensor):
         coordinator: NjordDataCoordinator,
         entry: ConfigEntry,
         location: str,
+        sw_version: str | None = None,
     ) -> None:
-        super().__init__(coordinator, entry, location)
+        super().__init__(coordinator, entry, location, sw_version)
         slug = f"{location}_diurnal_amplitude".replace("-", "_").replace(" ", "_").lower()
         self._attr_unique_id = f"{entry.entry_id}_{slug}"
         self._attr_name = "Diurnal Amplitude"
@@ -549,7 +556,7 @@ class NjordDiurnalAmplitudeSensor(_NjordEnrichmentSensor):
         return enrichment.derived.diurnal_amplitude
 
 
-class NjordHistorySensor(_NjordEnrichmentSensor):
+class NjordModelPerformanceSensor(_NjordEnrichmentSensor):
     """Diagnostic sensor for model performance."""
 
     _attr_entity_category = EntityCategory.DIAGNOSTIC
@@ -564,8 +571,9 @@ class NjordHistorySensor(_NjordEnrichmentSensor):
         coordinator: NjordDataCoordinator,
         entry: ConfigEntry,
         location: str,
+        sw_version: str | None = None,
     ) -> None:
-        super().__init__(coordinator, entry, location)
+        super().__init__(coordinator, entry, location, sw_version)
         slug = f"{location}_model_performance".replace("-", "_").replace(" ", "_").lower()
         self._attr_unique_id = f"{entry.entry_id}_{slug}"
         self._attr_name = "Model Performance"
@@ -617,8 +625,8 @@ class NjordHddSensor(_NjordEnrichmentSensor):
     _attr_icon = "mdi:thermometer-chevron-up"
     _attr_translation_key = "hdd"
 
-    def __init__(self, coordinator, entry, location):
-        super().__init__(coordinator, entry, location)
+    def __init__(self, coordinator, entry, location, sw_version=None):
+        super().__init__(coordinator, entry, location, sw_version)
         slug = f"{location}_hdd".replace("-", "_").replace(" ", "_").lower()
         self._attr_unique_id = f"{entry.entry_id}_{slug}"
         self._attr_name = "Heating Degree Days"
@@ -644,8 +652,8 @@ class NjordCddSensor(_NjordEnrichmentSensor):
     _attr_icon = "mdi:thermometer-chevron-down"
     _attr_translation_key = "cdd"
 
-    def __init__(self, coordinator, entry, location):
-        super().__init__(coordinator, entry, location)
+    def __init__(self, coordinator, entry, location, sw_version=None):
+        super().__init__(coordinator, entry, location, sw_version)
         slug = f"{location}_cdd".replace("-", "_").replace(" ", "_").lower()
         self._attr_unique_id = f"{entry.entry_id}_{slug}"
         self._attr_name = "Cooling Degree Days"
@@ -672,8 +680,8 @@ class NjordFrostHoursSensor(_NjordEnrichmentSensor):
     _attr_icon = "mdi:snowflake-thermometer"
     _attr_translation_key = "frost_hours"
 
-    def __init__(self, coordinator, entry, location):
-        super().__init__(coordinator, entry, location)
+    def __init__(self, coordinator, entry, location, sw_version=None):
+        super().__init__(coordinator, entry, location, sw_version)
         slug = f"{location}_frost_hours".replace("-", "_").replace(" ", "_").lower()
         self._attr_unique_id = f"{entry.entry_id}_{slug}"
         self._attr_name = "Frost Hours"
@@ -699,8 +707,8 @@ class NjordFrostConfidenceSensor(_NjordEnrichmentSensor):
     _attr_icon = "mdi:snowflake-check"
     _attr_translation_key = "frost_confidence"
 
-    def __init__(self, coordinator, entry, location):
-        super().__init__(coordinator, entry, location)
+    def __init__(self, coordinator, entry, location, sw_version=None):
+        super().__init__(coordinator, entry, location, sw_version)
         slug = f"{location}_frost_confidence".replace("-", "_").replace(" ", "_").lower()
         self._attr_unique_id = f"{entry.entry_id}_{slug}"
         self._attr_name = "Frost Confidence"
@@ -730,11 +738,11 @@ class NjordMonthlyUsageSensor(CoordinatorEntity[NjordStatusCoordinator], SensorE
     _attr_icon = "mdi:calendar-month"
     _attr_state_class = SensorStateClass.MEASUREMENT
 
-    def __init__(self, coordinator: NjordStatusCoordinator, entry: ConfigEntry) -> None:
+    def __init__(self, coordinator: NjordStatusCoordinator, entry: ConfigEntry, sw_version: str | None = None) -> None:
         super().__init__(coordinator)
         self._attr_unique_id = f"{entry.entry_id}_monthly_usage"
         self._attr_name = "Monthly Usage"
-        self._attr_device_info = _server_device_info(entry)
+        self._attr_device_info = server_device_info(entry, sw_version)
 
     @property
     def available(self) -> bool:
@@ -772,11 +780,11 @@ class NjordDailyUsageSensor(CoordinatorEntity[NjordStatusCoordinator], SensorEnt
     _attr_icon = "mdi:calendar-today"
     _attr_state_class = SensorStateClass.MEASUREMENT
 
-    def __init__(self, coordinator: NjordStatusCoordinator, entry: ConfigEntry) -> None:
+    def __init__(self, coordinator: NjordStatusCoordinator, entry: ConfigEntry, sw_version: str | None = None) -> None:
         super().__init__(coordinator)
         self._attr_unique_id = f"{entry.entry_id}_daily_usage"
         self._attr_name = "Daily Usage"
-        self._attr_device_info = _server_device_info(entry)
+        self._attr_device_info = server_device_info(entry, sw_version)
 
     @property
     def available(self) -> bool:
@@ -811,11 +819,11 @@ class NjordVersionSensor(CoordinatorEntity[NjordStatusCoordinator], SensorEntity
     _attr_entity_category = EntityCategory.DIAGNOSTIC
     _attr_icon = "mdi:tag"
 
-    def __init__(self, coordinator: NjordStatusCoordinator, entry: ConfigEntry) -> None:
+    def __init__(self, coordinator: NjordStatusCoordinator, entry: ConfigEntry, sw_version: str | None = None) -> None:
         super().__init__(coordinator)
         self._attr_unique_id = f"{entry.entry_id}_version"
         self._attr_name = "Version"
-        self._attr_device_info = _server_device_info(entry)
+        self._attr_device_info = server_device_info(entry, sw_version)
 
     @property
     def available(self) -> bool:
@@ -840,11 +848,11 @@ class NjordUptimeSensor(CoordinatorEntity[NjordStatusCoordinator], SensorEntity)
     _attr_icon = "mdi:server"
     _attr_translation_key = "uptime"
 
-    def __init__(self, coordinator: NjordStatusCoordinator, entry: ConfigEntry) -> None:
+    def __init__(self, coordinator: NjordStatusCoordinator, entry: ConfigEntry, sw_version: str | None = None) -> None:
         super().__init__(coordinator)
         self._attr_unique_id = f"{entry.entry_id}_uptime"
         self._attr_name = "Uptime"
-        self._attr_device_info = _server_device_info(entry)
+        self._attr_device_info = server_device_info(entry, sw_version)
 
     @property
     def available(self) -> bool:
@@ -881,8 +889,8 @@ class NjordBeaufortSensor(_NjordDerivedHorizonSensor):
     _attr_icon = "mdi:windsock"
     _attr_translation_key = "beaufort"
 
-    def __init__(self, coordinator, entry, location):
-        super().__init__(coordinator, entry, location)
+    def __init__(self, coordinator, entry, location, sw_version=None):
+        super().__init__(coordinator, entry, location, sw_version)
         slug = f"{location}_beaufort".replace("-", "_").replace(" ", "_").lower()
         self._attr_unique_id = f"{entry.entry_id}_{slug}"
         self._attr_name = "Beaufort"
@@ -902,8 +910,8 @@ class NjordWindChillSensor(_NjordDerivedHorizonSensor):
     _attr_icon = "mdi:snowflake-thermometer"
     _attr_translation_key = "wind_chill"
 
-    def __init__(self, coordinator, entry, location):
-        super().__init__(coordinator, entry, location)
+    def __init__(self, coordinator, entry, location, sw_version=None):
+        super().__init__(coordinator, entry, location, sw_version)
         slug = f"{location}_wind_chill".replace("-", "_").replace(" ", "_").lower()
         self._attr_unique_id = f"{entry.entry_id}_{slug}"
         self._attr_name = "Wind Chill"
@@ -920,8 +928,8 @@ class NjordDewpointComfortSensor(_NjordDerivedHorizonSensor):
     _attr_icon = "mdi:water-thermometer"
     _attr_translation_key = "dewpoint_comfort"
 
-    def __init__(self, coordinator, entry, location):
-        super().__init__(coordinator, entry, location)
+    def __init__(self, coordinator, entry, location, sw_version=None):
+        super().__init__(coordinator, entry, location, sw_version)
         slug = f"{location}_dewpoint_comfort".replace("-", "_").replace(" ", "_").lower()
         self._attr_unique_id = f"{entry.entry_id}_{slug}"
         self._attr_name = "Dewpoint Comfort"
@@ -930,3 +938,65 @@ class NjordDewpointComfortSensor(_NjordDerivedHorizonSensor):
     def native_value(self) -> str | None:
         h = self._current_derived_horizon()
         return h.dewpoint_comfort if h is not None else None
+
+
+class NjordTargetSensor(CoordinatorEntity[NjordStatusCoordinator], SensorEntity):
+    """Diagnostic sensor showing poll state for a location/model target."""
+
+    _attr_has_entity_name = True
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_entity_registry_enabled_default = False
+    _attr_device_class = SensorDeviceClass.TIMESTAMP
+    _attr_icon = "mdi:radar"
+
+    def __init__(
+        self,
+        coordinator: NjordStatusCoordinator,
+        entry: ConfigEntry,
+        location: str,
+        model: str,
+        sw_version: str | None = None,
+    ) -> None:
+        super().__init__(coordinator)
+        self._target_location = location
+        self._target_model = model
+        slug = f"{location}_{model}_target".replace("-", "_").replace(" ", "_").lower()
+        self._attr_unique_id = f"{entry.entry_id}_{slug}"
+        self._attr_name = f"{model} {location}"
+        self._attr_translation_key = "target_poll"
+        self._attr_device_info = server_device_info(entry, sw_version)
+
+    def _find_target(self):
+        if self.coordinator.data is None:
+            return None
+        for t in self.coordinator.data.targets:
+            if t.location == self._target_location and t.model == self._target_model:
+                return t
+        return None
+
+    @property
+    def available(self) -> bool:
+        return self._find_target() is not None
+
+    @property
+    def native_value(self):
+        t = self._find_target()
+        if t is None or t.next_poll is None:
+            return None
+        return t.next_poll
+
+    @property
+    def extra_state_attributes(self) -> dict[str, object] | None:
+        t = self._find_target()
+        if t is None:
+            return None
+        attrs: dict[str, object] = {
+            "phase": t.phase,
+            "model": t.model,
+            "miss_count": t.miss_count,
+        }
+        if t.last_change is not None:
+            attrs["last_change"] = t.last_change.isoformat()
+        if t.cycle_seconds is not None:
+            attrs["cycle_seconds"] = t.cycle_seconds
+        return attrs
