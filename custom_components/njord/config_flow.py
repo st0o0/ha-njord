@@ -8,6 +8,7 @@ from typing import Any
 import voluptuous as vol
 from homeassistant.config_entries import ConfigFlow, ConfigFlowResult, OptionsFlow
 from homeassistant.core import callback as ha_callback
+from homeassistant.helpers.selector import SelectSelector, SelectSelectorConfig, SelectSelectorMode
 
 from .const import DEFAULT_PORT, DOMAIN
 from .grpc_client import NjordClient
@@ -170,9 +171,12 @@ class NjordOptionsFlow(OptionsFlow):
                     vol.Required(
                         "enabled_enrichment_groups",
                         default=current_enabled,
-                    ): vol.All(
-                        vol.Coerce(list),
-                        [vol.In(ENRICHMENT_GROUPS)],
+                    ): SelectSelector(
+                        SelectSelectorConfig(
+                            options=ENRICHMENT_GROUPS,
+                            multiple=True,
+                            mode=SelectSelectorMode.LIST,
+                        )
                     ),
                 }
             ),
