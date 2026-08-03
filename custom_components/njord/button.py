@@ -10,9 +10,9 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
-from .helpers import server_device_info
 from .coordinator import NjordStatusCoordinator
 from .grpc_client import NjordClient
+from .helpers import server_device_info
 
 
 async def async_setup_entry(

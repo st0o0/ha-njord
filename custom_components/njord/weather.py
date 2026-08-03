@@ -23,10 +23,9 @@ from homeassistant.helpers.event import async_track_utc_time_change
 
 from .condition_mapper import map_condition
 from .const import DOMAIN
-from .coordinator import NjordDataCoordinator
+from .coordinator import NjordDataCoordinator, NjordStatusCoordinator
 from .helpers import device_info
 from .horizon import current_horizon_offset
-from .coordinator import NjordStatusCoordinator
 from .models import (
     ConsensusData,
     ForecastData,

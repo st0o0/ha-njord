@@ -13,8 +13,8 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
-from .helpers import device_info, server_device_info
 from .coordinator import NjordDataCoordinator, NjordStatusCoordinator
+from .helpers import device_info, server_device_info
 from .models import NjordLocation
 
 

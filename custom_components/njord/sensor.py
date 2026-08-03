@@ -17,8 +17,8 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
-from .helpers import device_info, server_device_info
 from .coordinator import NjordDataCoordinator, NjordStatusCoordinator
+from .helpers import device_info, server_device_info
 from .horizon import current_horizon_offset, get_horizon_entry
 from .models import AlertData, EnrichmentData, HorizonDerivedData, NjordLocation
 

@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-import pytest
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import device_registry as dr, entity_registry as er
+from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import entity_registry as er
 
 from tests.conftest import init_integration
 

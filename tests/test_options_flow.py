@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-import pytest
 from homeassistant.core import HomeAssistant
 
-from custom_components.njord.config_flow import DEFAULT_STATUS_POLL_INTERVAL, ENRICHMENT_GROUPS
+from custom_components.njord.config_flow import ENRICHMENT_GROUPS
 from tests.conftest import init_integration
 
 

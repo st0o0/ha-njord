@@ -9,8 +9,8 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
-from .helpers import device_info
 from .coordinator import NjordDataCoordinator, NjordStatusCoordinator
+from .helpers import device_info
 from .models import EnrichmentData, NjordLocation
 
 EVENT_ALERT_STARTED = "alert_started"

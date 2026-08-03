@@ -3,12 +3,10 @@
 from __future__ import annotations
 
 import pytest
+from homeassistant.helpers import entity_registry as er
 
 from custom_components.njord.const import DOMAIN
 from custom_components.njord.models import TargetData
-
-from homeassistant.helpers import entity_registry as er
-
 from tests.conftest import init_integration
 
 
