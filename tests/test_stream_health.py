@@ -19,9 +19,7 @@ def _stream_entity_id(hass: HomeAssistant, mock_config_entry, stream_name: str) 
     return entity_id
 
 
-async def test_stream_sensors_created(
-    hass: HomeAssistant, mock_client, mock_config_entry
-) -> None:
+async def test_stream_sensors_created(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
     """All three stream sensors should exist and default to off."""
     await init_integration(hass, mock_config_entry)
 
@@ -32,9 +30,7 @@ async def test_stream_sensors_created(
         assert state.state == "off", f"Stream {stream} should be off initially"
 
 
-async def test_stream_sensor_updates_on_connect(
-    hass: HomeAssistant, mock_client, mock_config_entry
-) -> None:
+async def test_stream_sensor_updates_on_connect(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
     """Setting stream state to True and pushing coordinator data should flip sensor to on."""
     await init_integration(hass, mock_config_entry)
 

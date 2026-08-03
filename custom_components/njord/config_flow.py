@@ -164,9 +164,7 @@ class NjordOptionsFlow(OptionsFlow):
                 {
                     vol.Required(
                         "status_poll_interval",
-                        default=self._config_entry.options.get(
-                            "status_poll_interval", DEFAULT_STATUS_POLL_INTERVAL
-                        ),
+                        default=self._config_entry.options.get("status_poll_interval", DEFAULT_STATUS_POLL_INTERVAL),
                     ): vol.All(int, vol.Range(min=10, max=300)),
                     vol.Required(
                         "enabled_enrichment_groups",

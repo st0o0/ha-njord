@@ -22,9 +22,7 @@ async def _get_device_for_entity(hass: HomeAssistant, entity_id: str) -> dr.Devi
     return device
 
 
-async def test_weather_device_info(
-    hass: HomeAssistant, mock_client, mock_config_entry
-) -> None:
+async def test_weather_device_info(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
     """Weather entities should belong to a device with model='Weather Station'."""
     await init_integration(hass, mock_config_entry)
 
@@ -34,9 +32,7 @@ async def test_weather_device_info(
     assert device.manufacturer == "njord"
 
 
-async def test_server_sensor_device_info(
-    hass: HomeAssistant, mock_client, mock_config_entry
-) -> None:
+async def test_server_sensor_device_info(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
     """Version sensor should belong to a device with model='Weather Service'."""
     await init_integration(hass, mock_config_entry)
 
@@ -46,9 +42,7 @@ async def test_server_sensor_device_info(
     assert device.manufacturer == "njord"
 
 
-async def test_button_device_info(
-    hass: HomeAssistant, mock_client, mock_config_entry
-) -> None:
+async def test_button_device_info(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
     """Trigger poll button should belong to the Server device."""
     await init_integration(hass, mock_config_entry)
 

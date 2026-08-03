@@ -9,9 +9,7 @@ from custom_components.njord.diagnostics import async_get_config_entry_diagnosti
 from tests.conftest import init_integration
 
 
-async def test_diagnostics_output_structure(
-    hass: HomeAssistant, mock_client, mock_config_entry
-) -> None:
+async def test_diagnostics_output_structure(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
     """Diagnostics should return the expected top-level keys."""
     await init_integration(hass, mock_config_entry)
 
@@ -25,9 +23,7 @@ async def test_diagnostics_output_structure(
     assert "server_status" in diag
 
 
-async def test_diagnostics_host_redacted(
-    hass: HomeAssistant, mock_client, mock_config_entry
-) -> None:
+async def test_diagnostics_host_redacted(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
     """Host should be redacted, port should be visible."""
     await init_integration(hass, mock_config_entry)
 
@@ -37,9 +33,7 @@ async def test_diagnostics_host_redacted(
     assert diag["config"]["port"] == 8081
 
 
-async def test_diagnostics_server_status(
-    hass: HomeAssistant, mock_client, mock_config_entry
-) -> None:
+async def test_diagnostics_server_status(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
     """Server status should include the version from the mock."""
     await init_integration(hass, mock_config_entry)
 

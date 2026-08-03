@@ -53,7 +53,9 @@ async def async_get_config_entry_diagnostics(
             "locations": locations,
             "forecast_keys": len(coordinator.data.forecasts),
             "enrichment_types": enrichment_types_per_location,
-            "active_enrichments": sorted(coordinator.data.active_enrichments) if coordinator.data.active_enrichments else None,
+            "active_enrichments": sorted(coordinator.data.active_enrichments)
+            if coordinator.data.active_enrichments
+            else None,
             "last_update_success": coordinator.last_update_success,
         }
         data["stream_states"] = dict(coordinator.stream_states)
@@ -73,7 +75,9 @@ async def async_get_config_entry_diagnostics(
                 "daily_limit": status.budget.daily_limit,
                 "daily_used": status.budget.daily_used,
                 "usage_percent": status.budget.usage_percent,
-            } if status.budget else None,
+            }
+            if status.budget
+            else None,
             "targets_count": len(status.targets),
         }
     else:

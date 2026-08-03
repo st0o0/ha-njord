@@ -35,9 +35,7 @@ async def test_target_sensors_registered(hass, mock_client, mock_config_entry):
     await init_integration(hass, mock_config_entry)
     entity_reg = er.async_get(hass)
 
-    icon_id = entity_reg.async_get_entity_id(
-        "sensor", DOMAIN, f"{mock_config_entry.entry_id}_home_icon_d2_target"
-    )
+    icon_id = entity_reg.async_get_entity_id("sensor", DOMAIN, f"{mock_config_entry.entry_id}_home_icon_d2_target")
     assert icon_id is not None
 
     ecmwf_id = entity_reg.async_get_entity_id(

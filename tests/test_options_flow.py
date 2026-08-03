@@ -9,9 +9,7 @@ from custom_components.njord.config_flow import DEFAULT_STATUS_POLL_INTERVAL, EN
 from tests.conftest import init_integration
 
 
-async def test_options_flow_defaults(
-    hass: HomeAssistant, mock_client, mock_config_entry
-) -> None:
+async def test_options_flow_defaults(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
     """Opening the options flow should show default values."""
     await init_integration(hass, mock_config_entry)
 
@@ -25,9 +23,7 @@ async def test_options_flow_defaults(
     assert "enabled_enrichment_groups" in schema_key_names
 
 
-async def test_options_flow_custom_values(
-    hass: HomeAssistant, mock_client, mock_config_entry
-) -> None:
+async def test_options_flow_custom_values(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
     """Submitting custom options should store them on the entry."""
     await init_integration(hass, mock_config_entry)
 
@@ -49,9 +45,7 @@ async def test_options_flow_custom_values(
     assert "alerts" not in mock_config_entry.options["disabled_enrichment_groups"]
 
 
-async def test_options_poll_interval_only_no_reload(
-    hass: HomeAssistant, mock_client, mock_config_entry
-) -> None:
+async def test_options_poll_interval_only_no_reload(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
     """Changing only poll interval should not trigger a reload."""
     await init_integration(hass, mock_config_entry)
 

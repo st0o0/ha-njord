@@ -111,8 +111,6 @@ ENERGY_SENSORS = [
 ]
 
 
-
-
 def _get_sw_version(hass: HomeAssistant, entry: ConfigEntry) -> str | None:
     status_coordinator: NjordStatusCoordinator | None = hass.data[DOMAIN][entry.entry_id].get("status_coordinator")
     if status_coordinator is not None and status_coordinator.data is not None:
@@ -174,9 +172,7 @@ async def async_setup_entry(
 
         if status_coordinator.data is not None:
             for target in status_coordinator.data.targets:
-                entities.append(
-                    NjordTargetSensor(status_coordinator, entry, target.location, target.model, sw_version)
-                )
+                entities.append(NjordTargetSensor(status_coordinator, entry, target.location, target.model, sw_version))
 
     async_add_entities(entities)
 
@@ -196,7 +192,9 @@ async def async_setup_entry(
             new_entities.append(NjordFrostConfidenceSensor(coordinator, entry, location.name, sw_version))
         if (act is None or "energy" in act) and "energy" not in disabled_groups:
             for key, name, unit, icon in ENERGY_SENSORS:
-                new_entities.append(NjordEnergySensor(coordinator, entry, location.name, key, name, unit, icon, sw_version))
+                new_entities.append(
+                    NjordEnergySensor(coordinator, entry, location.name, key, name, unit, icon, sw_version)
+                )
         if (act is None or "trends" in act) and "trends" not in disabled_groups:
             new_entities.append(NjordTrendSensor(coordinator, entry, location.name, sw_version))
         if (act is None or "derived" in act) and "derived" not in disabled_groups:
