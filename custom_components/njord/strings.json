@@ -38,6 +38,18 @@
           "status_poll_interval": "How often to poll server status (10–300 seconds, default 30).",
           "enabled_enrichment_groups": "Select which enrichment groups to enable. Disabled groups will not create entities."
         }
+      },
+      "sensors": {
+        "title": "Sensor Push",
+        "description": "Select Home Assistant sensors to forward to njord. Readings are pushed on every state change.",
+        "data": {
+          "indoor_temperature": "Indoor Temperature",
+          "indoor_humidity": "Indoor Humidity"
+        },
+        "data_description": {
+          "indoor_temperature": "Temperature sensors to forward to njord for this location.",
+          "indoor_humidity": "Humidity sensors to forward to njord for this location."
+        }
       }
     }
   },
@@ -69,17 +81,10 @@
       "solar_index": { "name": "Solar Index" },
       "ventilation_index": { "name": "Ventilation Index" },
       "vpd": { "name": "VPD" },
-      "heating_demand": { "name": "Heating Demand" },
-      "cop_estimate": { "name": "COP Estimate" },
-      "shading": { "name": "Shading" },
-      "battery_strategy": { "name": "Battery Strategy" },
-      "night_cooling": { "name": "Night Cooling" },
       "weather_trend": { "name": "Weather Trend" },
       "sunshine": { "name": "Sunshine" },
       "diurnal_amplitude": { "name": "Diurnal Amplitude" },
       "model_performance": { "name": "Model Performance" },
-      "hdd": { "name": "Heating Degree Days" },
-      "cdd": { "name": "Cooling Degree Days" },
       "frost_hours": { "name": "Frost Hours" },
       "frost_confidence": { "name": "Frost Confidence" },
       "beaufort": { "name": "Beaufort" },

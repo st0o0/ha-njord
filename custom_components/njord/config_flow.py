@@ -8,10 +8,16 @@ from typing import Any
 import voluptuous as vol
 from homeassistant.config_entries import ConfigFlow, ConfigFlowResult, OptionsFlow
 from homeassistant.core import callback as ha_callback
-from homeassistant.helpers.selector import SelectSelector, SelectSelectorConfig, SelectSelectorMode
+from homeassistant.helpers.selector import (
+    EntitySelector,
+    EntitySelectorConfig,
+    SelectSelector,
+    SelectSelectorConfig,
+    SelectSelectorMode,
+)
 
 from .const import DEFAULT_PORT, DOMAIN
-from .grpc_client import NjordClient
+from .grpc_client import NjordClient, SENSOR_KIND_MAP
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -26,13 +32,17 @@ ENRICHMENT_GROUPS = [
     "alerts",
     "indices",
     "trends",
-    "energy",
     "derived",
     "history",
     "consensus",
 ]
 
 DEFAULT_STATUS_POLL_INTERVAL = 30
+
+SENSOR_KIND_DEVICE_CLASS: dict[str, str] = {
+    "indoor_temperature": "temperature",
+    "indoor_humidity": "humidity",
+}
 
 
 class NjordConfigFlow(ConfigFlow, domain=DOMAIN):
@@ -138,22 +148,19 @@ class NjordOptionsFlow(OptionsFlow):
 
     def __init__(self, config_entry) -> None:
         self._config_entry = config_entry
+        self._init_data: dict[str, Any] = {}
+
+    def _get_locations(self) -> list[str]:
+        entry_data = self.hass.data.get(DOMAIN, {}).get(self._config_entry.entry_id, {})
+        coordinator = entry_data.get("coordinator")
+        if coordinator is not None and hasattr(coordinator, "_known_locations"):
+            return sorted(coordinator._known_locations)
+        return []
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         if user_input is not None:
-            old_disabled = set(self._config_entry.options.get("disabled_enrichment_groups", []))
-            new_disabled = set(ENRICHMENT_GROUPS) - set(user_input.get("enabled_enrichment_groups", ENRICHMENT_GROUPS))
-
-            options = {
-                "status_poll_interval": user_input["status_poll_interval"],
-                "disabled_enrichment_groups": sorted(new_disabled),
-            }
-            result = self.async_create_entry(title="", data=options)
-
-            if new_disabled != old_disabled:
-                self.hass.async_create_task(self.hass.config_entries.async_reload(self._config_entry.entry_id))
-
-            return result
+            self._init_data = user_input
+            return await self.async_step_sensors()
 
         current_disabled = set(self._config_entry.options.get("disabled_enrichment_groups", []))
         current_enabled = [g for g in ENRICHMENT_GROUPS if g not in current_disabled]
@@ -178,4 +185,56 @@ class NjordOptionsFlow(OptionsFlow):
                     ),
                 }
             ),
+        )
+
+    async def async_step_sensors(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        if user_input is not None:
+            old_disabled = set(self._config_entry.options.get("disabled_enrichment_groups", []))
+            new_disabled = set(ENRICHMENT_GROUPS) - set(
+                self._init_data.get("enabled_enrichment_groups", ENRICHMENT_GROUPS)
+            )
+            old_sensor_push = self._config_entry.options.get("sensor_push", {})
+
+            locations = self._get_locations()
+            sensor_push: dict[str, dict[str, list[str]]] = {}
+            for location in locations:
+                sensor_push[location] = {}
+                for kind in SENSOR_KIND_MAP:
+                    key = f"{location}_{kind}"
+                    sensor_push[location][kind] = user_input.get(key, [])
+
+            options = {
+                "status_poll_interval": self._init_data["status_poll_interval"],
+                "disabled_enrichment_groups": sorted(new_disabled),
+                "sensor_push": sensor_push,
+            }
+            result = self.async_create_entry(title="", data=options)
+
+            needs_reload = new_disabled != old_disabled or sensor_push != old_sensor_push
+            if needs_reload:
+                self.hass.async_create_task(self.hass.config_entries.async_reload(self._config_entry.entry_id))
+
+            return result
+
+        locations = self._get_locations()
+        current_sensor_push = self._config_entry.options.get("sensor_push", {})
+
+        schema_dict: dict[vol.Marker, Any] = {}
+        for location in locations:
+            loc_config = current_sensor_push.get(location, {})
+            for kind in SENSOR_KIND_MAP:
+                key = f"{location}_{kind}"
+                device_class = SENSOR_KIND_DEVICE_CLASS.get(kind)
+                default = loc_config.get(kind, [])
+                schema_dict[vol.Optional(key, default=default)] = EntitySelector(
+                    EntitySelectorConfig(
+                        domain="sensor",
+                        device_class=device_class,
+                        multiple=True,
+                    )
+                )
+
+        return self.async_show_form(
+            step_id="sensors",
+            data_schema=vol.Schema(schema_dict),
         )
