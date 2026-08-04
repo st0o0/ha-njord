@@ -17,10 +17,8 @@ from .models import (
     BudgetStatusData,
     CatalogData,
     ConsensusData,
-    CopOptimalHourData,
     DailyForecastData,
     DerivedData,
-    EnergyData,
     EnrichmentData,
     ForecastData,
     HistoryData,
@@ -35,6 +33,7 @@ from .models import (
     NjordLocation,
     ParameterConsensusData,
     ParameterTrendData,
+    SensorPushResult,
     ServerStatusData,
     TargetData,
     TrendData,
@@ -45,6 +44,8 @@ from .proto.njord.v2 import (
     common_pb2,
     ops_pb2,
     ops_pb2_grpc,
+    sensor_pb2,
+    sensor_pb2_grpc,
     weather_pb2,
     weather_pb2_grpc,
 )
@@ -52,6 +53,11 @@ from .proto.njord.v2 import (
 _LOGGER = logging.getLogger(__name__)
 
 T = TypeVar("T")
+
+SENSOR_KIND_MAP: dict[str, int] = {
+    "indoor_temperature": sensor_pb2.SENSOR_KIND_INDOOR_TEMPERATURE,
+    "indoor_humidity": sensor_pb2.SENSOR_KIND_INDOOR_HUMIDITY,
+}
 
 _BACKOFF_INITIAL = 1.0
 _BACKOFF_MAX = 60.0
@@ -262,8 +268,6 @@ def _to_index_data(pb: common_pb2.IndexUpdate) -> IndexData:
         irrigation=pb.irrigation,
         solar=pb.solar,
         ventilation=pb.ventilation,
-        hdd=pb.hdd,
-        cdd=pb.cdd,
         frost_hours=pb.frost_hours if pb.HasField("frost_hours") else None,
         frost_confidence=pb.frost_confidence if pb.HasField("frost_confidence") else None,
         vpd_kpa=pb.vpd_kpa if pb.HasField("vpd_kpa") else None,
@@ -291,24 +295,6 @@ def _to_trend_data(pb: common_pb2.TrendUpdate) -> TrendData:
         stability_ratio=pb.stability_ratio if pb.HasField("stability_ratio") else None,
         decay_rate=pb.decay_rate if pb.HasField("decay_rate") else None,
         reliable_hours=pb.reliable_hours if pb.HasField("reliable_hours") else None,
-    )
-
-
-def _to_cop_optimal_hour(pb: common_pb2.CopOptimalHour) -> CopOptimalHourData:
-    return CopOptimalHourData(
-        hours_from_now=pb.hours_from_now,
-        cop=pb.cop,
-    )
-
-
-def _to_energy_data(pb: common_pb2.EnergyUpdate) -> EnergyData:
-    return EnergyData(
-        heating_demand=pb.heating_demand,
-        cop_estimate=pb.cop_estimate if pb.HasField("cop_estimate") else None,
-        shading=pb.shading,
-        battery_strategy=pb.battery_strategy,
-        night_cooling=pb.night_cooling,
-        cop_optimal=[_to_cop_optimal_hour(c) for c in pb.cop_optimal],
     )
 
 
@@ -388,7 +374,6 @@ def _to_enrichment_data(pb: weather_pb2.GetEnrichmentsResponse) -> EnrichmentDat
         alerts=[_to_alert(a) for a in pb.alerts.alerts] if pb.HasField("alerts") else [],
         indices=_to_index_data(pb.indices) if pb.HasField("indices") else None,
         trends=_to_trend_data(pb.trends) if pb.HasField("trends") else None,
-        energy=_to_energy_data(pb.energy) if pb.HasField("energy") else None,
         derived=_to_derived_data(pb.derived) if has_derived else None,
         history=_to_history_data(pb.history) if pb.HasField("history") else None,
         consensus=_to_consensus_data(pb.consensus) if has_consensus else None,
@@ -402,7 +387,7 @@ def _to_enrichment_data(pb: weather_pb2.GetEnrichmentsResponse) -> EnrichmentDat
 def _to_enrichment_event(pb: weather_pb2.EnrichmentEvent) -> EnrichmentData:
     payload_field = pb.WhichOneof("payload")
     alerts = []
-    indices = trends = energy = derived = history = consensus = None
+    indices = trends = derived = history = consensus = None
     consensus_updated_at = None
     derived_updated_at = None
     if payload_field == "alerts":
@@ -411,8 +396,6 @@ def _to_enrichment_event(pb: weather_pb2.EnrichmentEvent) -> EnrichmentData:
         indices = _to_index_data(pb.indices)
     elif payload_field == "trends":
         trends = _to_trend_data(pb.trends)
-    elif payload_field == "energy":
-        energy = _to_energy_data(pb.energy)
     elif payload_field == "derived":
         derived = _to_derived_data(pb.derived)
         derived_updated_at = _ts_to_dt(pb.updated_at)
@@ -426,7 +409,6 @@ def _to_enrichment_event(pb: weather_pb2.EnrichmentEvent) -> EnrichmentData:
         alerts=alerts,
         indices=indices,
         trends=trends,
-        energy=energy,
         derived=derived,
         history=history,
         consensus=consensus,
@@ -448,6 +430,7 @@ class NjordClient:
         self._weather_stub: weather_pb2_grpc.WeatherServiceStub | None = None
         self._admin_stub: admin_pb2_grpc.AdminServiceStub | None = None
         self._ops_stub: ops_pb2_grpc.OpsServiceStub | None = None
+        self._sensor_stub: sensor_pb2_grpc.SensorServiceStub | None = None
 
     async def connect(self) -> None:
         """Open an insecure gRPC channel to njord."""
@@ -456,6 +439,7 @@ class NjordClient:
         self._weather_stub = weather_pb2_grpc.WeatherServiceStub(self._channel)
         self._admin_stub = admin_pb2_grpc.AdminServiceStub(self._channel)
         self._ops_stub = ops_pb2_grpc.OpsServiceStub(self._channel)
+        self._sensor_stub = sensor_pb2_grpc.SensorServiceStub(self._channel)
 
     async def close(self) -> None:
         """Close the gRPC channel."""
@@ -465,6 +449,7 @@ class NjordClient:
             self._weather_stub = None
             self._admin_stub = None
             self._ops_stub = None
+            self._sensor_stub = None
 
     async def __aenter__(self) -> NjordClient:
         await self.connect()
@@ -527,6 +512,59 @@ class NjordClient:
         assert self._ops_stub is not None
         resp = await self._ops_stub.TriggerPoll(ops_pb2.TriggerPollRequest(location=location, model=model))
         return resp.triggered_count
+
+    # --- Sensor RPCs ---
+
+    def _make_sensor_reading(
+        self,
+        kind: str,
+        location: str,
+        value: float,
+        *,
+        source: str = "",
+        measured_at: datetime | None = None,
+    ) -> sensor_pb2.SensorReading:
+        kind_enum = SENSOR_KIND_MAP.get(kind)
+        if kind_enum is None:
+            raise ValueError(f"Unknown sensor kind: {kind!r}")
+        from google.protobuf.timestamp_pb2 import Timestamp
+
+        ts = Timestamp()
+        dt = measured_at or datetime.now(UTC)
+        ts.FromDatetime(dt)
+        return sensor_pb2.SensorReading(
+            kind=kind_enum,
+            location=location,
+            source=source,
+            value=value,
+            measured_at=ts,
+        )
+
+    async def push_sensor(
+        self,
+        kind: str,
+        location: str,
+        value: float,
+        *,
+        source: str = "",
+        measured_at: datetime | None = None,
+    ) -> SensorPushResult:
+        """Push a single sensor reading to njord."""
+        self._ensure_connected()
+        assert self._sensor_stub is not None
+        reading = self._make_sensor_reading(kind, location, value, source=source, measured_at=measured_at)
+        resp = await self._sensor_stub.Push(reading)
+        return SensorPushResult(accepted=resp.accepted, rejection_reason=resp.rejection_reason)
+
+    async def stream_push_sensors(
+        self,
+        readings: AsyncIterator[sensor_pb2.SensorReading],
+    ) -> SensorPushResult:
+        """Stream multiple sensor readings to njord and return the final response."""
+        self._ensure_connected()
+        assert self._sensor_stub is not None
+        resp = await self._sensor_stub.StreamPush(readings)
+        return SensorPushResult(accepted=resp.accepted, rejection_reason=resp.rejection_reason)
 
     # --- Streaming RPCs ---
 

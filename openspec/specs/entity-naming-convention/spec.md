@@ -5,11 +5,7 @@ Defines naming conventions for entity unique_id slugs, class names, and display 
 ## Requirements
 
 ### Requirement: Unique ID slugs use descriptive suffixes
-Every enrichment sensor's unique_id slug SHALL follow the pattern `{location}_{feature}_{category}` where `{category}` is a descriptive suffix indicating the sensor domain (e.g., `_alert`, `_index`, `_energy`). Slugs SHALL NOT encode units (e.g., `_pct`) or omit the category suffix.
-
-#### Scenario: Energy sensor slug includes _energy suffix
-- **WHEN** an energy enrichment sensor is created for location "innsbruck" with key "solar_gain"
-- **THEN** the unique_id slug is `innsbruck_solar_gain_energy`
+Every enrichment sensor's unique_id slug SHALL follow the pattern `{location}_{feature}_{category}` where `{category}` is a descriptive suffix indicating the sensor domain (e.g., `_alert`, `_index`). Slugs SHALL NOT encode units (e.g., `_pct`) or omit the category suffix.
 
 #### Scenario: Sunshine sensor slug has no unit suffix
 - **WHEN** a sunshine sensor is created for location "innsbruck"

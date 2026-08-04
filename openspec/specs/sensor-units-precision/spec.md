@@ -50,15 +50,11 @@ The frost hours sensor SHALL set `device_class = SensorDeviceClass.DURATION` and
 - **THEN** the sensor shows 4 h with device_class DURATION
 
 ### Requirement: Non-convertible sensors keep raw string units
-Sensor entities whose units have no matching HA device class SHALL keep raw string units without device_class. This includes: UV alert (`"UV"`), thunderstorm alert (`"J/kg"`), HDD/CDD (`"°C·d"`), VPD (`"kPa"`), all index sensors (`"%"`), COP estimate, API budget, and uptime.
+Sensor entities whose units have no matching HA device class SHALL keep raw string units without device_class. This includes: UV alert (`"UV"`), thunderstorm alert (`"J/kg"`), VPD (`"kPa"`), all index sensors (`"%"`), COP estimate, API budget, and uptime.
 
 #### Scenario: UV alert stays as-is for all unit systems
 - **WHEN** a user has any HA unit system and the UV alert trigger_value is 8
 - **THEN** HA displays 8 UV with no conversion
-
-#### Scenario: HDD stays in degree-days
-- **WHEN** a user has HA unit system set to "US Customary" and HDD is 5.2
-- **THEN** HA displays 5.2 °C·d with no conversion
 
 ### Requirement: ALERT_UNITS uses HA unit constants where applicable
 The `ALERT_UNITS` dict SHALL use HA `UnitOf*` constants for alert types that have a matching device class, and raw strings only for those that do not.

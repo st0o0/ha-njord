@@ -7,42 +7,12 @@ Every sensor entity SHALL have an `_attr_icon` set to an appropriate MDI icon.
 - **WHEN** the BBQ Index sensor is displayed in the HA dashboard
 - **THEN** it shows the `mdi:grill` icon
 
-#### Scenario: Energy sensors show energy-related icons
-- **WHEN** the Heating Demand sensor is displayed
-- **THEN** it shows the `mdi:radiator` icon
-
 ### Requirement: Sensor entities have translation keys
 Every sensor entity SHALL have a `_attr_translation_key` set, and corresponding entries in `strings.json` and `translations/de.json`.
 
 #### Scenario: Sensor name is translatable
 - **WHEN** HA language is set to German
 - **THEN** the BBQ Index sensor shows as "Grillwetter-Index"
-
-### Requirement: HDD sensor
-The integration SHALL expose a Heating Degree Days sensor per location, sourced from `IndexData.hdd`. The sensor SHALL use raw string unit `"°C·d"` (no HA device class available) and `suggested_display_precision = 1`.
-
-#### Scenario: HDD sensor shows value
-- **WHEN** enrichment data contains `hdd = 5.2`
-- **THEN** the sensor shows `5.2` with unit `°C·d` and icon `mdi:thermometer-chevron-up`
-
-#### Scenario: HDD sensor unavailable without index data
-- **WHEN** enrichment data has no indices
-- **THEN** the HDD sensor is unavailable
-
-#### Scenario: HDD sensor has precision 1
-- **WHEN** enrichment data contains `hdd = 5.27`
-- **THEN** HA suggests displaying as `5.3`
-
-### Requirement: CDD sensor
-The integration SHALL expose a Cooling Degree Days sensor per location, sourced from `IndexData.cdd`. The sensor SHALL use raw string unit `"°C·d"` (no HA device class available) and `suggested_display_precision = 1`.
-
-#### Scenario: CDD sensor shows value
-- **WHEN** enrichment data contains `cdd = 3.1`
-- **THEN** the sensor shows `3.1` with unit `°C·d` and icon `mdi:thermometer-chevron-down`
-
-#### Scenario: CDD sensor has precision 1
-- **WHEN** enrichment data contains `cdd = 3.17`
-- **THEN** HA suggests displaying as `3.2`
 
 ### Requirement: Frost hours sensor
 The integration SHALL expose a Frost Hours sensor per location, sourced from `IndexData.frost_hours`. The sensor SHALL set `device_class = SensorDeviceClass.DURATION` and `native_unit_of_measurement = UnitOfTime.HOURS` with `suggested_display_precision = 0`.
@@ -71,7 +41,7 @@ All new sensors SHALL have `_attr_translation_key` set and corresponding entries
 
 #### Scenario: German translations exist
 - **WHEN** HA language is set to German
-- **THEN** HDD shows as "Heizgradtage", CDD as "Kühlgradtage", Frost Hours as "Froststunden", Frost Confidence as "Frostwahrscheinlichkeit"
+- **THEN** Frost Hours shows as "Froststunden", Frost Confidence as "Frostwahrscheinlichkeit"
 
 ### Requirement: Enrichment sensors are disabled by default
 All enrichment sensor entities SHALL have `_attr_entity_registry_enabled_default = False`, so they appear in the entity registry but are disabled until the user explicitly enables them.
@@ -79,10 +49,6 @@ All enrichment sensor entities SHALL have `_attr_entity_registry_enabled_default
 #### Scenario: Index sensor is disabled by default
 - **WHEN** the integration is set up for the first time
 - **THEN** index sensors (laundry, outdoor, cycling, etc.) are registered but disabled
-
-#### Scenario: Energy sensor is disabled by default
-- **WHEN** the integration is set up
-- **THEN** energy sensors (heating demand, COP, shading, etc.) are registered but disabled
 
 #### Scenario: User enables a sensor
 - **WHEN** a user enables a disabled sensor in the HA entity registry

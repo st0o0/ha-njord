@@ -50,20 +50,6 @@ async def test_no_trend_entity_when_trends_disabled(hass: HomeAssistant, mock_cl
     assert len(trend_entities) == 0
 
 
-async def test_no_energy_entities_when_energy_disabled(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
-    await _setup_with_active_enrichments(hass, mock_client, mock_config_entry, ["consensus", "alerts"])
-
-    registry = er.async_get(hass)
-    energy_ids = [
-        e.entity_id
-        for e in registry.entities.values()
-        if any(
-            k in e.entity_id for k in ("heating_demand", "cop_estimate", "shading", "battery_strategy", "night_cooling")
-        )
-    ]
-    assert len(energy_ids) == 0
-
-
 async def test_no_derived_entities_when_derived_disabled(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
     await _setup_with_active_enrichments(hass, mock_client, mock_config_entry, ["alerts", "indices"])
 
@@ -91,12 +77,12 @@ async def test_all_enrichments_active_creates_all_entities(hass: HomeAssistant, 
         hass,
         mock_client,
         mock_config_entry,
-        ["consensus", "alerts", "derived", "trends", "indices", "energy", "history"],
+        ["consensus", "alerts", "derived", "trends", "indices", "history"],
     )
 
     registry = er.async_get(hass)
     sensor_entities = [e for e in registry.entities.values() if e.domain == "sensor"]
-    assert len(sensor_entities) >= 30
+    assert len(sensor_entities) >= 25
 
 
 async def test_empty_active_enrichments_creates_no_enrichment_entities(

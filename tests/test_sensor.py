@@ -47,32 +47,6 @@ async def test_vpd_sensor(hass: HomeAssistant, mock_client, mock_config_entry) -
     assert state.attributes["category"] == "optimal"
 
 
-async def test_heating_demand(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
-    await _setup_with_sensors_enabled(hass, mock_config_entry)
-
-    state = hass.states.get("sensor.home_heating_demand")
-    assert state is not None
-    assert state.state == "21"
-
-
-async def test_cop_estimate_with_optimal(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
-    await _setup_with_sensors_enabled(hass, mock_config_entry)
-
-    state = hass.states.get("sensor.home_cop_estimate")
-    assert state is not None
-    assert float(state.state) == pytest.approx(10.95)
-    assert "cop_optimal" in state.attributes
-    assert len(state.attributes["cop_optimal"]) == 1
-
-
-async def test_battery_strategy(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
-    await _setup_with_sensors_enabled(hass, mock_config_entry)
-
-    state = hass.states.get("sensor.home_battery_strategy")
-    assert state is not None
-    assert state.state == "discharge"
-
-
 async def test_weather_trend(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
     await _setup_with_sensors_enabled(hass, mock_config_entry)
 
@@ -109,26 +83,6 @@ async def test_model_performance_diagnostic(hass: HomeAssistant, mock_client, mo
     assert "models" in state.attributes
 
 
-async def test_hdd_sensor(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
-    await _setup_with_sensors_enabled(hass, mock_config_entry)
-
-    state = hass.states.get("sensor.home_heating_degree_days")
-    assert state is not None
-    assert float(state.state) == pytest.approx(5.2)
-    assert state.attributes["unit_of_measurement"] == "°C·d"
-    assert state.attributes["icon"] == "mdi:thermometer-chevron-up"
-
-
-async def test_cdd_sensor(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
-    await _setup_with_sensors_enabled(hass, mock_config_entry)
-
-    state = hass.states.get("sensor.home_cooling_degree_days")
-    assert state is not None
-    assert float(state.state) == pytest.approx(1.3)
-    assert state.attributes["unit_of_measurement"] == "°C·d"
-    assert state.attributes["icon"] == "mdi:thermometer-chevron-down"
-
-
 async def test_frost_hours_sensor(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
     await _setup_with_sensors_enabled(hass, mock_config_entry)
 
@@ -155,9 +109,7 @@ async def test_enrichment_sensors_disabled_by_default(hass: HomeAssistant, mock_
     registry = er.async_get(hass)
     disabled_sensors = [
         "sensor.home_bbq_index",
-        "sensor.home_heating_demand",
         "sensor.home_weather_trend",
-        "sensor.home_heating_degree_days",
         "sensor.home_beaufort",
         "sensor.home_wind_chill",
         "sensor.home_dewpoint_comfort",

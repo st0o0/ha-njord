@@ -9,7 +9,6 @@ from custom_components.njord.models import (
     AlertData,
     ConsensusData,
     DerivedData,
-    EnergyData,
     EnrichmentData,
     HistoryData,
     IndexData,
@@ -23,7 +22,6 @@ def _base_enrichment() -> EnrichmentData:
         alerts=[AlertData(type="frost", severity="yellow", confidence=0.8)],
         indices=IndexData(laundry=80, outdoor=60),
         trends=TrendData(stability_label="stable"),
-        energy=EnergyData(heating_demand=30),
         derived=DerivedData(sunshine_pct=70.0),
         history=HistoryData(seasonal_best="icon_d2"),
         consensus=ConsensusData(hourly_parameters=[]),
@@ -41,7 +39,6 @@ def test_alert_merge_preserves_indices() -> None:
     assert result.alerts == event.alerts
     assert result.indices == base.indices
     assert result.trends == base.trends
-    assert result.energy == base.energy
 
 
 def test_index_merge_preserves_alerts() -> None:
@@ -62,7 +59,6 @@ def test_all_enrichment_types_merge_independently() -> None:
         ("alerts", [AlertData(type="heat", severity="orange", confidence=0.9)]),
         ("indices", IndexData(laundry=99)),
         ("trends", TrendData(stability_label="changing")),
-        ("energy", EnergyData(heating_demand=50)),
         ("derived", DerivedData(sunshine_pct=20.0)),
         ("history", HistoryData(seasonal_best="gfs")),
         ("consensus", ConsensusData(hourly_parameters=[])),
@@ -91,7 +87,6 @@ def test_merge_with_no_existing_base() -> None:
     assert result.alerts == event.alerts
     assert result.indices is None
     assert result.trends is None
-    assert result.energy is None
     assert result.derived is None
     assert result.history is None
     assert result.consensus is None

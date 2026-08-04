@@ -13,10 +13,8 @@ from custom_components.njord.models import (
     BudgetStatusData,
     CatalogData,
     ConsensusData,
-    CopOptimalHourData,
     DailyForecastData,
     DerivedData,
-    EnergyData,
     EnrichmentData,
     ForecastData,
     HistoryData,
@@ -238,8 +236,6 @@ def _default_enrichment(location: str = "home") -> EnrichmentData:
             irrigation=22,
             solar=38,
             ventilation=22,
-            hdd=5.2,
-            cdd=1.3,
             frost_hours=4,
             frost_confidence=0.85,
             vpd_kpa=0.59,
@@ -254,14 +250,6 @@ def _default_enrichment(location: str = "home") -> EnrichmentData:
             stability_ratio=0.83,
             precip_starts_in_hours=2,
             reliable_hours=3,
-        ),
-        energy=EnergyData(
-            heating_demand=21,
-            cop_estimate=10.95,
-            shading=12,
-            battery_strategy="discharge",
-            night_cooling=40,
-            cop_optimal=[CopOptimalHourData(hours_from_now=20, cop=14.91)],
         ),
         derived=DerivedData(
             by_horizon=[
@@ -304,7 +292,7 @@ def mock_client():
             budget=BudgetStatusData(
                 monthly_limit=20000, monthly_used=5000, daily_limit=700, daily_used=100, usage_percent=25.0
             ),
-            active_enrichments=["consensus", "alerts", "derived", "trends", "indices", "energy", "history"],
+            active_enrichments=["consensus", "alerts", "derived", "trends", "indices", "history"],
         )
     )
     mock.trigger_poll = AsyncMock(return_value=6)

@@ -5,11 +5,12 @@ Provides post-setup configuration via HA's OptionsFlow, allowing users to tune s
 ## Requirements
 
 ### Requirement: OptionsFlow is available after setup
-The integration SHALL provide an `OptionsFlow` accessible from the integration's configuration page in HA. It SHALL present two settings.
+The integration SHALL provide an `OptionsFlow` accessible from the integration's configuration page in HA. It SHALL present settings across two steps: general settings (init) and sensor push configuration (sensors).
 
 #### Scenario: User opens options
 - **WHEN** the user clicks "Configure" on the njord integration entry
 - **THEN** an options form is shown with status poll interval and enrichment group toggles
+- **AND** after submitting, a second step for sensor push configuration is shown
 
 ### Requirement: Status poll interval option
 The OptionsFlow SHALL include a `status_poll_interval` integer field with default 30, minimum 10, and maximum 300 (seconds). The value SHALL be stored in `ConfigEntry.options`.
@@ -24,13 +25,7 @@ The OptionsFlow SHALL include a `status_poll_interval` integer field with defaul
 - **THEN** the status coordinator uses 30 seconds
 
 ### Requirement: Enrichment group toggles
-The OptionsFlow SHALL include a multi-select field for enrichment groups. Available groups: `alerts`, `indices`, `trends`, `energy`, `derived`, `history`, `consensus`. All groups SHALL be enabled by default. Disabled groups are stored as a list in `entry.options["disabled_enrichment_groups"]`.
-
-#### Scenario: User disables energy enrichment
-- **WHEN** the user deselects "energy" in the enrichment groups and submits
-- **THEN** `entry.options["disabled_enrichment_groups"]` contains `"energy"`
-- **AND** the config entry reloads
-- **AND** energy-related sensors are not created
+The OptionsFlow SHALL include a multi-select field for enrichment groups. Available groups: `alerts`, `indices`, `trends`, `derived`, `history`, `consensus`. All groups SHALL be enabled by default. Disabled groups are stored as a list in `entry.options["disabled_enrichment_groups"]`.
 
 #### Scenario: User re-enables a group
 - **WHEN** the user re-selects a previously disabled group and submits
@@ -38,7 +33,7 @@ The OptionsFlow SHALL include a multi-select field for enrichment groups. Availa
 - **AND** entities for that group are created
 
 ### Requirement: Enrichment toggle triggers reload
-Changing the enrichment group selection SHALL trigger a config entry reload to cleanly add or remove entities. Changing only the poll interval SHALL NOT trigger a reload.
+Changing the enrichment group selection or the sensor push configuration SHALL trigger a config entry reload. Changing only the poll interval SHALL NOT trigger a reload.
 
 #### Scenario: Only poll interval changed
 - **WHEN** the user changes only the poll interval
@@ -46,6 +41,10 @@ Changing the enrichment group selection SHALL trigger a config entry reload to c
 
 #### Scenario: Enrichment groups changed
 - **WHEN** the user changes the enrichment group selection
+- **THEN** `async_reload` is called on the config entry
+
+#### Scenario: Sensor push mapping changed
+- **WHEN** the user changes the sensor push entity mapping
 - **THEN** `async_reload` is called on the config entry
 
 ### Requirement: Options flow UI strings

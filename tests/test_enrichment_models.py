@@ -5,9 +5,7 @@ import pytest
 from custom_components.njord.models import (
     AlertData,
     ConsensusData,
-    CopOptimalHourData,
     DerivedData,
-    EnergyData,
     EnrichmentData,
     HistoryData,
     HorizonConsensusData,
@@ -43,8 +41,6 @@ def test_index_data_defaults():
     idx = IndexData()
     assert idx.laundry == 0
     assert idx.bbq == 0
-    assert idx.hdd == 0.0
-    assert idx.cdd == 0.0
     assert idx.frost_hours is None
     assert idx.frost_confidence is None
     assert idx.vpd_kpa is None
@@ -56,16 +52,12 @@ def test_index_data_with_values():
         laundry=47,
         outdoor=56,
         bbq=51,
-        hdd=5.2,
-        cdd=1.3,
         frost_hours=4,
         frost_confidence=0.85,
         vpd_kpa=0.59,
         vpd_category="optimal",
     )
     assert idx.laundry == 47
-    assert idx.hdd == 5.2
-    assert idx.cdd == 1.3
     assert idx.frost_hours == 4
     assert idx.frost_confidence == 0.85
     assert idx.vpd_category == "optimal"
@@ -94,33 +86,6 @@ def test_trend_data_with_values():
     )
     assert t.stability_label == "stable"
     assert t.precip_starts_in_hours == 2
-
-
-def test_cop_optimal_hour_data():
-    c = CopOptimalHourData(hours_from_now=20, cop=14.91)
-    assert c.hours_from_now == 20
-    assert c.cop == 14.91
-
-
-def test_energy_data_defaults():
-    e = EnergyData()
-    assert e.heating_demand == 0
-    assert e.cop_estimate is None
-    assert e.battery_strategy == "hold"
-    assert e.cop_optimal == []
-
-
-def test_energy_data_with_values():
-    e = EnergyData(
-        heating_demand=21,
-        cop_estimate=10.95,
-        shading=12,
-        battery_strategy="discharge",
-        night_cooling=40,
-        cop_optimal=[CopOptimalHourData(hours_from_now=20, cop=14.91)],
-    )
-    assert e.battery_strategy == "discharge"
-    assert len(e.cop_optimal) == 1
 
 
 def test_horizon_derived_data():
@@ -199,7 +164,6 @@ def test_enrichment_data_defaults():
     assert e.alerts == []
     assert e.indices is None
     assert e.trends is None
-    assert e.energy is None
     assert e.derived is None
     assert e.history is None
     assert e.consensus is None
@@ -211,14 +175,12 @@ def test_enrichment_data_with_all():
         alerts=[AlertData(type="uv", severity="orange", confidence=1.0)],
         indices=IndexData(bbq=51),
         trends=TrendData(stability_label="stable"),
-        energy=EnergyData(heating_demand=21),
         derived=DerivedData(sunshine_pct=66.4),
         history=HistoryData(weighted_temperature=24.48),
         consensus=ConsensusData(),
     )
     assert len(e.alerts) == 1
     assert e.indices.bbq == 51
-    assert e.energy.heating_demand == 21
 
 
 def test_enrichment_data_frozen():

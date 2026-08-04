@@ -39,8 +39,6 @@ async def async_get_config_entry_diagnostics(
                     types.append("indices")
                 if enr.trends is not None:
                     types.append("trends")
-                if enr.energy is not None:
-                    types.append("energy")
                 if enr.derived is not None:
                     types.append("derived")
                 if enr.history is not None:

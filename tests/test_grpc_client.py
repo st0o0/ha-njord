@@ -13,6 +13,7 @@ from google.protobuf.timestamp_pb2 import Timestamp
 
 from custom_components.njord.grpc_client import (
     NjordClient,
+    SENSOR_KIND_MAP,
     _parse_extra,
     _to_alert,
 )
@@ -21,6 +22,7 @@ from custom_components.njord.models import (
     EnrichmentData,
     ForecastData,
     NjordConfigData,
+    SensorPushResult,
     ServerStatusData,
 )
 from custom_components.njord.proto.njord.v2 import (
@@ -29,6 +31,8 @@ from custom_components.njord.proto.njord.v2 import (
     common_pb2,
     ops_pb2,
     ops_pb2_grpc,
+    sensor_pb2,
+    sensor_pb2_grpc,
     weather_pb2,
     weather_pb2_grpc,
 )
@@ -130,14 +134,6 @@ class MockWeatherServicer(weather_pb2_grpc.WeatherServiceServicer):
                 stability_ratio=0.83,
                 precip_starts_in_hours=2,
                 reliable_hours=3,
-            ),
-            energy=common_pb2.EnergyUpdate(
-                heating_demand=21,
-                cop_estimate=10.95,
-                shading=12,
-                battery_strategy="discharge",
-                night_cooling=40,
-                cop_optimal=[common_pb2.CopOptimalHour(hours_from_now=20, cop=14.91)],
             ),
             derived=common_pb2.DerivedUpdate(
                 by_horizon=[
@@ -260,31 +256,49 @@ class MockOpsServicer(ops_pb2_grpc.OpsServiceServicer):
         )
 
 
+class MockSensorServicer(sensor_pb2_grpc.SensorServiceServicer):
+    def __init__(self) -> None:
+        self.received: list[sensor_pb2.SensorReading] = []
+
+    async def Push(self, request, context):
+        self.received.append(request)
+        if request.kind == sensor_pb2.SENSOR_KIND_UNSPECIFIED:
+            return sensor_pb2.PushResponse(accepted=False, rejection_reason="kind must not be UNSPECIFIED")
+        return sensor_pb2.PushResponse(accepted=True)
+
+    async def StreamPush(self, request_iterator, context):
+        async for reading in request_iterator:
+            self.received.append(reading)
+        return sensor_pb2.PushResponse(accepted=True)
+
+
 # --- Fixtures ---
 
 
 @pytest.fixture()
 async def mock_server():
-    """Start a mock gRPC server and return (port, weather_servicer, admin_servicer, ops_servicer)."""
+    """Start a mock gRPC server and return (port, weather_servicer, admin_servicer, ops_servicer, sensor_servicer)."""
     if importlib.util.find_spec("pytest_homeassistant_custom_component"):
         pytest.skip("gRPC poller thread conflicts with HA plugin thread checker")
     weather_servicer = MockWeatherServicer()
     admin_servicer = MockAdminServicer()
     ops_servicer = MockOpsServicer()
+    sensor_servicer = MockSensorServicer()
     server = grpc.aio.server()
     weather_pb2_grpc.add_WeatherServiceServicer_to_server(weather_servicer, server)
     admin_pb2_grpc.add_AdminServiceServicer_to_server(admin_servicer, server)
     ops_pb2_grpc.add_OpsServiceServicer_to_server(ops_servicer, server)
+    sensor_pb2_grpc.add_SensorServiceServicer_to_server(sensor_servicer, server)
     port = server.add_insecure_port("[::]:0")
     await server.start()
-    yield port, weather_servicer, admin_servicer, ops_servicer
+    yield port, weather_servicer, admin_servicer, ops_servicer, sensor_servicer
     await server.stop(grace=None)
 
 
 @pytest.fixture()
 async def client(mock_server):
     """Create a connected NjordClient pointing at the mock server."""
-    port, _, _, _ = mock_server
+    port, _, _, _, _ = mock_server
     c = NjordClient(host="localhost", port=port)
     await c.connect()
     yield c
@@ -554,11 +568,6 @@ async def test_get_enrichments(client):
     assert enrichment.trends.stability_label == "stable"
     assert enrichment.trends.reliable_hours == 3
 
-    assert enrichment.energy is not None
-    assert enrichment.energy.heating_demand == 21
-    assert enrichment.energy.cop_estimate == pytest.approx(10.95)
-    assert len(enrichment.energy.cop_optimal) == 1
-
     assert enrichment.derived is not None
     assert enrichment.derived.by_horizon[0].beaufort == 2
     assert enrichment.derived.sunshine_pct == pytest.approx(66.4)
@@ -667,3 +676,39 @@ class TestToAlert:
         pb = common_pb2.Alert(type=1, severity=0, confidence=0.0)
         alert = _to_alert(pb)
         assert alert.severity == "none"
+
+
+# --- Sensor push tests ---
+
+
+@pytest.mark.asyncio
+async def test_push_sensor(client, mock_server):
+    result = await client.push_sensor("indoor_temperature", "lucerne", 23.5, source="wohnzimmer")
+    assert isinstance(result, SensorPushResult)
+    assert result.accepted is True
+
+    _, _, _, _, sensor_servicer = mock_server
+    assert len(sensor_servicer.received) == 1
+    reading = sensor_servicer.received[0]
+    assert reading.kind == sensor_pb2.SENSOR_KIND_INDOOR_TEMPERATURE
+    assert reading.location == "lucerne"
+    assert reading.source == "wohnzimmer"
+    assert reading.value == pytest.approx(23.5)
+
+
+@pytest.mark.asyncio
+async def test_push_sensor_humidity(client):
+    result = await client.push_sensor("indoor_humidity", "lucerne", 65.0)
+    assert result.accepted is True
+
+
+@pytest.mark.asyncio
+async def test_push_sensor_unknown_kind(client):
+    with pytest.raises(ValueError, match="Unknown sensor kind"):
+        await client.push_sensor("unknown_kind", "lucerne", 1.0)
+
+
+def test_sensor_kind_map():
+    assert "indoor_temperature" in SENSOR_KIND_MAP
+    assert "indoor_humidity" in SENSOR_KIND_MAP
+    assert len(SENSOR_KIND_MAP) == 2
