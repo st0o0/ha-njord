@@ -79,7 +79,7 @@
       "bbq_index": { "name": "Grillwetter-Index" },
       "irrigation_index": { "name": "Bewässerungs-Index" },
       "solar_index": { "name": "Solar-Index" },
-      "ventilation_index": { "name": "Lüftungs-Index" },
+      "night_ventilation_index": { "name": "Nachtlüftungs-Index" },
       "vpd": { "name": "VPD" },
       "weather_trend": { "name": "Wettertrend" },
       "sunshine": { "name": "Sonnenschein" },

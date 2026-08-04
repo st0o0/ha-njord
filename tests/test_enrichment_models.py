@@ -5,8 +5,10 @@ import pytest
 from custom_components.njord.models import (
     AlertData,
     ConsensusData,
+    DayScoreData,
     DerivedData,
     EnrichmentData,
+    FrostData,
     HistoryData,
     HorizonConsensusData,
     HorizonDerivedData,
@@ -15,6 +17,7 @@ from custom_components.njord.models import (
     ParameterConsensusData,
     ParameterTrendData,
     TrendData,
+    VpdData,
 )
 
 
@@ -41,10 +44,10 @@ def test_index_data_defaults():
     idx = IndexData()
     assert idx.laundry == 0
     assert idx.bbq == 0
-    assert idx.frost_hours is None
-    assert idx.frost_confidence is None
-    assert idx.vpd_kpa is None
-    assert idx.vpd_category is None
+    assert idx.night_ventilation == 0
+    assert idx.frost is None
+    assert idx.vpd is None
+    assert idx.forecast == []
 
 
 def test_index_data_with_values():
@@ -52,15 +55,36 @@ def test_index_data_with_values():
         laundry=47,
         outdoor=56,
         bbq=51,
-        frost_hours=4,
-        frost_confidence=0.85,
-        vpd_kpa=0.59,
-        vpd_category="optimal",
+        frost=FrostData(hours_until=4, confidence=0.85),
+        vpd=VpdData(kpa=0.59, category="optimal"),
+        forecast=[DayScoreData(day_offset=1, laundry=40, bbq=30)],
     )
     assert idx.laundry == 47
-    assert idx.frost_hours == 4
-    assert idx.frost_confidence == 0.85
-    assert idx.vpd_category == "optimal"
+    assert idx.frost.hours_until == 4
+    assert idx.frost.confidence == 0.85
+    assert idx.vpd.category == "optimal"
+    assert len(idx.forecast) == 1
+    assert idx.forecast[0].day_offset == 1
+
+
+def test_frost_data_defaults():
+    f = FrostData()
+    assert f.hours_until == 0
+    assert f.confidence == 0.0
+
+
+def test_vpd_data_defaults():
+    v = VpdData()
+    assert v.kpa == 0.0
+    assert v.category == ""
+
+
+def test_day_score_data_defaults():
+    d = DayScoreData()
+    assert d.day_offset == 0
+    assert d.laundry == 0
+    assert d.night_ventilation == 0
+    assert d.hours_included == 0
 
 
 def test_parameter_trend_data():
