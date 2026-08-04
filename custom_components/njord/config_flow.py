@@ -39,10 +39,6 @@ ENRICHMENT_GROUPS = [
 
 DEFAULT_STATUS_POLL_INTERVAL = 30
 
-SENSOR_KIND_DEVICE_CLASS: dict[str, str] = {
-    "indoor_temperature": "temperature",
-    "indoor_humidity": "humidity",
-}
 
 
 class NjordConfigFlow(ConfigFlow, domain=DOMAIN):
@@ -224,12 +220,10 @@ class NjordOptionsFlow(OptionsFlow):
             loc_config = current_sensor_push.get(location, {})
             for kind in SENSOR_KIND_MAP:
                 key = f"{location}_{kind}"
-                device_class = SENSOR_KIND_DEVICE_CLASS.get(kind)
                 default = loc_config.get(kind, [])
                 schema_dict[vol.Optional(key, default=default)] = EntitySelector(
                     EntitySelectorConfig(
                         domain="sensor",
-                        device_class=device_class,
                         multiple=True,
                     )
                 )
