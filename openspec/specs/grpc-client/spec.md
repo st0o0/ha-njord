@@ -5,11 +5,11 @@ Defines the gRPC client module for communicating with the njord weather service 
 ## Requirements
 
 ### Requirement: Channel lifecycle
-The `NjordClient` SHALL manage a gRPC channel to a njord server specified by host and port, supporting explicit connect, close, and async context manager usage. On connect, it SHALL create three service stubs: `WeatherServiceStub`, `AdminServiceStub`, and `OpsServiceStub`.
+The `NjordClient` SHALL manage a gRPC channel to a njord server specified by host and port, supporting explicit connect, close, and async context manager usage. On connect, it SHALL create four service stubs: `WeatherServiceStub`, `AdminServiceStub`, `OpsServiceStub`, and `SensorServiceStub`.
 
 #### Scenario: Connect and close
 - **WHEN** a caller creates a `NjordClient(host, port)` and calls `await client.connect()`
-- **THEN** an insecure gRPC channel is opened to `host:port` and three service stubs (WeatherService, AdminService, OpsService) are created
+- **THEN** an insecure gRPC channel is opened to `host:port` and four service stubs (WeatherService, AdminService, OpsService, SensorService) are created
 
 #### Scenario: Context manager
 - **WHEN** a caller uses `async with NjordClient(host, port) as client:`
@@ -17,7 +17,7 @@ The `NjordClient` SHALL manage a gRPC channel to a njord server specified by hos
 
 #### Scenario: Close releases resources
 - **WHEN** `await client.close()` is called
-- **THEN** the gRPC channel is closed and subsequent RPC calls raise an error
+- **THEN** the gRPC channel is closed and all stubs are set to None
 
 ### Requirement: Get catalog
 The client SHALL provide an async method to retrieve all locations and deduplicated model info from njord in a single call via `WeatherService.GetCatalog`.
@@ -104,7 +104,7 @@ The client SHALL provide an async method to retrieve enrichment data for a given
 
 #### Scenario: Successful retrieval
 - **WHEN** `await client.get_enrichments(location)` is called
-- **THEN** an `EnrichmentData` object is returned containing alerts, indices, trends, energy, derived, history, and consensus data for that location
+- **THEN** an `EnrichmentData` object is returned containing alerts, indices, trends, derived, history, and consensus data for that location
 
 ### Requirement: Stream enrichments
 The client SHALL provide an async iterator for real-time enrichment updates via `WeatherService.StreamEnrichments` server-streaming RPC.
@@ -126,7 +126,7 @@ All public API methods SHALL return typed Python dataclasses, never raw protobuf
 
 #### Scenario: IndexData includes all proto fields
 - **WHEN** `IndexData` is returned as part of enrichment data
-- **THEN** it contains `hdd`, `cdd`, `frost_hours`, and `frost_confidence` fields in addition to existing activity index fields and VPD fields
+- **THEN** it contains `frost_hours` and `frost_confidence` fields in addition to existing activity index fields and VPD fields
 
 #### Scenario: No protobuf leakage
 - **WHEN** a consumer uses any `NjordClient` method
