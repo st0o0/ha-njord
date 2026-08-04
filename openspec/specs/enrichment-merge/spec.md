@@ -16,7 +16,7 @@ When a streaming `EnrichmentEvent` contains only a subset of enrichment fields, 
 - **THEN** the resulting `EnrichmentData` has the new `indices` and the previous `alerts` unchanged
 
 #### Scenario: All enrichment types can be merged independently
-- **WHEN** enrichment events arrive for alerts, indices, trends, energy, derived, history, or consensus individually
+- **WHEN** enrichment events arrive for alerts, indices, trends, derived, history, or consensus individually
 - **THEN** each is merged independently without affecting the other fields
 
 #### Scenario: Derived event sets derived_updated_at

@@ -149,8 +149,6 @@ class IndexData:
     irrigation: int = 0
     solar: int = 0
     ventilation: int = 0
-    hdd: float = 0.0
-    cdd: float = 0.0
     frost_hours: int | None = None
     frost_confidence: float | None = None
     vpd_kpa: float | None = None
@@ -176,22 +174,6 @@ class TrendData:
     stability_ratio: float | None = None
     decay_rate: float | None = None
     reliable_hours: int | None = None
-
-
-@dataclass(frozen=True)
-class CopOptimalHourData:
-    hours_from_now: int
-    cop: float
-
-
-@dataclass(frozen=True)
-class EnergyData:
-    heating_demand: int = 0
-    cop_estimate: float | None = None
-    shading: int = 0
-    battery_strategy: str = "hold"
-    night_cooling: int = 0
-    cop_optimal: list[CopOptimalHourData] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -254,12 +236,17 @@ class ConsensusData:
 
 
 @dataclass(frozen=True)
+class SensorPushResult:
+    accepted: bool
+    rejection_reason: str = ""
+
+
+@dataclass(frozen=True)
 class EnrichmentData:
     location: str
     alerts: list[AlertData] = field(default_factory=list)
     indices: IndexData | None = None
     trends: TrendData | None = None
-    energy: EnergyData | None = None
     derived: DerivedData | None = None
     history: HistoryData | None = None
     consensus: ConsensusData | None = None

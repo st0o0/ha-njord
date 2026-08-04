@@ -102,14 +102,6 @@ INDEX_TYPES = [
     ("ventilation", "Ventilation Index", "mdi:air-filter"),
 ]
 
-ENERGY_SENSORS = [
-    ("heating_demand", "Heating Demand", "%", "mdi:radiator"),
-    ("cop_estimate", "COP Estimate", None, "mdi:heat-pump"),
-    ("shading", "Shading", "%", "mdi:blinds"),
-    ("battery_strategy", "Battery Strategy", None, "mdi:battery-charging"),
-    ("night_cooling", "Night Cooling", "%", "mdi:weather-night"),
-]
-
 
 def _get_sw_version(hass: HomeAssistant, entry: ConfigEntry) -> str | None:
     status_coordinator: NjordStatusCoordinator | None = hass.data[DOMAIN][entry.entry_id].get("status_coordinator")
@@ -141,14 +133,8 @@ async def async_setup_entry(
             for key, name, icon in INDEX_TYPES:
                 entities.append(NjordIndexSensor(coordinator, entry, location, key, name, icon, sw_version))
             entities.append(NjordVpdSensor(coordinator, entry, location, sw_version))
-            entities.append(NjordHddSensor(coordinator, entry, location, sw_version))
-            entities.append(NjordCddSensor(coordinator, entry, location, sw_version))
             entities.append(NjordFrostHoursSensor(coordinator, entry, location, sw_version))
             entities.append(NjordFrostConfidenceSensor(coordinator, entry, location, sw_version))
-
-        if (active is None or "energy" in active) and "energy" not in disabled_groups:
-            for key, name, unit, icon in ENERGY_SENSORS:
-                entities.append(NjordEnergySensor(coordinator, entry, location, key, name, unit, icon, sw_version))
 
         if (active is None or "trends" in active) and "trends" not in disabled_groups:
             entities.append(NjordTrendSensor(coordinator, entry, location, sw_version))
@@ -186,15 +172,8 @@ async def async_setup_entry(
             for key, name, icon in INDEX_TYPES:
                 new_entities.append(NjordIndexSensor(coordinator, entry, location.name, key, name, icon, sw_version))
             new_entities.append(NjordVpdSensor(coordinator, entry, location.name, sw_version))
-            new_entities.append(NjordHddSensor(coordinator, entry, location.name, sw_version))
-            new_entities.append(NjordCddSensor(coordinator, entry, location.name, sw_version))
             new_entities.append(NjordFrostHoursSensor(coordinator, entry, location.name, sw_version))
             new_entities.append(NjordFrostConfidenceSensor(coordinator, entry, location.name, sw_version))
-        if (act is None or "energy" in act) and "energy" not in disabled_groups:
-            for key, name, unit, icon in ENERGY_SENSORS:
-                new_entities.append(
-                    NjordEnergySensor(coordinator, entry, location.name, key, name, unit, icon, sw_version)
-                )
         if (act is None or "trends" in act) and "trends" not in disabled_groups:
             new_entities.append(NjordTrendSensor(coordinator, entry, location.name, sw_version))
         if (act is None or "derived" in act) and "derived" not in disabled_groups:
@@ -373,58 +352,6 @@ class NjordVpdSensor(_NjordEnrichmentSensor):
         if enrichment is None or enrichment.indices is None:
             return None
         return {"category": enrichment.indices.vpd_category}
-
-
-class NjordEnergySensor(_NjordEnrichmentSensor):
-    """Sensor for an energy metric."""
-
-    def __init__(
-        self,
-        coordinator: NjordDataCoordinator,
-        entry: ConfigEntry,
-        location: str,
-        energy_key: str,
-        energy_name: str,
-        unit: str | None,
-        icon: str,
-        sw_version: str | None = None,
-    ) -> None:
-        super().__init__(coordinator, entry, location, sw_version)
-        self._energy_key = energy_key
-        slug = f"{location}_{energy_key}_energy".replace("-", "_").replace(" ", "_").lower()
-        self._attr_unique_id = f"{entry.entry_id}_{slug}"
-        self._attr_translation_key = energy_key
-        self._attr_name = energy_name
-        self._attr_icon = icon
-        if unit:
-            self._attr_native_unit_of_measurement = unit
-        if energy_key == "cop_estimate":
-            self._attr_suggested_display_precision = 1
-        elif unit:
-            self._attr_suggested_display_precision = 0
-
-    @property
-    def available(self) -> bool:
-        enrichment = self._enrichment()
-        return enrichment is not None and enrichment.energy is not None
-
-    @property
-    def native_value(self) -> object:
-        enrichment = self._enrichment()
-        if enrichment is None or enrichment.energy is None:
-            return None
-        return getattr(enrichment.energy, self._energy_key, None)
-
-    @property
-    def extra_state_attributes(self) -> dict[str, object] | None:
-        if self._energy_key != "cop_estimate":
-            return None
-        enrichment = self._enrichment()
-        if enrichment is None or enrichment.energy is None:
-            return None
-        return {
-            "cop_optimal": [{"hours_from_now": c.hours_from_now, "cop": c.cop} for c in enrichment.energy.cop_optimal]
-        }
 
 
 class NjordTrendSensor(_NjordEnrichmentSensor):
@@ -613,60 +540,6 @@ class NjordModelPerformanceSensor(_NjordEnrichmentSensor):
         if h.anomaly_deviation is not None:
             attrs["anomaly_deviation"] = h.anomaly_deviation
         return attrs
-
-
-class NjordHddSensor(_NjordEnrichmentSensor):
-    """Sensor for Heating Degree Days."""
-
-    _attr_native_unit_of_measurement = "°C·d"
-    _attr_suggested_display_precision = 1
-    _attr_icon = "mdi:thermometer-chevron-up"
-    _attr_translation_key = "hdd"
-
-    def __init__(self, coordinator, entry, location, sw_version=None):
-        super().__init__(coordinator, entry, location, sw_version)
-        slug = f"{location}_hdd".replace("-", "_").replace(" ", "_").lower()
-        self._attr_unique_id = f"{entry.entry_id}_{slug}"
-        self._attr_name = "Heating Degree Days"
-
-    @property
-    def available(self) -> bool:
-        enrichment = self._enrichment()
-        return enrichment is not None and enrichment.indices is not None
-
-    @property
-    def native_value(self) -> float | None:
-        enrichment = self._enrichment()
-        if enrichment is None or enrichment.indices is None:
-            return None
-        return enrichment.indices.hdd
-
-
-class NjordCddSensor(_NjordEnrichmentSensor):
-    """Sensor for Cooling Degree Days."""
-
-    _attr_native_unit_of_measurement = "°C·d"
-    _attr_suggested_display_precision = 1
-    _attr_icon = "mdi:thermometer-chevron-down"
-    _attr_translation_key = "cdd"
-
-    def __init__(self, coordinator, entry, location, sw_version=None):
-        super().__init__(coordinator, entry, location, sw_version)
-        slug = f"{location}_cdd".replace("-", "_").replace(" ", "_").lower()
-        self._attr_unique_id = f"{entry.entry_id}_{slug}"
-        self._attr_name = "Cooling Degree Days"
-
-    @property
-    def available(self) -> bool:
-        enrichment = self._enrichment()
-        return enrichment is not None and enrichment.indices is not None
-
-    @property
-    def native_value(self) -> float | None:
-        enrichment = self._enrichment()
-        if enrichment is None or enrichment.indices is None:
-            return None
-        return enrichment.indices.cdd
 
 
 class NjordFrostHoursSensor(_NjordEnrichmentSensor):
