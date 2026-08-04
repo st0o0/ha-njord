@@ -25,7 +25,10 @@ from .models import (
     HorizonConsensusData,
     HorizonDerivedData,
     HourlyForecastData,
+    DayScoreData,
+    FrostData,
     IndexData,
+    VpdData,
     ModelInfoData,
     ModelMetricsData,
     ModelStatusData,
@@ -258,8 +261,9 @@ def _to_alert(pb: common_pb2.Alert) -> AlertData:
     )
 
 
-def _to_index_data(pb: common_pb2.IndexUpdate) -> IndexData:
-    return IndexData(
+def _to_day_score_data(pb: common_pb2.DayScoreSet) -> DayScoreData:
+    return DayScoreData(
+        day_offset=pb.day_offset,
         laundry=pb.laundry,
         outdoor=pb.outdoor,
         running=pb.running,
@@ -267,11 +271,34 @@ def _to_index_data(pb: common_pb2.IndexUpdate) -> IndexData:
         bbq=pb.bbq,
         irrigation=pb.irrigation,
         solar=pb.solar,
-        ventilation=pb.ventilation,
-        frost_hours=pb.frost_hours if pb.HasField("frost_hours") else None,
-        frost_confidence=pb.frost_confidence if pb.HasField("frost_confidence") else None,
-        vpd_kpa=pb.vpd_kpa if pb.HasField("vpd_kpa") else None,
-        vpd_category=pb.vpd_category if pb.HasField("vpd_category") else None,
+        night_ventilation=pb.night_ventilation,
+        hours_included=pb.hours_included,
+    )
+
+
+def _to_frost_data(pb: common_pb2.FrostInfo) -> FrostData:
+    return FrostData(hours_until=pb.hours_until_frost, confidence=pb.confidence)
+
+
+def _to_vpd_data(pb: common_pb2.VpdInfo) -> VpdData:
+    return VpdData(kpa=pb.kpa, category=pb.category)
+
+
+def _to_index_data(pb: common_pb2.IndexUpdate) -> IndexData:
+    today = _to_day_score_data(pb.days[0]) if pb.days else DayScoreData()
+    forecast = [_to_day_score_data(d) for d in pb.days[1:]]
+    return IndexData(
+        laundry=today.laundry,
+        outdoor=today.outdoor,
+        running=today.running,
+        cycling=today.cycling,
+        bbq=today.bbq,
+        irrigation=today.irrigation,
+        solar=today.solar,
+        night_ventilation=today.night_ventilation,
+        frost=_to_frost_data(pb.frost) if pb.HasField("frost") else None,
+        vpd=_to_vpd_data(pb.vpd) if pb.HasField("vpd") else None,
+        forecast=forecast,
     )
 
 

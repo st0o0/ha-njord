@@ -120,11 +120,15 @@ class MockWeatherServicer(weather_pb2_grpc.WeatherServiceServicer):
                 ]
             ),
             indices=common_pb2.IndexUpdate(
-                laundry=47,
-                outdoor=56,
-                bbq=51,
-                vpd_kpa=0.59,
-                vpd_category="optimal",
+                days=[
+                    common_pb2.DayScoreSet(
+                        day_offset=0, laundry=47, outdoor=56, bbq=51,
+                    ),
+                    common_pb2.DayScoreSet(
+                        day_offset=1, laundry=40, outdoor=50, bbq=45,
+                    ),
+                ],
+                vpd=common_pb2.VpdInfo(kpa=0.59, category="optimal"),
             ),
             trends=common_pb2.TrendUpdate(
                 parameter_trends=[
@@ -562,7 +566,12 @@ async def test_get_enrichments(client):
     assert enrichment.indices is not None
     assert enrichment.indices.laundry == 47
     assert enrichment.indices.bbq == 51
-    assert enrichment.indices.vpd_kpa == pytest.approx(0.59)
+    assert enrichment.indices.vpd is not None
+    assert enrichment.indices.vpd.kpa == pytest.approx(0.59)
+    assert enrichment.indices.vpd.category == "optimal"
+    assert len(enrichment.indices.forecast) == 1
+    assert enrichment.indices.forecast[0].day_offset == 1
+    assert enrichment.indices.forecast[0].laundry == 40
 
     assert enrichment.trends is not None
     assert enrichment.trends.stability_label == "stable"

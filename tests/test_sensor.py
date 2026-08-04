@@ -24,7 +24,7 @@ async def _setup_with_sensors_enabled(hass, mock_config_entry):
 async def test_index_sensors_exist(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
     await _setup_with_sensors_enabled(hass, mock_config_entry)
 
-    indices = ["laundry", "outdoor", "running", "cycling", "bbq", "irrigation", "solar", "ventilation"]
+    indices = ["laundry", "outdoor", "running", "cycling", "bbq", "irrigation", "solar", "night_ventilation"]
     for idx in indices:
         state = hass.states.get(f"sensor.home_{idx}_index")
         assert state is not None, f"Missing index sensor: {idx}"

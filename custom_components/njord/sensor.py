@@ -99,7 +99,7 @@ INDEX_TYPES = [
     ("bbq", "BBQ Index", "mdi:grill"),
     ("irrigation", "Irrigation Index", "mdi:sprinkler"),
     ("solar", "Solar Index", "mdi:solar-power"),
-    ("ventilation", "Ventilation Index", "mdi:air-filter"),
+    ("night_ventilation", "Night Ventilation Index", "mdi:air-filter"),
 ]
 
 
@@ -313,6 +313,17 @@ class NjordIndexSensor(_NjordEnrichmentSensor):
             return None
         return getattr(enrichment.indices, self._index_key, None)
 
+    @property
+    def extra_state_attributes(self) -> dict[str, object] | None:
+        enrichment = self._enrichment()
+        if enrichment is None or enrichment.indices is None:
+            return None
+        forecast = [
+            {"day_offset": d.day_offset, "score": getattr(d, self._index_key, 0)}
+            for d in enrichment.indices.forecast
+        ]
+        return {"forecast": forecast}
+
 
 class NjordVpdSensor(_NjordEnrichmentSensor):
     """Sensor for Vapour Pressure Deficit."""
@@ -337,21 +348,21 @@ class NjordVpdSensor(_NjordEnrichmentSensor):
     @property
     def available(self) -> bool:
         enrichment = self._enrichment()
-        return enrichment is not None and enrichment.indices is not None
+        return enrichment is not None and enrichment.indices is not None and enrichment.indices.vpd is not None
 
     @property
     def native_value(self) -> float | None:
         enrichment = self._enrichment()
-        if enrichment is None or enrichment.indices is None:
+        if enrichment is None or enrichment.indices is None or enrichment.indices.vpd is None:
             return None
-        return enrichment.indices.vpd_kpa
+        return enrichment.indices.vpd.kpa
 
     @property
     def extra_state_attributes(self) -> dict[str, object] | None:
         enrichment = self._enrichment()
-        if enrichment is None or enrichment.indices is None:
+        if enrichment is None or enrichment.indices is None or enrichment.indices.vpd is None:
             return None
-        return {"category": enrichment.indices.vpd_category}
+        return {"category": enrichment.indices.vpd.category}
 
 
 class NjordTrendSensor(_NjordEnrichmentSensor):
@@ -560,14 +571,14 @@ class NjordFrostHoursSensor(_NjordEnrichmentSensor):
     @property
     def available(self) -> bool:
         enrichment = self._enrichment()
-        return enrichment is not None and enrichment.indices is not None
+        return enrichment is not None and enrichment.indices is not None and enrichment.indices.frost is not None
 
     @property
     def native_value(self) -> int | None:
         enrichment = self._enrichment()
-        if enrichment is None or enrichment.indices is None:
+        if enrichment is None or enrichment.indices is None or enrichment.indices.frost is None:
             return None
-        return enrichment.indices.frost_hours
+        return enrichment.indices.frost.hours_until
 
 
 class NjordFrostConfidenceSensor(_NjordEnrichmentSensor):
@@ -587,16 +598,14 @@ class NjordFrostConfidenceSensor(_NjordEnrichmentSensor):
     @property
     def available(self) -> bool:
         enrichment = self._enrichment()
-        return enrichment is not None and enrichment.indices is not None
+        return enrichment is not None and enrichment.indices is not None and enrichment.indices.frost is not None
 
     @property
     def native_value(self) -> float | None:
         enrichment = self._enrichment()
-        if enrichment is None or enrichment.indices is None:
+        if enrichment is None or enrichment.indices is None or enrichment.indices.frost is None:
             return None
-        if enrichment.indices.frost_confidence is None:
-            return None
-        return enrichment.indices.frost_confidence * 100
+        return enrichment.indices.frost.confidence * 100
 
 
 class NjordMonthlyUsageSensor(CoordinatorEntity[NjordStatusCoordinator], SensorEntity):

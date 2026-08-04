@@ -140,6 +140,32 @@ class AlertData:
 
 
 @dataclass(frozen=True)
+class DayScoreData:
+    day_offset: int = 0
+    laundry: int = 0
+    outdoor: int = 0
+    running: int = 0
+    cycling: int = 0
+    bbq: int = 0
+    irrigation: int = 0
+    solar: int = 0
+    night_ventilation: int = 0
+    hours_included: int = 0
+
+
+@dataclass(frozen=True)
+class FrostData:
+    hours_until: int = 0
+    confidence: float = 0.0
+
+
+@dataclass(frozen=True)
+class VpdData:
+    kpa: float = 0.0
+    category: str = ""
+
+
+@dataclass(frozen=True)
 class IndexData:
     laundry: int = 0
     outdoor: int = 0
@@ -148,11 +174,10 @@ class IndexData:
     bbq: int = 0
     irrigation: int = 0
     solar: int = 0
-    ventilation: int = 0
-    frost_hours: int | None = None
-    frost_confidence: float | None = None
-    vpd_kpa: float | None = None
-    vpd_category: str | None = None
+    night_ventilation: int = 0
+    frost: FrostData | None = None
+    vpd: VpdData | None = None
+    forecast: list[DayScoreData] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
