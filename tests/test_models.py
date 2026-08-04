@@ -11,6 +11,7 @@ from custom_components.njord.models import (
     HourlyForecastData,
     NjordConfigData,
     NjordLocation,
+    SensorPushResult,
     ServerStatusData,
 )
 
@@ -80,3 +81,15 @@ def test_server_status_data():
 def test_budget_status_data():
     b = BudgetStatusData(monthly_limit=20000, monthly_used=5000, usage_percent=25.0)
     assert b.monthly_limit == 20000
+
+
+def test_sensor_push_result_accepted():
+    r = SensorPushResult(accepted=True)
+    assert r.accepted is True
+    assert r.rejection_reason == ""
+
+
+def test_sensor_push_result_rejected():
+    r = SensorPushResult(accepted=False, rejection_reason="invalid kind")
+    assert r.accepted is False
+    assert r.rejection_reason == "invalid kind"

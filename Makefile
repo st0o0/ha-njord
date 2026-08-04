@@ -14,7 +14,8 @@ proto:
 			$(PROTO_SRC)/njord/v2/common.proto \
 			$(PROTO_SRC)/njord/v2/weather.proto \
 			$(PROTO_SRC)/njord/v2/admin.proto \
-			$(PROTO_SRC)/njord/v2/ops.proto"
+			$(PROTO_SRC)/njord/v2/ops.proto \
+			$(PROTO_SRC)/njord/v2/sensor.proto"
 
 test:
 	docker run --rm -v "$(CURDIR):/work" -w /work $(DOCKER_IMAGE) \

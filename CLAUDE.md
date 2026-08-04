@@ -50,9 +50,9 @@ custom_components/njord/
 ├── strings.json         # English UI strings
 ├── translations/de.json # German UI strings
 └── proto/               # Generated protobuf/gRPC stubs
-    └── njord/v1/        # forecast_service_pb2*.py, config_service_pb2*.py
+    └── njord/v2/        # weather, admin, ops, sensor, common stubs
 
-protos/njord/v1/         # Source .proto files (copied from njord)
+protos/njord/v2/         # Source .proto files (copied from njord)
 tests/                   # pytest tests (42 total)
 ```
 

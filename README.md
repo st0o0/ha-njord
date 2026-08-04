@@ -16,7 +16,7 @@
 
 ---
 
-Connects to a [njord](https://github.com/st0o0/njord) instance via gRPC and creates native Home Assistant entities — weather forecasts, weather alerts, activity indices, energy optimization, and more.
+Connects to a [njord](https://github.com/st0o0/njord) instance via gRPC and creates native Home Assistant entities — weather forecasts, weather alerts, activity indices, and more.
 
 ## Features
 
@@ -24,7 +24,6 @@ Connects to a [njord](https://github.com/st0o0/njord) instance via gRPC and crea
 - **Consensus entity** — multi-model median with agreement score and daily forecast
 - **Weather alerts** — 9 alert types (frost, heat, storm, UV, fog, ...) as `binary_sensor` entities with severity and confidence
 - **Activity indices** — BBQ, outdoor, running, cycling, laundry, irrigation, solar, ventilation (0–100%)
-- **Energy optimization** — heating demand, COP estimate, battery strategy, shading, night cooling
 - **Weather trends** — stability label, precipitation timing, reliable forecast hours
 - **Derived metrics** — sunshine percentage, diurnal amplitude, temperature inversion
 - **Model performance** — weighted temperature, per-model MAE and drift (diagnostic)
@@ -64,7 +63,6 @@ For each configured location, the integration creates:
 | `binary_sensor` | 1 inversion | Temperature inversion detection |
 | `sensor` | 9 alerts | Weather alerts with trigger values (UV, temp, wind, etc.) |
 | `sensor` | 8 indices + 1 VPD | Activity suitability scores (0–100%) |
-| `sensor` | 5 energy | Heating, COP, shading, battery, night cooling |
 | `sensor` | 1 trend | Weather stability and precipitation timing |
 | `sensor` | 2 derived | Sunshine percentage, diurnal amplitude |
 | `sensor` | 1 diagnostic | Model performance (weighted temperature) |
@@ -176,7 +174,7 @@ State is `0.0` when no alert is active. The actual value (e.g. UV 8.5) is shown 
 
 ---
 
-#### Activity Indices, Energy, Trends, Derived (disabled by default)
+#### Activity Indices, Trends, Derived (disabled by default)
 
 All remaining enrichment sensors are **disabled by default** and must be enabled in the entity registry.
 
@@ -195,12 +193,10 @@ Scores indicating how suitable current/forecast weather is for a given activity.
 | `sensor.njord_{loc}_solar_index` | Solar energy production potential (cloud cover, sunshine hours) |
 | `sensor.njord_{loc}_ventilation_index` | Window ventilation benefit (outdoor vs indoor temp, humidity, air quality) |
 
-#### Degree Days & Frost
+#### Frost
 
 | Entity | Unit | Description |
 |--------|------|-------------|
-| `sensor.njord_{loc}_hdd` | °C·d | Heating Degree Days — how much heating is needed (higher = colder day relative to base temp) |
-| `sensor.njord_{loc}_cdd` | °C·d | Cooling Degree Days — how much cooling is needed (higher = warmer day relative to base temp) |
 | `sensor.njord_{loc}_frost_hours` | h | Number of forecast hours with temperature below 0°C |
 | `sensor.njord_{loc}_frost_confidence` | % | Confidence (0–100%) that frost will actually occur |
 
@@ -215,22 +211,6 @@ Scores indicating how suitable current/forecast weather is for a given activity.
 | Attribute | Description |
 |-----------|-------------|
 | `category` | Qualitative label: `low`, `optimal`, `high`, `critical` |
-
-#### Energy Optimization
-
-| Entity | Unit | Description |
-|--------|------|-------------|
-| `sensor.njord_{loc}_heating_demand` | % | Relative heating demand (0–100%). Higher = more heating needed. |
-| `sensor.njord_{loc}_cop_estimate` | — | Estimated heat pump Coefficient of Performance at current outdoor temperature. Higher = more efficient. |
-| `sensor.njord_{loc}_shading` | % | Recommended shading level (0=none, 100=full shade) based on solar radiation and indoor temperature. |
-| `sensor.njord_{loc}_battery_strategy` | — | Recommended home battery action: `charge`, `hold`, or `discharge` based on solar forecast and pricing. |
-| `sensor.njord_{loc}_night_cooling` | % | Benefit of night ventilation cooling (0–100%). High values mean opening windows overnight saves energy. |
-
-**COP Estimate extra attributes:**
-
-| Attribute | Description |
-|-----------|-------------|
-| `cop_optimal` | List of optimal COP hours: `[{hours_from_now, cop}]` — best times to run the heat pump |
 
 #### Weather Trend
 
@@ -300,8 +280,9 @@ make proto
 njord (gRPC server, port 8081)
   │
   ├─ GetLocations / GetModels / GetForecast
-  ├─ GetEnrichments (alerts, indices, trends, energy, derived, history, consensus)
-  └─ StreamForecasts / StreamEnrichments
+  ├─ GetEnrichments (alerts, indices, trends, derived, history, consensus)
+  ├─ StreamForecasts / StreamEnrichments
+  └─ SensorService.Push / StreamPush (receive live sensor readings)
         │
         ▼
 ha-njord (HA custom integration)
@@ -309,7 +290,7 @@ ha-njord (HA custom integration)
   ├─ DataUpdateCoordinator (5 min polling)
   ├─ weather.* entities (per model + consensus)
   ├─ binary_sensor.* entities (alerts + inversion)
-  └─ sensor.* entities (indices, energy, trends, derived, history)
+  └─ sensor.* entities (indices, trends, derived, history)
 ```
 
 ## License
