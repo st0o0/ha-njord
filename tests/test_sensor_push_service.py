@@ -31,9 +31,7 @@ async def test_push_sensor_valid_call(hass: HomeAssistant, mock_client, mock_con
         blocking=True,
     )
 
-    mock_client.push_sensor.assert_called_once_with(
-        "indoor_temperature", "home", 22.5, source="sensor.wz_temp"
-    )
+    mock_client.push_sensor.assert_called_once_with("indoor_temperature", "home", 22.5, source="sensor.wz_temp")
 
 
 async def test_push_sensor_source_defaults_to_entity_id(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
