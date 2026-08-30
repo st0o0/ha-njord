@@ -5,6 +5,7 @@ from __future__ import annotations
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
+    PERCENTAGE,
     UnitOfLength,
     UnitOfPressure,
     UnitOfSpeed,
@@ -32,6 +33,11 @@ ALERT_TYPES = [
     "snow",
     "pressure_drop",
     "thunderstorm",
+    "ice",
+    "wind_chill",
+    "visibility",
+    "tropical_night",
+    "humidity",
 ]
 
 ALERT_NAMES = {
@@ -44,6 +50,11 @@ ALERT_NAMES = {
     "snow": "Snow Alert",
     "pressure_drop": "Pressure Drop Alert",
     "thunderstorm": "Thunderstorm Alert",
+    "ice": "Ice Alert",
+    "wind_chill": "Wind Chill Alert",
+    "visibility": "Visibility Alert",
+    "tropical_night": "Tropical Night Alert",
+    "humidity": "Humidity Alert",
 }
 
 ALERT_UNITS: dict[str, str] = {
@@ -56,6 +67,11 @@ ALERT_UNITS: dict[str, str] = {
     "snow": UnitOfLength.CENTIMETERS,
     "pressure_drop": UnitOfPressure.HPA,
     "thunderstorm": "J/kg",
+    "ice": UnitOfTemperature.CELSIUS,
+    "wind_chill": UnitOfTemperature.CELSIUS,
+    "visibility": UnitOfLength.METERS,
+    "tropical_night": UnitOfTemperature.CELSIUS,
+    "humidity": PERCENTAGE,
 }
 
 ALERT_DEVICE_CLASSES: dict[str, SensorDeviceClass] = {
@@ -65,6 +81,11 @@ ALERT_DEVICE_CLASSES: dict[str, SensorDeviceClass] = {
     "pressure_drop": SensorDeviceClass.PRESSURE,
     "fog": SensorDeviceClass.DISTANCE,
     "snow": SensorDeviceClass.DISTANCE,
+    "ice": SensorDeviceClass.TEMPERATURE,
+    "wind_chill": SensorDeviceClass.TEMPERATURE,
+    "visibility": SensorDeviceClass.DISTANCE,
+    "tropical_night": SensorDeviceClass.TEMPERATURE,
+    "humidity": SensorDeviceClass.HUMIDITY,
 }
 
 ALERT_PRECISION: dict[str, int] = {
@@ -77,6 +98,11 @@ ALERT_PRECISION: dict[str, int] = {
     "snow": 0,
     "pressure_drop": 0,
     "thunderstorm": 0,
+    "ice": 1,
+    "wind_chill": 1,
+    "visibility": 0,
+    "tropical_night": 1,
+    "humidity": 0,
 }
 
 ALERT_ICONS = {
@@ -89,6 +115,11 @@ ALERT_ICONS = {
     "snow": "mdi:snowflake",
     "pressure_drop": "mdi:gauge-low",
     "thunderstorm": "mdi:weather-lightning",
+    "ice": "mdi:snowflake-thermometer",
+    "wind_chill": "mdi:thermometer-minus",
+    "visibility": "mdi:eye-off",
+    "tropical_night": "mdi:weather-night",
+    "humidity": "mdi:water-percent",
 }
 
 INDEX_TYPES = [
