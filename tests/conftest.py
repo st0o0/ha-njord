@@ -229,6 +229,11 @@ def _default_enrichment(location: str = "home") -> EnrichmentData:
             AlertData(type="snow", severity="none", confidence=0.0),
             AlertData(type="pressure_drop", severity="none", confidence=0.0),
             AlertData(type="thunderstorm", severity="none", confidence=0.0),
+            AlertData(type="ice", severity="none", confidence=0.0),
+            AlertData(type="wind_chill", severity="none", confidence=0.0),
+            AlertData(type="visibility", severity="none", confidence=0.0),
+            AlertData(type="tropical_night", severity="none", confidence=0.0),
+            AlertData(type="humidity", severity="none", confidence=0.0),
         ],
         indices=IndexData(
             laundry=47,

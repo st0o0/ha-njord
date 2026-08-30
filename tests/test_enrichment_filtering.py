@@ -60,6 +60,7 @@ async def test_no_derived_entities_when_derived_disabled(hass: HomeAssistant, mo
         if any(
             k in e.entity_id for k in ("sunshine", "diurnal", "beaufort", "wind_chill", "dewpoint_comfort", "inversion")
         )
+        and "_alert" not in e.entity_id
     ]
     assert len(derived_ids) == 0
 
