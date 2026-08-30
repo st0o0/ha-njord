@@ -350,8 +350,7 @@ class NjordIndexSensor(_NjordEnrichmentSensor):
         if enrichment is None or enrichment.indices is None:
             return None
         forecast = [
-            {"day_offset": d.day_offset, "score": getattr(d, self._index_key, 0)}
-            for d in enrichment.indices.forecast
+            {"day_offset": d.day_offset, "score": getattr(d, self._index_key, 0)} for d in enrichment.indices.forecast
         ]
         return {"forecast": forecast}
 

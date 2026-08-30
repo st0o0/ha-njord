@@ -30,10 +30,10 @@ from custom_components.njord.models import (
     NjordLocation,
     ParameterConsensusData,
     ParameterTrendData,
-    VpdData,
     ServerStatusData,
     TargetData,
     TrendData,
+    VpdData,
 )
 
 _UPDATED_AT = datetime(2024, 7, 3, 12, 0, tzinfo=UTC)

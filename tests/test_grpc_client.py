@@ -12,8 +12,8 @@ import pytest
 from google.protobuf.timestamp_pb2 import Timestamp
 
 from custom_components.njord.grpc_client import (
-    NjordClient,
     SENSOR_KIND_MAP,
+    NjordClient,
     _parse_extra,
     _to_alert,
 )
@@ -122,10 +122,16 @@ class MockWeatherServicer(weather_pb2_grpc.WeatherServiceServicer):
             indices=common_pb2.IndexUpdate(
                 days=[
                     common_pb2.DayScoreSet(
-                        day_offset=0, laundry=47, outdoor=56, bbq=51,
+                        day_offset=0,
+                        laundry=47,
+                        outdoor=56,
+                        bbq=51,
                     ),
                     common_pb2.DayScoreSet(
-                        day_offset=1, laundry=40, outdoor=50, bbq=45,
+                        day_offset=1,
+                        laundry=40,
+                        outdoor=50,
+                        bbq=45,
                     ),
                 ],
                 vpd=common_pb2.VpdInfo(kpa=0.59, category="optimal"),

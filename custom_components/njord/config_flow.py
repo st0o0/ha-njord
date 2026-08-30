@@ -17,7 +17,7 @@ from homeassistant.helpers.selector import (
 )
 
 from .const import DEFAULT_PORT, DOMAIN
-from .grpc_client import NjordClient, SENSOR_KIND_MAP
+from .grpc_client import SENSOR_KIND_MAP, NjordClient
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -38,7 +38,6 @@ ENRICHMENT_GROUPS = [
 ]
 
 DEFAULT_STATUS_POLL_INTERVAL = 30
-
 
 
 class NjordConfigFlow(ConfigFlow, domain=DOMAIN):

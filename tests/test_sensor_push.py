@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock
 
-import pytest
 from homeassistant.core import HomeAssistant
 
 from custom_components.njord.const import DOMAIN
@@ -29,41 +28,49 @@ def _make_entry_with_sensor_push(hass, mock_config_entry, sensor_push: dict):
 async def test_push_on_state_change(hass: HomeAssistant, mock_client) -> None:
     mock_client.push_sensor = AsyncMock(return_value=SensorPushResult(accepted=True))
 
-    entry = _make_entry_with_sensor_push(hass, None, {
-        "home": {"indoor_temperature": ["sensor.wz_temp"], "indoor_humidity": []},
-    })
+    entry = _make_entry_with_sensor_push(
+        hass,
+        None,
+        {
+            "home": {"indoor_temperature": ["sensor.wz_temp"], "indoor_humidity": []},
+        },
+    )
     await init_integration(hass, entry)
 
     hass.states.async_set("sensor.wz_temp", "22.5")
     await hass.async_block_till_done()
 
-    mock_client.push_sensor.assert_called_once_with(
-        "indoor_temperature", "home", 22.5, source="sensor.wz_temp"
-    )
+    mock_client.push_sensor.assert_called_once_with("indoor_temperature", "home", 22.5, source="sensor.wz_temp")
 
 
 async def test_push_humidity(hass: HomeAssistant, mock_client) -> None:
     mock_client.push_sensor = AsyncMock(return_value=SensorPushResult(accepted=True))
 
-    entry = _make_entry_with_sensor_push(hass, None, {
-        "home": {"indoor_temperature": [], "indoor_humidity": ["sensor.bad_hum"]},
-    })
+    entry = _make_entry_with_sensor_push(
+        hass,
+        None,
+        {
+            "home": {"indoor_temperature": [], "indoor_humidity": ["sensor.bad_hum"]},
+        },
+    )
     await init_integration(hass, entry)
 
     hass.states.async_set("sensor.bad_hum", "65")
     await hass.async_block_till_done()
 
-    mock_client.push_sensor.assert_called_once_with(
-        "indoor_humidity", "home", 65.0, source="sensor.bad_hum"
-    )
+    mock_client.push_sensor.assert_called_once_with("indoor_humidity", "home", 65.0, source="sensor.bad_hum")
 
 
 async def test_non_numeric_state_skipped(hass: HomeAssistant, mock_client) -> None:
     mock_client.push_sensor = AsyncMock(return_value=SensorPushResult(accepted=True))
 
-    entry = _make_entry_with_sensor_push(hass, None, {
-        "home": {"indoor_temperature": ["sensor.wz_temp"], "indoor_humidity": []},
-    })
+    entry = _make_entry_with_sensor_push(
+        hass,
+        None,
+        {
+            "home": {"indoor_temperature": ["sensor.wz_temp"], "indoor_humidity": []},
+        },
+    )
     await init_integration(hass, entry)
 
     hass.states.async_set("sensor.wz_temp", "unavailable")
@@ -75,9 +82,13 @@ async def test_non_numeric_state_skipped(hass: HomeAssistant, mock_client) -> No
 async def test_unknown_state_skipped(hass: HomeAssistant, mock_client) -> None:
     mock_client.push_sensor = AsyncMock(return_value=SensorPushResult(accepted=True))
 
-    entry = _make_entry_with_sensor_push(hass, None, {
-        "home": {"indoor_temperature": ["sensor.wz_temp"], "indoor_humidity": []},
-    })
+    entry = _make_entry_with_sensor_push(
+        hass,
+        None,
+        {
+            "home": {"indoor_temperature": ["sensor.wz_temp"], "indoor_humidity": []},
+        },
+    )
     await init_integration(hass, entry)
 
     hass.states.async_set("sensor.wz_temp", "unknown")
@@ -89,9 +100,13 @@ async def test_unknown_state_skipped(hass: HomeAssistant, mock_client) -> None:
 async def test_grpc_error_logged_and_dropped(hass: HomeAssistant, mock_client, caplog) -> None:
     mock_client.push_sensor = AsyncMock(side_effect=Exception("connection refused"))
 
-    entry = _make_entry_with_sensor_push(hass, None, {
-        "home": {"indoor_temperature": ["sensor.wz_temp"], "indoor_humidity": []},
-    })
+    entry = _make_entry_with_sensor_push(
+        hass,
+        None,
+        {
+            "home": {"indoor_temperature": ["sensor.wz_temp"], "indoor_humidity": []},
+        },
+    )
     await init_integration(hass, entry)
 
     hass.states.async_set("sensor.wz_temp", "22.5")
@@ -103,9 +118,13 @@ async def test_grpc_error_logged_and_dropped(hass: HomeAssistant, mock_client, c
 async def test_no_listener_when_config_empty(hass: HomeAssistant, mock_client) -> None:
     mock_client.push_sensor = AsyncMock(return_value=SensorPushResult(accepted=True))
 
-    entry = _make_entry_with_sensor_push(hass, None, {
-        "home": {"indoor_temperature": [], "indoor_humidity": []},
-    })
+    entry = _make_entry_with_sensor_push(
+        hass,
+        None,
+        {
+            "home": {"indoor_temperature": [], "indoor_humidity": []},
+        },
+    )
     await init_integration(hass, entry)
 
     hass.states.async_set("sensor.wz_temp", "22.5")
