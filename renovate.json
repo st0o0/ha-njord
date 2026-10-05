@@ -1,0 +1,23 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "local>st0o0/renovate-config",
+    "local>st0o0/renovate-config:github-actions"
+  ],
+  "packageRules": [
+    {
+      "description": "Group Python dependencies",
+      "matchManagers": ["pep621"],
+      "groupName": "python dependencies",
+      "labels": ["dependencies", "python"]
+    },
+    {
+      "description": "Automerge minor+patch Python updates after CI passes",
+      "matchManagers": ["pep621"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "minimumReleaseAge": "3 days",
+      "automerge": true,
+      "automergeType": "pr"
+    }
+  ]
+}
