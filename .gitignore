@@ -25,11 +25,13 @@ htmlcov/
 .DS_Store
 Thumbs.db
 
-# OpenSpec archive
-openspec/changes/archive/
+# Ruff
+.ruff_cache/
 
-# Concept docs (local only)
-ha-njord-concept.md
+# Claude Code
+.claude/worktrees/
+.claude/settings.local.json
+.worktrees/
 
 # Node (commitlint)
 node_modules/

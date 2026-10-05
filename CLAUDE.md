@@ -1,72 +1,97 @@
 # ha-njord
 
-Home Assistant custom integration for the njord weather service. Connects via gRPC, creates native `weather` entities with hourly+daily forecast support.
+Home Assistant custom integration for the [njord](https://github.com/st0o0/njord)
+weather service. Connects via gRPC streaming, creates native weather, sensor,
+binary sensor, event, and button entities with real-time updates.
 
 ## Architecture
 
-ha-njord is a **pure consumer** — no config logic, no write access to njord. It reads forecasts and config via gRPC and displays them as HA weather entities.
+ha-njord is a **pure consumer** — it reads forecasts, enrichments, and config
+from njord via gRPC streaming and presents them as Home Assistant entities.
+There is no polling on the HA side; updates arrive in real time.
 
 ```
 njord (gRPC server)  ──►  ha-njord (HA integration)
-  GetLocations()              Config Flow (Host+Port)
-  GetModels()                 weather.njord_{loc}_{model}
-  GetForecast()               DataUpdateCoordinator (5min)
-  GetConfig()                 WMO → HA condition mapping
+  StreamForecasts()           NjordCoordinator (streaming)
+  StreamEnrichments()         weather, sensor, binary_sensor,
+  StreamConfig()              event, button entities
+  GetStatus()                 NjordStatusCoordinator (polling)
+  Push() (sensors)            Sensor push (state listener)
 ```
 
 ## Tech Stack
 
 - Python 3.12+, grpcio, protobuf
-- No local Python installed — all commands run via Docker (`python:3.12-slim`)
 - Proto stubs are generated and committed (no build step for end users)
 
 ## Key Commands
 
 ```bash
+# Run tests
+pip install grpcio "protobuf>=5.0,<7.0" pytest pytest-asyncio pytest-homeassistant-custom-component voluptuous
+python -m pytest tests/ -v --tb=short
+
+# Lint
+pip install ruff
+ruff format --check .
+ruff check .
+
 # Generate proto stubs (Docker)
 make proto
-
-# Run tests (Docker)
-make test
-
-# Or explicitly:
-docker run --rm -v "$(pwd):/work" -w /work python:3.12-slim \
-  sh -c "pip install --quiet grpcio protobuf pytest pytest-asyncio voluptuous && python -m pytest tests/ -v"
 ```
 
 ## Project Structure
 
 ```
 custom_components/njord/
-├── __init__.py          # Integration setup (client + coordinator + platform forward)
-├── config_flow.py       # Host+Port → gRPC validation → ConfigEntry
-├── coordinator.py       # DataUpdateCoordinator (5min polling)
-├── weather.py           # NjordWeatherEntity (state, attributes, forecasts)
-├── grpc_client.py       # NjordClient — async gRPC wrapper with typed returns
-├── models.py            # Frozen dataclasses (ForecastData, NjordConfigData, ...)
+├── __init__.py          # Setup: client, coordinators, platforms, sensor push, options listener
+├── config_flow.py       # Config flow (host+port) + options flow (enrichments, sensor push, poll interval)
+├── coordinator.py       # NjordCoordinator (streaming) + NjordStatusCoordinator (polling)
+├── weather.py           # Weather entities (per-model + consensus with horizon advance)
+├── sensor.py            # Sensors: alerts, indices, VPD, frost, trend, derived, model perf, server diag
+├── binary_sensor.py     # Binary sensors: inversion, stream connectivity
+├── event.py             # Alert event entity (started, escalated, deescalated, cleared)
+├── button.py            # Trigger poll button
+├── grpc_client.py       # NjordClient — async gRPC wrapper (unary + streaming)
+├── models.py            # Frozen dataclasses (ForecastData, EnrichmentData, ...)
 ├── condition_mapper.py  # WMO weather_code + is_day → HA condition string
+├── horizon.py           # Horizon offset helper
+├── helpers.py           # Device info helper
+├── diagnostics.py       # HA diagnostics download
 ├── const.py             # DOMAIN, DEFAULT_PORT
 ├── manifest.json        # HA integration metadata
 ├── strings.json         # English UI strings
 ├── translations/de.json # German UI strings
-└── proto/               # Generated protobuf/gRPC stubs
-    └── njord/v2/        # weather, admin, ops, sensor, common stubs
+└── proto/               # Generated protobuf/gRPC stubs (njord v2)
 
-protos/njord/v2/         # Source .proto files (copied from njord)
-tests/                   # pytest tests (42 total)
+protos/njord/v2/         # Source .proto files (synced from njord repo)
+tests/                   # pytest tests (223 total, 18 skipped without gRPC server)
+brand/                   # HACS brand assets (icon.png, logo.svg)
 ```
 
 ## Proto Management
 
-Proto files are **manually copied** from `D:\GIT\njord\protos\njord\v1\`. No submodule, no third repo. When njord's protos change, copy the files and run `make proto`.
+Proto source files live in `protos/` and are synced from the
+[njord](https://github.com/st0o0/njord) repo. When njord's protos change, copy
+the files and run `make proto`. A GitHub Actions workflow (`sync-protos.yml`)
+automates this on njord releases.
 
 ## Conventions
 
-- Git: commit conventionally, NEVER `git push` — the user pushes
-- Tests run via Docker, not local Python
-- HA module stubs in `tests/conftest.py` allow testing without homeassistant installed
-- Config flow and weather platform tests that need full HA are `@pytest.mark.skip`
+- **Git: NEVER `git push`** — the user pushes. Commit messages are Conventional
+  Commits (commitlint-enforced).
+- Versioning is release-please. Never edit version in `manifest.json` or
+  `pyproject.toml` by hand.
+- Tests use `pytest-homeassistant-custom-component` for full HA test fixtures.
+- Ruff enforces formatting and linting (`pyproject.toml` config: line-length 120,
+  rules E/F/I/UP).
 
 ## Workflow
 
-Changes go through OpenSpec: `/opsx:explore` to think, `/opsx:propose` to create a change (proposal/design/specs/tasks), `/opsx:apply` to implement, `/opsx:archive`.
+Changes go through OpenSpec: `/opsx:explore` to think → `/opsx:propose` to create
+a change (proposal/design/specs/tasks) → `/opsx:apply` to implement → `/opsx:archive`.
+
+## Documentation
+
+Full entity reference, dashboard examples, and automation recipes are in the
+[njord docs](https://st0o0.github.io/njord/home-assistant/).

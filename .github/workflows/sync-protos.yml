@@ -1,0 +1,39 @@
+name: Sync Protos
+
+on:
+  repository_dispatch:
+    types: [proto-sync]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/checkout@v7
+        with:
+          repository: st0o0/njord
+          sparse-checkout: protos
+          path: _njord
+
+      - name: Copy protos
+        run: |
+          rm -rf protos/njord/
+          cp -r _njord/protos/njord/ protos/njord/
+          rm -rf _njord
+
+      - name: Regenerate Python stubs
+        run: make proto
+
+      - uses: peter-evans/create-pull-request@v7
+        with:
+          title: "chore: sync protos from njord v${{ github.event.client_payload.version }}"
+          body: "Automated proto sync triggered by njord release v${{ github.event.client_payload.version }}."
+          branch: chore/proto-sync
+          commit-message: "chore: sync protos from njord v${{ github.event.client_payload.version }}"
+          delete-branch: true

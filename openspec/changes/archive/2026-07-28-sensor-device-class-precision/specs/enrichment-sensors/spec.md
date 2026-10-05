@@ -1,0 +1,64 @@
+## MODIFIED Requirements
+
+### Requirement: HDD sensor
+The integration SHALL expose a Heating Degree Days sensor per location, sourced from `IndexData.hdd`. The sensor SHALL use raw string unit `"°C·d"` (no HA device class available) and `suggested_display_precision = 1`.
+
+#### Scenario: HDD sensor shows value
+- **WHEN** enrichment data contains `hdd = 5.2`
+- **THEN** the sensor shows `5.2` with unit `°C·d` and icon `mdi:thermometer-chevron-up`
+
+#### Scenario: HDD sensor unavailable without index data
+- **WHEN** enrichment data has no indices
+- **THEN** the HDD sensor is unavailable
+
+#### Scenario: HDD sensor has precision 1
+- **WHEN** enrichment data contains `hdd = 5.27`
+- **THEN** HA suggests displaying as `5.3`
+
+### Requirement: CDD sensor
+The integration SHALL expose a Cooling Degree Days sensor per location, sourced from `IndexData.cdd`. The sensor SHALL use raw string unit `"°C·d"` (no HA device class available) and `suggested_display_precision = 1`.
+
+#### Scenario: CDD sensor shows value
+- **WHEN** enrichment data contains `cdd = 3.1`
+- **THEN** the sensor shows `3.1` with unit `°C·d` and icon `mdi:thermometer-chevron-down`
+
+#### Scenario: CDD sensor has precision 1
+- **WHEN** enrichment data contains `cdd = 3.17`
+- **THEN** HA suggests displaying as `3.2`
+
+### Requirement: Frost hours sensor
+The integration SHALL expose a Frost Hours sensor per location, sourced from `IndexData.frost_hours`. The sensor SHALL set `device_class = SensorDeviceClass.DURATION` and `native_unit_of_measurement = UnitOfTime.HOURS` with `suggested_display_precision = 0`.
+
+#### Scenario: Frost hours sensor shows value
+- **WHEN** enrichment data contains `frost_hours = 4`
+- **THEN** the sensor shows `4` with unit `h` and icon `mdi:snowflake-thermometer`
+
+#### Scenario: Frost hours sensor shows None when not available
+- **WHEN** enrichment data has indices but `frost_hours` is None
+- **THEN** the sensor shows unknown state
+
+### Requirement: Frost confidence sensor
+The integration SHALL expose a Frost Confidence sensor per location, sourced from `IndexData.frost_confidence`, displayed as a percentage (0-100). The sensor SHALL use raw string unit `"%"` and `suggested_display_precision = 0`.
+
+#### Scenario: Frost confidence sensor shows percentage
+- **WHEN** enrichment data contains `frost_confidence = 0.85`
+- **THEN** the sensor shows `85.0` with unit `%` and icon `mdi:snowflake-check`
+
+#### Scenario: Frost confidence sensor shows None when not available
+- **WHEN** enrichment data has indices but `frost_confidence` is None
+- **THEN** the sensor shows unknown state
+
+### Requirement: Enrichment sensors are disabled by default
+All enrichment sensor entities SHALL have `_attr_entity_registry_enabled_default = False`, so they appear in the entity registry but are disabled until the user explicitly enables them.
+
+#### Scenario: Index sensor is disabled by default
+- **WHEN** the integration is set up for the first time
+- **THEN** index sensors (laundry, outdoor, cycling, etc.) are registered but disabled
+
+#### Scenario: Energy sensor is disabled by default
+- **WHEN** the integration is set up
+- **THEN** energy sensors (heating demand, COP, shading, etc.) are registered but disabled
+
+#### Scenario: User enables a sensor
+- **WHEN** a user enables a disabled sensor in the HA entity registry
+- **THEN** the sensor becomes active and shows its current value

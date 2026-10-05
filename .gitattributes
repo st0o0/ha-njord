@@ -1,0 +1,3 @@
+# Force LF everywhere — matches .editorconfig end_of_line = lf
+* text=auto eol=lf
+*.sh text eol=lf
