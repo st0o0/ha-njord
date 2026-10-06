@@ -2,7 +2,7 @@ PROTO_SRC = protos
 PROTO_OUT = custom_components/njord/proto
 DOCKER_IMAGE = python:3.12-slim
 
-.PHONY: proto test
+.PHONY: proto test lint
 
 proto:
 	docker run --rm -v "$(CURDIR):/work" -w /work $(DOCKER_IMAGE) \
@@ -17,8 +17,16 @@ proto:
 			$(PROTO_SRC)/njord/v2/ops.proto \
 			$(PROTO_SRC)/njord/v2/sensor.proto"
 
+# Runs in Docker: pytest-homeassistant-custom-component needs Python <3.13,
+# and its event-loop fixtures assume a Unix event loop (break under native
+# Windows pytest even with a 3.12 interpreter). UV_PROJECT_ENVIRONMENT keeps
+# the venv off the bind mount — on it, installing/reading homeassistant's
+# thousands of files through a Windows volume makes the run hang for minutes.
 test:
-	docker run --rm -v "$(CURDIR):/work" -w /work $(DOCKER_IMAGE) \
-		sh -c "pip install --quiet grpcio protobuf \
-		pytest pytest-asyncio pytest-homeassistant-custom-component voluptuous && \
-		python -m pytest tests/ -v"
+	docker run --rm -v "$(CURDIR):/work" -w /work -e UV_PROJECT_ENVIRONMENT=/opt/venv $(DOCKER_IMAGE) \
+		sh -c "pip install --quiet uv && uv sync --locked --all-extras && uv run pytest tests/ -v"
+
+lint:
+	docker run --rm -v "$(CURDIR):/work" -w /work -e UV_PROJECT_ENVIRONMENT=/opt/venv $(DOCKER_IMAGE) \
+		sh -c "pip install --quiet uv && uv sync --locked --all-extras && \
+		uv run ruff format --check . && uv run ruff check ."

@@ -26,15 +26,24 @@ njord (gRPC server)  ──►  ha-njord (HA integration)
 
 ## Key Commands
 
+Dependency management is uv (`pyproject.toml` + committed `uv.lock`,
+`[tool.uv] package = false` since this is a HA custom component, not a
+distributable package).
+
 ```bash
-# Run tests
-pip install grpcio "protobuf>=5.0,<7.0" pytest pytest-asyncio pytest-homeassistant-custom-component voluptuous
-python -m pytest tests/ -v --tb=short
+# Run tests — native pytest fails on Windows (pytest-homeassistant-custom-component's
+# event-loop fixtures assume a Unix event loop), so this project runs tests via
+# `make test` (Docker: python:3.12-slim + uv) on Windows. On Linux/macOS, uv works directly:
+uv sync --locked --all-extras
+uv run pytest tests/ -v --tb=short
 
 # Lint
-pip install ruff
-ruff format --check .
-ruff check .
+uv run ruff format --check .
+uv run ruff check .
+
+# Or, from any platform:
+make test
+make lint
 
 # Generate proto stubs (Docker)
 make proto
