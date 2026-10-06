@@ -33,5 +33,8 @@ Thumbs.db
 .claude/settings.local.json
 .worktrees/
 
+# E2E test results
+e2e/results/
+
 # Node (commitlint)
 node_modules/
