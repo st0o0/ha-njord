@@ -247,6 +247,8 @@ class _NjordEnrichmentSensor(CoordinatorEntity[NjordDataCoordinator], SensorEnti
 class NjordAlertSensor(_NjordEnrichmentSensor):
     """Sensor for a weather alert showing the trigger value."""
 
+    _attr_entity_registry_enabled_default = True
+
     def __init__(
         self,
         coordinator: NjordDataCoordinator,

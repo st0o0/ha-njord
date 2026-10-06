@@ -122,6 +122,23 @@ async def test_enrichment_sensors_disabled_by_default(hass: HomeAssistant, mock_
         assert state is None, f"{entity_id} should have no state when disabled"
 
 
+async def test_alert_sensors_enabled_by_default(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+    await init_integration(hass, mock_config_entry)
+
+    registry = er.async_get(hass)
+    alert_sensors = [
+        "sensor.home_frost_alert",
+        "sensor.home_heat_alert",
+        "sensor.home_storm_alert",
+    ]
+    for entity_id in alert_sensors:
+        entry = registry.async_get(entity_id)
+        assert entry is not None, f"Missing entity: {entity_id}"
+        assert entry.disabled_by is None, f"{entity_id} should be enabled by default"
+        state = hass.states.get(entity_id)
+        assert state is not None, f"{entity_id} should have a state when enabled by default"
+
+
 # --- Derived Sensor Tests ---
 
 
