@@ -14,41 +14,17 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
-        with:
-          python-version: "3.12"
-          cache: pip
-          cache-dependency-path: pyproject.toml
-      - name: Install dependencies
-        run: pip install grpcio "protobuf>=5.0,<7.0" pytest pytest-asyncio pytest-homeassistant-custom-component voluptuous
-      - name: Run tests
-        run: python -m pytest tests/ -v --tb=short
+  python:
+    uses: st0o0/github-workflows/.github/workflows/python-ci.yml@main
 
-  lint:
+  commitlint:
+    uses: st0o0/github-workflows/.github/workflows/commitlint.yml@main
+
+  hacs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
-        with:
-          python-version: "3.12"
-      - run: pip install ruff
-      - run: ruff format --check .
-      - run: ruff check .
-
-  validate:
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-      - uses: wagoid/commitlint-github-action@v6
       - uses: hacs/action@main
         with:
           category: integration
