@@ -32,8 +32,7 @@ distributable package).
 
 ```bash
 # Run tests — native pytest fails on Windows (pytest-homeassistant-custom-component's
-# event-loop fixtures assume a Unix event loop), so this project runs tests via
-# `make test` (Docker: python:3.12-slim + uv) on Windows. On Linux/macOS, uv works directly:
+# event-loop fixtures assume a Unix event loop). On Linux/macOS, uv works directly:
 uv sync --locked --all-extras
 uv run pytest tests/ -v --tb=short
 
@@ -41,12 +40,26 @@ uv run pytest tests/ -v --tb=short
 uv run ruff format --check .
 uv run ruff check .
 
-# Or, from any platform:
-make test
-make lint
+# Or, from any platform (Docker: python:3.12-slim + uv):
+docker run --rm -v "$PWD:/work" -w /work -e UV_PROJECT_ENVIRONMENT=/opt/venv python:3.12-slim \
+  sh -c "pip install --quiet uv && uv sync --locked --all-extras && uv run pytest tests/ -v"
+
+docker run --rm -v "$PWD:/work" -w /work -e UV_PROJECT_ENVIRONMENT=/opt/venv python:3.12-slim \
+  sh -c "pip install --quiet uv && uv sync --locked --all-extras && \
+  uv run ruff format --check . && uv run ruff check ."
 
 # Generate proto stubs (Docker)
-make proto
+docker run --rm -v "$PWD:/work" -w /work python:3.12-slim \
+  sh -c "pip install --quiet 'grpcio-tools>=1.70,<1.79' 'protobuf>=5.0,<6.0' && \
+  python -m grpc_tools.protoc \
+    -Iprotos \
+    --python_out=custom_components/njord/proto \
+    --grpc_python_out=custom_components/njord/proto \
+    protos/njord/v2/common.proto \
+    protos/njord/v2/weather.proto \
+    protos/njord/v2/admin.proto \
+    protos/njord/v2/ops.proto \
+    protos/njord/v2/sensor.proto"
 ```
 
 ## Project Structure
@@ -82,8 +95,8 @@ brand/                   # HACS brand assets (icon.png, logo.svg)
 
 Proto source files live in `protos/` and are synced from the
 [njord](https://github.com/st0o0/njord) repo. When njord's protos change, copy
-the files and run `make proto`. A GitHub Actions workflow (`sync-protos.yml`)
-automates this on njord releases.
+the files and regenerate stubs (see the proto command above). A GitHub Actions
+workflow (`sync-protos.yml`) automates this on njord releases.
 
 ## Conventions
 

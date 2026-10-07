@@ -12,10 +12,10 @@ The project SHALL contain copies of njord's v2 proto definitions at `protos/njor
 - **THEN** all four proto files (`common.proto`, `weather.proto`, `admin.proto`, `ops.proto`) are present and match njord's current v2 definitions
 
 ### Requirement: Python stub generation
-The project SHALL provide a Makefile target `make proto` that generates Python gRPC stubs from the v2 proto source files using `grpcio-tools`, correctly resolving `common.proto` imports.
+The project SHALL document a reproducible command (Docker-based, see CLAUDE.md) that generates Python gRPC stubs from the v2 proto source files using `grpcio-tools`, correctly resolving `common.proto` imports. `sync-protos.yml` runs the equivalent `protoc` invocation directly in CI.
 
 #### Scenario: Successful codegen
-- **WHEN** a developer runs `make proto` from the project root
+- **WHEN** a developer runs the documented proto codegen command from the project root
 - **THEN** `custom_components/njord/proto/njord/v2/` contains `common_pb2.py`, `weather_pb2.py`, `weather_pb2_grpc.py`, `admin_pb2.py`, `admin_pb2_grpc.py`, `ops_pb2.py`, and `ops_pb2_grpc.py`
 
 #### Scenario: Generated stubs are importable

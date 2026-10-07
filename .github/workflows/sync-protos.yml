@@ -27,8 +27,22 @@ jobs:
           cp -r _njord/protos/njord/ protos/njord/
           rm -rf _njord
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
       - name: Regenerate Python stubs
-        run: make proto
+        run: |
+          pip install --quiet 'grpcio-tools>=1.70,<1.79' 'protobuf>=5.0,<6.0'
+          python -m grpc_tools.protoc \
+            -Iprotos \
+            --python_out=custom_components/njord/proto \
+            --grpc_python_out=custom_components/njord/proto \
+            protos/njord/v2/common.proto \
+            protos/njord/v2/weather.proto \
+            protos/njord/v2/admin.proto \
+            protos/njord/v2/ops.proto \
+            protos/njord/v2/sensor.proto
 
       - uses: peter-evans/create-pull-request@v7
         with:

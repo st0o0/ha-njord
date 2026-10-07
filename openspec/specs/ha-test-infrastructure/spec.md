@@ -25,8 +25,8 @@ Tests SHALL use a `mock_client` fixture that patches `NjordClient` at the import
 ### Requirement: Tests run in Docker
 Tests SHALL be runnable via a Docker command without local Python. The command SHALL install `pytest-homeassistant-custom-component` and all dependencies.
 
-#### Scenario: make test runs all tests
-- **WHEN** `make test` is executed
+#### Scenario: Docker test command runs all tests
+- **WHEN** the documented `docker run ... pytest tests/` command (see CLAUDE.md) is executed
 - **THEN** all tests run in a Docker container and report results
 
 ### Requirement: Integration setup/teardown tests

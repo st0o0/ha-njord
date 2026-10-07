@@ -66,10 +66,21 @@ For the complete entity reference, dashboard examples, automation recipes, and c
 
 ```bash
 # Run tests (Docker, no local Python needed)
-make test
+docker run --rm -v "$PWD:/work" -w /work -e UV_PROJECT_ENVIRONMENT=/opt/venv python:3.12-slim \
+  sh -c "pip install --quiet uv && uv sync --locked --all-extras && uv run pytest tests/ -v"
 
 # Regenerate proto stubs
-make proto
+docker run --rm -v "$PWD:/work" -w /work python:3.12-slim \
+  sh -c "pip install --quiet 'grpcio-tools>=1.70,<1.79' 'protobuf>=5.0,<6.0' && \
+  python -m grpc_tools.protoc \
+    -Iprotos \
+    --python_out=custom_components/njord/proto \
+    --grpc_python_out=custom_components/njord/proto \
+    protos/njord/v2/common.proto \
+    protos/njord/v2/weather.proto \
+    protos/njord/v2/admin.proto \
+    protos/njord/v2/ops.proto \
+    protos/njord/v2/sensor.proto"
 ```
 
 ## License
