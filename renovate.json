@@ -7,13 +7,13 @@
   "packageRules": [
     {
       "description": "Group Python dependencies",
-      "matchManagers": ["pep621"],
+      "matchManagers": ["pep621", "pip_requirements", "homeassistant"],
       "groupName": "python dependencies",
       "labels": ["dependencies", "python"]
     },
     {
       "description": "Automerge minor+patch Python updates after CI passes",
-      "matchManagers": ["pep621"],
+      "matchManagers": ["pep621", "pip_requirements", "homeassistant"],
       "matchUpdateTypes": ["minor", "patch"],
       "minimumReleaseAge": "3 days",
       "automerge": true,
