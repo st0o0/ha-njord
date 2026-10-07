@@ -18,6 +18,13 @@ jobs:
     uses: st0o0/github-workflows/.github/workflows/security.yml@main
     with:
       scan-type: fs
+      # uv.lock resolves the dev extra too, which pulls in the full
+      # homeassistant core package (pytest-homeassistant-custom-component) and
+      # its entire dependency tree for testing only — none of it ships to
+      # users. requirements.txt (regenerate via `make requirements`) tracks
+      # what actually ships and is what Trivy scans instead; trivy.yaml
+      # tells Trivy to skip uv.lock.
+      trivy-config: trivy.yaml
     permissions:
       contents: read
       security-events: write

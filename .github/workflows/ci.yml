@@ -20,6 +20,26 @@ jobs:
   commitlint:
     uses: st0o0/github-workflows/.github/workflows/commitlint.yml@main
 
+  requirements-sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: '3.12'
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Verify requirements.txt matches uv.lock
+        run: |
+          uv export --no-hashes --no-header -o /tmp/requirements.txt
+          diff requirements.txt /tmp/requirements.txt || {
+            echo "::error::requirements.txt is out of date — run 'make requirements' and commit the result"
+            exit 1
+          }
+
   hacs:
     runs-on: ubuntu-latest
     timeout-minutes: 5

@@ -2,7 +2,7 @@ PROTO_SRC = protos
 PROTO_OUT = custom_components/njord/proto
 DOCKER_IMAGE = python:3.12-slim
 
-.PHONY: proto test lint
+.PHONY: proto test lint requirements
 
 proto:
 	docker run --rm -v "$(CURDIR):/work" -w /work $(DOCKER_IMAGE) \
@@ -30,3 +30,9 @@ lint:
 	docker run --rm -v "$(CURDIR):/work" -w /work -e UV_PROJECT_ENVIRONMENT=/opt/venv $(DOCKER_IMAGE) \
 		sh -c "pip install --quiet uv && uv sync --locked --all-extras && \
 		uv run ruff format --check . && uv run ruff check ."
+
+# requirements.txt is the shipped-only footprint (no dev extra) that Trivy
+# scans instead of uv.lock, which also resolves the homeassistant test
+# dependency's full tree. Regenerate after changing [project.dependencies].
+requirements:
+	uv export --no-hashes --no-header -o requirements.txt
