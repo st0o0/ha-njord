@@ -1,6 +1,0 @@
-grpcio==1.84.0
-    # via ha-njord
-protobuf==6.33.6
-    # via ha-njord
-typing-extensions==4.16.0
-    # via grpcio

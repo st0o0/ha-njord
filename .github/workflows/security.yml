@@ -14,17 +14,38 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Self-contained (not the shared st0o0/github-workflows fs-scan job) because
+  # it needs an extra step before Trivy runs: uv.lock resolves the dev extra
+  # too, which pulls in the full homeassistant core package
+  # (pytest-homeassistant-custom-component) and its entire dependency tree for
+  # testing only — none of it ships to users. requirements.txt is generated
+  # here on the fly (never committed, see .gitignore) as the shipped-only
+  # footprint for Trivy to scan instead; trivy.yaml tells Trivy to skip
+  # uv.lock.
   scan:
-    uses: st0o0/github-workflows/.github/workflows/security.yml@main
-    with:
-      scan-type: fs
-      # uv.lock resolves the dev extra too, which pulls in the full
-      # homeassistant core package (pytest-homeassistant-custom-component) and
-      # its entire dependency tree for testing only — none of it ships to
-      # users. requirements.txt (regenerate via `make requirements`) tracks
-      # what actually ships and is what Trivy scans instead; trivy.yaml
-      # tells Trivy to skip uv.lock.
-      trivy-config: trivy.yaml
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       security-events: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: '3.12'
+      - run: uv export --no-hashes --no-header -o requirements.txt
+      - uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          trivy-config: trivy.yaml
+          scanners: vuln,secret,misconfig
+          format: sarif
+          output: trivy.sarif
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: '0'
+      - if: always() && hashFiles('trivy.sarif') != ''
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: trivy.sarif
+          category: trivy-fs
