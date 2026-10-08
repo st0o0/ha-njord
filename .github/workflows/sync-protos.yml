@@ -27,7 +27,7 @@ jobs:
           cp -r _njord/protos/njord/ protos/njord/
           rm -rf _njord
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.14'
 
@@ -44,7 +44,7 @@ jobs:
             protos/njord/v2/ops.proto \
             protos/njord/v2/sensor.proto
 
-      - uses: peter-evans/create-pull-request@v7
+      - uses: peter-evans/create-pull-request@v8
         with:
           title: "chore: sync protos from njord v${{ github.event.client_payload.version }}"
           body: "Automated proto sync triggered by njord release v${{ github.event.client_payload.version }}."
