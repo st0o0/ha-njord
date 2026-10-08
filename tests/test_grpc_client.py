@@ -692,6 +692,30 @@ class TestToAlert:
         alert = _to_alert(pb)
         assert alert.severity == "none"
 
+    @pytest.mark.parametrize(
+        "type_id,expected_name",
+        [
+            (1, "frost"),
+            (2, "heat"),
+            (3, "storm"),
+            (4, "heavy_rain"),
+            (5, "uv"),
+            (6, "fog"),
+            (7, "snow"),
+            (8, "pressure_drop"),
+            (9, "thunderstorm"),
+            (10, "ice"),
+            (11, "wind_chill"),
+            (12, "visibility"),
+            (13, "tropical_night"),
+            (14, "humidity"),
+        ],
+    )
+    def test_all_14_alert_types_mapped(self, type_id, expected_name):
+        pb = common_pb2.Alert(type=type_id, severity=0, confidence=0.0)
+        alert = _to_alert(pb)
+        assert alert.type == expected_name
+
 
 # --- Sensor push tests ---
 

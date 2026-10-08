@@ -261,8 +261,8 @@ Derived from config: 1 location × 2 models × all enrichments.
 |------|--------|---------------|
 | 9.1 | `GET /api/states/sensor.version` | State matches semver pattern (e.g., "0.1.0" or "0.1.0-alpha.1") |
 | 9.2 | `GET /api/states/sensor.uptime` | State is non-empty (duration string or numeric) |
-| 9.3 | `GET /api/states/sensor.monthly_usage` | State is numeric, attribute `unit_of_measurement` = "requests" |
-| 9.4 | `GET /api/states/sensor.daily_usage` | State is numeric, attribute `unit_of_measurement` = "requests" |
+| 9.3 | `GET /api/states/sensor.monthly_usage` | State is numeric, attribute `unit_of_measurement` = "%" (percentage of monthly budget) |
+| 9.4 | `GET /api/states/sensor.daily_usage` | State is numeric, attribute `unit_of_measurement` = "%" (percentage of daily budget) |
 | 9.5 | `GET /api/states/button.trigger_poll` | Entity exists |
 | 9.6 | `GET /api/states/sensor.lucerne_icon_d2_target` | State is ISO timestamp or "unknown" |
 | 9.7 | `GET /api/states/sensor.lucerne_ecmwf_ifs025_target` | State is ISO timestamp or "unknown" |

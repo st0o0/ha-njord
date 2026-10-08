@@ -238,6 +238,11 @@ _ALERT_TYPE_MAP: dict[int, str] = {
     7: "snow",
     8: "pressure_drop",
     9: "thunderstorm",
+    10: "ice",
+    11: "wind_chill",
+    12: "visibility",
+    13: "tropical_night",
+    14: "humidity",
 }
 
 _ALERT_SEVERITY_MAP: dict[int, str] = {
