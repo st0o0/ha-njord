@@ -6,18 +6,21 @@
   ],
   "packageRules": [
     {
-      "description": "Group Python dependencies",
+      "description": "Group all Python dependency updates (minor+patch)",
       "matchManagers": ["pep621", "homeassistant"],
+      "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
       "groupName": "python dependencies",
-      "labels": ["dependencies", "python"]
-    },
-    {
-      "description": "Automerge minor+patch Python updates after CI passes",
-      "matchManagers": ["pep621", "homeassistant"],
-      "matchUpdateTypes": ["minor", "patch"],
+      "labels": ["dependencies", "python"],
       "minimumReleaseAge": "3 days",
       "automerge": true,
       "automergeType": "pr"
+    },
+    {
+      "description": "Group major Python dependency updates (separate PR, no automerge)",
+      "matchManagers": ["pep621", "homeassistant"],
+      "matchUpdateTypes": ["major"],
+      "groupName": "major python dependencies",
+      "labels": ["dependencies", "python"]
     }
   ]
 }
