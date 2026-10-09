@@ -7,17 +7,17 @@ Defines derived weather sensors (Beaufort, Wind Chill, Dewpoint Comfort) sourced
 ### Requirement: Beaufort sensor
 The integration SHALL expose a Beaufort sensor per location, sourced from `DerivedData.by_horizon`. The sensor SHALL display the current Beaufort scale value (0-12) using the horizon-offset helper to select the correct horizon entry. The sensor SHALL use `suggested_display_precision = 0` and icon `mdi:windsock`.
 
-#### Scenario: Beaufort sensor shows current value
-- **WHEN** derived data contains `by_horizon` with `h3` having `beaufort = 6` and the current horizon offset is 3
-- **THEN** the sensor shows `6` with icon `mdi:windsock`
+#### Scenario: Beaufort sensor shows value immediately after data arrival
+- **WHEN** derived data contains `by_horizon` with `[h3, h6, h12, h24]` where `h3` has `beaufort = 6` and data was just received (offset = 0)
+- **THEN** the sensor shows `6` with icon `mdi:windsock` (nearest horizon h3 selected)
 
 #### Scenario: Beaufort sensor unavailable without derived data
 - **WHEN** enrichment data has no derived data for the location
 - **THEN** the Beaufort sensor is unavailable
 
 #### Scenario: Beaufort sensor advances with time
-- **WHEN** 2 hours pass since the derived data was computed
-- **THEN** the sensor reads from a horizon 2 steps ahead of the initial offset
+- **WHEN** 4 hours pass since the derived data was computed and horizons are `[h3, h6, h12, h24]`
+- **THEN** the sensor reads from `h6` (nearest horizon ≥ offset 4)
 
 ### Requirement: Wind Chill sensor
 The integration SHALL expose a Wind Chill sensor per location, sourced from `DerivedData.by_horizon`. The sensor SHALL use `device_class = SensorDeviceClass.TEMPERATURE`, `native_unit_of_measurement = UnitOfTemperature.CELSIUS`, `suggested_display_precision = 1`, and icon `mdi:snowflake-thermometer`.

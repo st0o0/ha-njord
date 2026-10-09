@@ -20,7 +20,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .const import DOMAIN
 from .coordinator import NjordDataCoordinator, NjordStatusCoordinator
 from .helpers import device_info, server_device_info
-from .horizon import current_horizon_offset, get_horizon_entry
+from .horizon import current_horizon_offset, find_nearest_horizon
 from .models import AlertData, EnrichmentData, HorizonDerivedData, NjordLocation
 
 ALERT_TYPES = [
@@ -787,7 +787,7 @@ class _NjordDerivedHorizonSensor(_NjordEnrichmentSensor):
         if enrichment is None or enrichment.derived is None:
             return None
         offset = current_horizon_offset(enrichment.derived_updated_at)
-        return get_horizon_entry(enrichment.derived.by_horizon, offset)
+        return find_nearest_horizon(enrichment.derived.by_horizon, offset)
 
     @property
     def available(self) -> bool:

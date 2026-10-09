@@ -260,8 +260,8 @@ def _default_enrichment(location: str = "home") -> EnrichmentData:
         ),
         derived=DerivedData(
             by_horizon=[
-                HorizonDerivedData(horizon="h0", beaufort=3, wind_chill=18.5, dewpoint_comfort="comfortable"),
-                HorizonDerivedData(horizon="h3", beaufort=2, wind_chill=16.2, dewpoint_comfort="sticky"),
+                HorizonDerivedData(horizon="h3", beaufort=3, wind_chill=18.5, dewpoint_comfort="comfortable"),
+                HorizonDerivedData(horizon="h6", beaufort=2, wind_chill=16.2, dewpoint_comfort="sticky"),
             ],
             diurnal_amplitude=7.3,
             sunshine_pct=66.4,
