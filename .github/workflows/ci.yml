@@ -1,6 +1,6 @@
 name: ci
 
-# PRs only — the merge commit was already validated here, so re-running on
+# PRs only, the merge commit was already validated here, so re-running on
 # push to main would be pure duplication. release.yml owns main.
 on:
   pull_request:

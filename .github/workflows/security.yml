@@ -18,7 +18,7 @@ jobs:
   # it needs an extra step before Trivy runs: uv.lock resolves the dev extra
   # too, which pulls in the full homeassistant core package
   # (pytest-homeassistant-custom-component) and its entire dependency tree for
-  # testing only — none of it ships to users. requirements.txt is generated
+  # testing only: none of it ships to users. requirements.txt is generated
   # here on the fly (never committed, see .gitignore) as the shipped-only
   # footprint for Trivy to scan instead; trivy.yaml tells Trivy to skip
   # uv.lock.

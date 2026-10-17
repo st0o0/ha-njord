@@ -183,7 +183,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 if len(locations) == 1:
                     location = next(iter(locations))
                 else:
-                    raise ServiceValidationError("Multiple locations configured — 'location' parameter is required")
+                    raise ServiceValidationError("Multiple locations configured: 'location' parameter is required")
 
             for entry_data in hass.data[DOMAIN].values():
                 c: NjordClient = entry_data["client"]

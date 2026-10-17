@@ -30,7 +30,7 @@ asyncio_mode = "auto"
 target-version = "py312"
 line-length = 120
 # openspec/ holds planning docs (including archived proposals with illustrative,
-# not-necessarily-current Python snippets in fenced code blocks) — ruff format
+# not-necessarily-current Python snippets in fenced code blocks): ruff format
 # treats those as real source by default, so keep it out of scan scope.
 exclude = ["custom_components/njord/proto/", "openspec/"]
 

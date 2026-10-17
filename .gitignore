@@ -39,5 +39,5 @@ e2e/results/
 # Node (commitlint)
 node_modules/
 
-# Trivy's shipped-only footprint — generated on demand, see security.yml
+# Trivy's shipped-only footprint: generated on demand, see security.yml
 requirements.txt

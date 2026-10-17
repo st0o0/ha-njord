@@ -27,7 +27,7 @@ jobs:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
-  # No re-test — CI already validated the PR. Branch protection enforces this.
+  # No re-test: CI already validated the PR. Branch protection enforces this.
 
   publish:
     needs: release-please
