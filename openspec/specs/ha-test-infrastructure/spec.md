@@ -1,5 +1,7 @@
-## ADDED Requirements
+## Purpose
+Defines the test infrastructure that runs the suite against a real Home Assistant runtime.
 
+## Requirements
 ### Requirement: Tests run against real HA runtime
 All tests SHALL use `pytest-homeassistant-custom-component` to provide a real HomeAssistant instance. No hand-rolled HA module stubs SHALL exist in the test infrastructure.
 

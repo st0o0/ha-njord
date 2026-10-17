@@ -1,3 +1,7 @@
+## Purpose
+Defines which dependency manifest the CI vulnerability scan covers.
+
+## Requirements
 ### Requirement: Trivy scans only the shipped dependency footprint
 The ha-njord CI SHALL scan a dependency manifest that reflects only the
 packages `custom_components/njord/manifest.json` requires at runtime, not

@@ -1,3 +1,7 @@
+## Purpose
+Defines how alert trigger values, thresholds and peak values are parsed from the protobuf payload.
+
+## Requirements
 ### Requirement: Parse alert trigger values from protobuf
 
 The gRPC client SHALL parse `trigger_value`, `threshold`, `peak_value`, `hours_until`, and `duration_hours` from the `Alert` protobuf message into `AlertData`.

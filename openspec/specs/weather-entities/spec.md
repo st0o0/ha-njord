@@ -1,5 +1,7 @@
-## MODIFIED Requirements
+## Purpose
+Defines the per-model weather entities and the attributes they expose.
 
+## Requirements
 ### Requirement: Weather entities expose all standard attributes
 Model weather entities SHALL expose `native_apparent_temperature` and `cloud_cover` properties in addition to existing attributes. All current-state properties SHALL read from the time-matched hourly entry (the last entry where `valid_at <= utcnow()`), not from `hourly[0]`.
 

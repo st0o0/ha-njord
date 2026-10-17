@@ -1,3 +1,7 @@
+## Purpose
+Defines how extra forecast parameters are parsed from protobuf and exposed on weather entities.
+
+## Requirements
 ### Requirement: Parse ParameterValue extra fields from protobuf
 
 The gRPC client SHALL parse the `repeated ParameterValue extra` field from both `HourlyForecast` and `DailyForecast` protobuf messages into a `dict[str, float | str | bool]` on the corresponding dataclass.

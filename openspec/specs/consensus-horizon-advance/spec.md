@@ -1,7 +1,7 @@
-## Capability: consensus-horizon-advance
-
+## Purpose
 Time-adjusted horizon selection for consensus weather entities. As hours pass since the consensus was computed, the entity advances through horizons so that current state always reflects the most relevant forecast.
 
+## Requirements
 ### Requirements
 
 #### Requirement: EnrichmentData tracks consensus computation timestamp

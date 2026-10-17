@@ -1,3 +1,7 @@
+## Purpose
+Defines default enablement of enrichment-derived entities such as the inversion sensor.
+
+## Requirements
 ### Requirement: Inversion sensor is disabled by default
 
 The inversion binary sensor SHALL have `_attr_entity_registry_enabled_default = False`.

@@ -1,3 +1,7 @@
+## Purpose
+Defines the alert sensor entities and how they expose severity, trigger value and confidence per alert type.
+
+## Requirements
 ### Requirement: Alert sensor entity with trigger value as state
 
 For each alert type, the integration SHALL create a `sensor` entity with `native_value` set to `alert.trigger_value`.

@@ -1,5 +1,7 @@
-## MODIFIED Requirements
+## Purpose
+Defines the config flow that validates the gRPC connection and creates the config entry.
 
+## Requirements
 ### Requirement: Config flow validates gRPC connection
 The config flow SHALL validate the gRPC connection by calling `get_catalog()` during setup. Tests SHALL exercise the real HA config flow machinery using `hass.config_entries.flow`.
 

@@ -1,6 +1,7 @@
-## Capability: consensus-weather
-
+## Purpose
 A weather entity per location that uses multi-model consensus values instead of a single model's forecast.
+
+## Overview
 
 ### Entity
 
@@ -51,99 +52,99 @@ The consensus entity supports `forecast_hourly` and `forecast_daily` via HA's we
 - Each `ParameterConsensus` has `parameter` (name), `unit`, and `by_horizon[]`
 - Each `HorizonConsensus` has `horizon`, `median`, `trimmed_mean`, `spread`, `iqr`, `agreement`, `available_models`
 
-### Requirements
+## Requirements
 
-#### Requirement: Current state uses time-adjusted horizon
+### Requirement: Current state uses time-adjusted horizon
 The consensus entity's current state (temperature, humidity, wind, condition, etc.) SHALL use the time-adjusted horizon `h{elapsed}` instead of hardcoded `h0`, where `elapsed` is the number of full hours since `consensus_updated_at`. Falls back to `h0` if `consensus_updated_at` is `None`.
 
-##### Scenario: Current temperature from h0
+#### Scenario: Current temperature from h0
 - **WHEN** consensus data has an h0 horizon with temperature_2m median = 22.5
 - **AND** consensus was just computed (0 hours elapsed)
 - **THEN** the entity's temperature is 22.5
 
-##### Scenario: Current temperature after 3 hours
+#### Scenario: Current temperature after 3 hours
 - **WHEN** consensus data has h3 with temperature_2m median = 25.0
 - **AND** 3 hours have elapsed since consensus computation
 - **THEN** the entity's temperature is 25.0
 
-##### Scenario: Fallback when adjusted horizon is missing
+#### Scenario: Fallback when adjusted horizon is missing
 - **WHEN** elapsed hours exceeds the highest available horizon
 - **THEN** the entity shows "Unknown" state
 
-#### Requirement: Hourly forecast from consecutive horizons
+### Requirement: Hourly forecast from consecutive horizons
 The consensus entity SHALL support `FORECAST_HOURLY` by building forecast entries from `h{elapsed+1}..hN` consensus horizons, each with a real timestamp.
 
-##### Scenario: Hourly forecast entries after elapsed time
+#### Scenario: Hourly forecast entries after elapsed time
 - **WHEN** `async_forecast_hourly` is called and 3 hours have elapsed since consensus computation
 - **THEN** forecast entries start from h4 (not h1), each with timestamp = now + (N - elapsed) hours
 
-##### Scenario: Condition mapped from weather_code median
+#### Scenario: Condition mapped from weather_code median
 - **WHEN** an hourly consensus horizon has weather_code median = 1.2
 - **THEN** the forecast entry's condition is mapped from WMO code 1 (nearest known code)
 
-##### Scenario: h0 through h{elapsed} excluded from hourly forecast
+#### Scenario: h0 through h{elapsed} excluded from hourly forecast
 - **WHEN** `async_forecast_hourly` is called and 3 hours have elapsed
 - **THEN** horizons h0, h1, h2, h3 are not included
 
-#### Requirement: Daily forecast aggregated from hourly
+### Requirement: Daily forecast aggregated from hourly
 The consensus entity SHALL support `FORECAST_DAILY` by aggregating hourly consensus data per calendar day.
 
-##### Scenario: Daily aggregation
+#### Scenario: Daily aggregation
 - **WHEN** `async_forecast_daily` is called and consensus has 72 hourly horizons
 - **THEN** forecast entries are returned for each full future day with: max temperature, min temperature, precipitation sum, max wind speed, and midday condition
 
-##### Scenario: Today excluded
+#### Scenario: Today excluded
 - **WHEN** `async_forecast_daily` is called
 - **THEN** the current (partial) day is not included in the daily forecast
 
-##### Scenario: Midday condition
+#### Scenario: Midday condition
 - **WHEN** a daily forecast entry is built for a future day
 - **THEN** condition is derived from the weather_code median at the horizon closest to 12:00 UTC for that day
 
-#### Requirement: Reliability extra state attributes
+### Requirement: Reliability extra state attributes
 The consensus entity SHALL expose reliability and freshness information in extra_state_attributes using the time-adjusted horizon.
 
-##### Scenario: Reliable hours attribute after elapsed time
+#### Scenario: Reliable hours attribute after elapsed time
 - **WHEN** 2 hours have elapsed and temperature agreement drops below 0.5 at h10
 - **THEN** `reliable_hours` is 8 (counting from h2 through h9)
 
-##### Scenario: Agreement and spread from adjusted horizon
+#### Scenario: Agreement and spread from adjusted horizon
 - **WHEN** 2 hours have elapsed and h2 temperature has agreement=0.75, spread=2.8, available_models=7
 - **THEN** extra_state_attributes contains `agreement=0.75`, `spread=2.8`, `available_models=7`
 
-##### Scenario: Current horizon attribute reflects offset
+#### Scenario: Current horizon attribute reflects offset
 - **WHEN** 5 hours have elapsed since consensus computation
 - **THEN** extra_state_attributes contains `current_horizon = "h5"`
 
-##### Scenario: Current horizon at zero offset
+#### Scenario: Current horizon at zero offset
 - **WHEN** consensus was just computed (0 hours elapsed)
 - **THEN** extra_state_attributes contains `current_horizon = "h0"`
 
-##### Scenario: Consensus age in hours
+#### Scenario: Consensus age in hours
 - **WHEN** consensus was computed 3 hours ago
 - **THEN** extra_state_attributes contains `consensus_age_hours = 3`
 
-##### Scenario: Consensus age absent when no timestamp
+#### Scenario: Consensus age absent when no timestamp
 - **WHEN** `consensus_updated_at` is None
 - **THEN** extra_state_attributes SHALL NOT contain `consensus_age_hours`
 
-##### Scenario: Attributes change every hour to prevent staleness
+#### Scenario: Attributes change every hour to prevent staleness
 - **WHEN** the hourly refresh fires and the horizon offset advances from 4 to 5
 - **THEN** `current_horizon` changes from `"h4"` to `"h5"` and `consensus_age_hours` increments
 - **AND** HA updates `last_updated` on the entity because attributes changed
 
-#### Requirement: Supported features set at init
+### Requirement: Supported features set at init
 The consensus entity SHALL determine `supported_features` at init based on available consensus data.
 
-##### Scenario: Hourly consensus data available
+#### Scenario: Hourly consensus data available
 - **WHEN** consensus data has multiple consecutive horizons (h0, h1, h2, ...)
 - **THEN** `_attr_supported_features` includes `FORECAST_HOURLY | FORECAST_DAILY`
 
-##### Scenario: No consensus data
+#### Scenario: No consensus data
 - **WHEN** consensus data is None
 - **THEN** `_attr_supported_features` is `0`
 
-### Files
+## Files
 
 - `custom_components/njord/weather.py` — add `NjordConsensusWeatherEntity` alongside existing `NjordWeatherEntity`
 - `tests/test_weather.py` — consensus entity tests (may need separate test file if too large)
