@@ -8,15 +8,15 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN
+from .const import DOMAIN, AlertEvent, AlertSeverity, AlertType, EnrichmentGroup
 from .coordinator import NjordDataCoordinator, NjordStatusCoordinator
-from .helpers import device_info
+from .helpers import device_info, disabled_groups_of, group_enabled
 from .models import EnrichmentData, NjordLocation
 
-EVENT_ALERT_STARTED = "alert_started"
-EVENT_ALERT_ESCALATED = "alert_escalated"
-EVENT_ALERT_DEESCALATED = "alert_deescalated"
-EVENT_ALERT_CLEARED = "alert_cleared"
+EVENT_ALERT_STARTED = AlertEvent.STARTED
+EVENT_ALERT_ESCALATED = AlertEvent.ESCALATED
+EVENT_ALERT_DEESCALATED = AlertEvent.DEESCALATED
+EVENT_ALERT_CLEARED = AlertEvent.CLEARED
 
 
 def _get_sw_version(hass: HomeAssistant, entry: ConfigEntry) -> str | None:
@@ -34,12 +34,12 @@ async def async_setup_entry(
     """Set up njord event entities."""
     coordinator: NjordDataCoordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
     sw_version = _get_sw_version(hass, entry)
-    disabled_groups: list[str] = entry.options.get("disabled_enrichment_groups", [])
+    disabled_groups = disabled_groups_of(entry)
 
     entities: list[EventEntity] = []
     active = coordinator.data.active_enrichments
 
-    if (active is None or "alerts" in active) and "alerts" not in disabled_groups:
+    if group_enabled(EnrichmentGroup.ALERTS, active, disabled_groups):
         locations = {loc for loc, _ in coordinator.data.forecasts}
         for location in sorted(locations):
             entities.append(NjordWeatherAlertEvent(coordinator, entry, location, sw_version))
@@ -47,10 +47,7 @@ async def async_setup_entry(
     async_add_entities(entities)
 
     def event_factory(location: NjordLocation) -> list[EventEntity]:
-        act = coordinator.data.active_enrichments
-        if act is not None and "alerts" not in act:
-            return []
-        if "alerts" in disabled_groups:
+        if not group_enabled(EnrichmentGroup.ALERTS, coordinator.data.active_enrichments, disabled_groups):
             return []
         return [NjordWeatherAlertEvent(coordinator, entry, location.name, sw_version)]
 
@@ -63,12 +60,7 @@ class NjordWeatherAlertEvent(CoordinatorEntity[NjordDataCoordinator], EventEntit
     _attr_has_entity_name = True
     _attr_translation_key = "weather_alert"
     _attr_icon = "mdi:weather-lightning-rainy"
-    _attr_event_types = [
-        EVENT_ALERT_STARTED,
-        EVENT_ALERT_ESCALATED,
-        EVENT_ALERT_DEESCALATED,
-        EVENT_ALERT_CLEARED,
-    ]
+    _attr_event_types = [event.value for event in AlertEvent]
 
     def __init__(
         self,
@@ -79,22 +71,22 @@ class NjordWeatherAlertEvent(CoordinatorEntity[NjordDataCoordinator], EventEntit
     ) -> None:
         super().__init__(coordinator)
         self._location = location
-        self._previous_alerts: dict[str, str] = self._current_alert_map()
+        self._previous_alerts: dict[AlertType, AlertSeverity] = self._current_alert_map()
 
         slug = f"{location}_weather_alert".replace("-", "_").replace(" ", "_").lower()
         self._attr_unique_id = f"{entry.entry_id}_{slug}"
         self._attr_name = "Weather Alert"
         self._attr_device_info = device_info(entry, location, sw_version)
 
-    def _current_alert_map(self) -> dict[str, str]:
+    def _current_alert_map(self) -> dict[AlertType, AlertSeverity]:
         if self.coordinator.data is None:
             return {}
         enrichment: EnrichmentData | None = self.coordinator.data.enrichments.get(self._location)
         if enrichment is None:
             return {}
-        return {a.type: a.severity for a in enrichment.alerts if a.severity != "none"}
+        return {a.type: a.severity for a in enrichment.alerts if a.severity != AlertSeverity.NONE}
 
-    def _alert_data(self, alert_type: str) -> dict[str, object]:
+    def _alert_data(self, alert_type: AlertType) -> dict[str, object]:
         base: dict[str, object] = {"type": alert_type, "location": self._location}
         if self.coordinator.data is None:
             return base
@@ -144,10 +136,8 @@ class NjordWeatherAlertEvent(CoordinatorEntity[NjordDataCoordinator], EventEntit
                     },
                 )
             elif prev_severity is not None and curr_severity is not None:
-                severity_order = {"yellow": 1, "orange": 2, "red": 3}
-                prev_rank = severity_order.get(prev_severity, 0)
-                curr_rank = severity_order.get(curr_severity, 0)
-                event_type = EVENT_ALERT_ESCALATED if curr_rank > prev_rank else EVENT_ALERT_DEESCALATED
+                escalated = curr_severity.rank > prev_severity.rank
+                event_type = EVENT_ALERT_ESCALATED if escalated else EVENT_ALERT_DEESCALATED
                 data = self._alert_data(alert_type)
                 data["previous_severity"] = prev_severity
                 self._trigger_event(event_type, data)

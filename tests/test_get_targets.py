@@ -5,17 +5,17 @@ from __future__ import annotations
 import pytest
 from homeassistant.helpers import entity_registry as er
 
-from custom_components.njord.const import DOMAIN
+from custom_components.njord.const import DOMAIN, PollPhase
 from custom_components.njord.models import TargetData
 from tests.conftest import init_integration
 
 
 @pytest.mark.asyncio
 async def test_target_data_model():
-    target = TargetData(location="home", model="icon_d2", phase="polling")
+    target = TargetData(location="home", model="icon_d2", phase=PollPhase.STEADY)
     assert target.location == "home"
     assert target.model == "icon_d2"
-    assert target.phase == "polling"
+    assert target.phase is PollPhase.STEADY
     assert target.next_poll is None
     assert target.last_change is None
     assert target.miss_count == 0

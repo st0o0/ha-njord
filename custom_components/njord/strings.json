@@ -88,7 +88,7 @@
       "frost_confidence": { "name": "Frost Confidence" },
       "beaufort": { "name": "Beaufort" },
       "wind_chill": { "name": "Wind Chill" },
-      "dewpoint_comfort": { "name": "Dewpoint Comfort" },
+      "dewpoint_comfort": { "name": "Dewpoint Comfort", "state": { "dry": "Dry", "comfortable": "Comfortable", "sticky": "Sticky", "oppressive": "Oppressive", "dangerous": "Dangerous" } },
       "api_budget": { "name": "API Budget" },
       "uptime": { "name": "Uptime" },
       "target_poll": { "name": "Poll Target" }

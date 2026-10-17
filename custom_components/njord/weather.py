@@ -22,9 +22,9 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_track_utc_time_change
 
 from .condition_mapper import map_condition
-from .const import DOMAIN
+from .const import DOMAIN, EnrichmentGroup
 from .coordinator import NjordDataCoordinator, NjordStatusCoordinator
-from .helpers import device_info
+from .helpers import device_info, disabled_groups_of, group_enabled
 from .horizon import current_horizon_offset
 from .models import (
     ConsensusData,
@@ -55,9 +55,9 @@ async def async_setup_entry(
     for location, model in coordinator.data.forecasts:
         entities.append(NjordWeatherEntity(coordinator, entry, location, model, sw_version))
 
-    disabled_groups: list[str] = entry.options.get("disabled_enrichment_groups", [])
+    disabled_groups = disabled_groups_of(entry)
     active = coordinator.data.active_enrichments
-    if (active is None or "consensus" in active) and "consensus" not in disabled_groups:
+    if group_enabled(EnrichmentGroup.CONSENSUS, active, disabled_groups):
         locations = {loc for loc, _ in coordinator.data.forecasts}
         for location in sorted(locations):
             enrichment = coordinator.data.enrichments.get(location)
@@ -71,7 +71,7 @@ async def async_setup_entry(
         for model in location.models:
             new_entities.append(NjordWeatherEntity(coordinator, entry, location.name, model, sw_version))
         act = coordinator.data.active_enrichments
-        if (act is None or "consensus" in act) and "consensus" not in disabled_groups:
+        if group_enabled(EnrichmentGroup.CONSENSUS, act, disabled_groups):
             enrichment = coordinator.data.enrichments.get(location.name)
             if enrichment and enrichment.consensus:
                 new_entities.append(NjordConsensusWeatherEntity(coordinator, entry, location.name, sw_version))

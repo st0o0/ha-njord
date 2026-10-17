@@ -11,11 +11,17 @@ import grpc
 import pytest
 from google.protobuf.timestamp_pb2 import Timestamp
 
+from custom_components.njord.const import DewPointComfort, PollPhase, Stability, TrendDirection, VpdCategory
 from custom_components.njord.grpc_client import (
     SENSOR_KIND_MAP,
     NjordClient,
     _parse_extra,
     _to_alert,
+    _to_horizon_derived,
+    _to_index_data,
+    _to_model_status,
+    _to_target_data,
+    _to_trend_data,
 )
 from custom_components.njord.models import (
     CatalogData,
@@ -134,13 +140,15 @@ class MockWeatherServicer(weather_pb2_grpc.WeatherServiceServicer):
                         bbq=45,
                     ),
                 ],
-                vpd=common_pb2.VpdInfo(kpa=0.59, category="optimal"),
+                vpd=common_pb2.VpdInfo(kpa=0.59, category=common_pb2.VPD_CATEGORY_OPTIMAL),
             ),
             trends=common_pb2.TrendUpdate(
                 parameter_trends=[
-                    common_pb2.ParameterTrend(parameter="temperature_2m", direction="stable", delta=0.3),
+                    common_pb2.ParameterTrend(
+                        parameter="temperature_2m", direction=common_pb2.TREND_DIRECTION_STABLE, delta=0.3
+                    ),
                 ],
-                stability_label="stable",
+                stability_label=common_pb2.STABILITY_STABLE,
                 stability_ratio=0.83,
                 precip_starts_in_hours=2,
                 reliable_hours=3,
@@ -148,7 +156,10 @@ class MockWeatherServicer(weather_pb2_grpc.WeatherServiceServicer):
             derived=common_pb2.DerivedUpdate(
                 by_horizon=[
                     common_pb2.HorizonDerived(
-                        horizon="h3", beaufort=2, dewpoint_comfort="sticky", wmo_description="Rain: slight"
+                        horizon="h3",
+                        beaufort=2,
+                        dewpoint_comfort=common_pb2.DEW_POINT_COMFORT_STICKY,
+                        wmo_description="Rain: slight",
                     ),
                 ],
                 scalars=common_pb2.ScalarDerived(diurnal_amplitude=7.3, sunshine_pct=66.4, inversion=False),
@@ -247,7 +258,7 @@ class MockOpsServicer(ops_pb2_grpc.OpsServiceServicer):
                 ops_pb2.ModelStatus(
                     location="lucerne",
                     model="icon_d2",
-                    phase="polling",
+                    phase=ops_pb2.POLL_PHASE_STEADY,
                     next_poll=_make_ts(1720003600),
                     miss_count=0,
                 ),
@@ -581,13 +592,13 @@ async def test_get_enrichments(client):
     assert enrichment.indices.bbq == 51
     assert enrichment.indices.vpd is not None
     assert enrichment.indices.vpd.kpa == pytest.approx(0.59)
-    assert enrichment.indices.vpd.category == "optimal"
+    assert enrichment.indices.vpd.category is VpdCategory.OPTIMAL
     assert len(enrichment.indices.forecast) == 1
     assert enrichment.indices.forecast[0].day_offset == 1
     assert enrichment.indices.forecast[0].laundry == 40
 
     assert enrichment.trends is not None
-    assert enrichment.trends.stability_label == "stable"
+    assert enrichment.trends.stability_label is Stability.STABLE
     assert enrichment.trends.reliable_hours == 3
 
     assert enrichment.derived is not None
@@ -755,3 +766,81 @@ def test_sensor_kind_map():
     assert "indoor_temperature" in SENSOR_KIND_MAP
     assert "indoor_humidity" in SENSOR_KIND_MAP
     assert len(SENSOR_KIND_MAP) == 2
+
+
+# --- Typed wire enums ---
+
+
+def test_model_status_phase_steady_and_discovery() -> None:
+    steady = _to_model_status(ops_pb2.ModelStatus(location="a", model="m", phase=ops_pb2.POLL_PHASE_STEADY))
+    discovery = _to_model_status(ops_pb2.ModelStatus(location="a", model="m", phase=ops_pb2.POLL_PHASE_DISCOVERY))
+    assert steady.phase is PollPhase.STEADY
+    assert discovery.phase is PollPhase.DISCOVERY
+
+
+@pytest.mark.parametrize("number", [ops_pb2.POLL_PHASE_UNSPECIFIED, 99])
+def test_phase_unspecified_and_unknown_numbers_do_not_raise(number: int) -> None:
+    status = _to_model_status(ops_pb2.ModelStatus(location="a", model="m", phase=number))
+    target = _to_target_data(ops_pb2.TriggerTarget(location="a", model="m", phase=number))
+    assert status.phase is PollPhase.UNSPECIFIED
+    assert target.phase is PollPhase.UNSPECIFIED
+
+
+def test_target_phase_steady() -> None:
+    target = _to_target_data(ops_pb2.TriggerTarget(location="a", model="m", phase=ops_pb2.POLL_PHASE_STEADY))
+    assert target.phase is PollPhase.STEADY
+
+
+def test_trend_enums_mapped() -> None:
+    trend = _to_trend_data(
+        common_pb2.TrendUpdate(
+            parameter_trends=[common_pb2.ParameterTrend(parameter="t", direction=common_pb2.TREND_DIRECTION_RISING)],
+            stability_label=common_pb2.STABILITY_CONVERGING,
+        )
+    )
+    assert trend.parameter_trends[0].direction is TrendDirection.RISING
+    assert trend.stability_label is Stability.CONVERGING
+
+
+def test_trend_unspecified_and_unknown_numbers_do_not_raise() -> None:
+    trend = _to_trend_data(
+        common_pb2.TrendUpdate(
+            parameter_trends=[
+                common_pb2.ParameterTrend(parameter="a", direction=common_pb2.TREND_DIRECTION_UNSPECIFIED),
+                common_pb2.ParameterTrend(parameter="b", direction=99),
+            ],
+            stability_label=99,
+        )
+    )
+    assert [p.direction for p in trend.parameter_trends] == [TrendDirection.UNSPECIFIED, TrendDirection.UNSPECIFIED]
+    assert trend.stability_label is Stability.UNSPECIFIED
+
+
+def test_trend_stability_absent_stays_none() -> None:
+    assert _to_trend_data(common_pb2.TrendUpdate()).stability_label is None
+
+
+def test_dewpoint_comfort_mapped_absent_and_unknown() -> None:
+    comfortable = _to_horizon_derived(
+        common_pb2.HorizonDerived(horizon="h3", dewpoint_comfort=common_pb2.DEW_POINT_COMFORT_COMFORTABLE)
+    )
+    absent = _to_horizon_derived(common_pb2.HorizonDerived(horizon="h3"))
+    unknown = _to_horizon_derived(common_pb2.HorizonDerived(horizon="h3", dewpoint_comfort=99))
+    assert comfortable.dewpoint_comfort is DewPointComfort.COMFORTABLE
+    assert absent.dewpoint_comfort is None
+    assert unknown.dewpoint_comfort is DewPointComfort.UNSPECIFIED
+
+
+@pytest.mark.parametrize(
+    ("number", "expected"),
+    [
+        (common_pb2.VPD_CATEGORY_LOW, VpdCategory.LOW),
+        (common_pb2.VPD_CATEGORY_CRITICAL, VpdCategory.CRITICAL),
+        (common_pb2.VPD_CATEGORY_UNSPECIFIED, VpdCategory.UNSPECIFIED),
+        (99, VpdCategory.UNSPECIFIED),
+    ],
+)
+def test_vpd_category_mapped(number: int, expected: VpdCategory) -> None:
+    index = _to_index_data(common_pb2.IndexUpdate(vpd=common_pb2.VpdInfo(kpa=1.0, category=number)))
+    assert index.vpd is not None
+    assert index.vpd.category is expected

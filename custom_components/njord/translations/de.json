@@ -88,7 +88,7 @@
       "frost_confidence": { "name": "Frostwahrscheinlichkeit" },
       "beaufort": { "name": "Beaufort" },
       "wind_chill": { "name": "Windchill" },
-      "dewpoint_comfort": { "name": "Taupunkt-Komfort" },
+      "dewpoint_comfort": { "name": "Taupunkt-Komfort", "state": { "dry": "Trocken", "comfortable": "Angenehm", "sticky": "Schwül", "oppressive": "Drückend", "dangerous": "Gefährlich" } },
       "api_budget": { "name": "API-Budget" },
       "uptime": { "name": "Betriebszeit" },
       "target_poll": { "name": "Abfrage-Ziel" }

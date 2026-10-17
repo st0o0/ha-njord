@@ -8,7 +8,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.redact import async_redact_data
 
-from .const import DOMAIN
+from .const import DOMAIN, EnrichmentGroup
 from .coordinator import NjordDataCoordinator, NjordStatusCoordinator
 
 REDACT_KEYS = {"host"}
@@ -34,15 +34,15 @@ async def async_get_config_entry_diagnostics(
             if enr is not None:
                 types = []
                 if enr.alerts:
-                    types.append("alerts")
+                    types.append(EnrichmentGroup.ALERTS.value)
                 if enr.indices is not None:
-                    types.append("indices")
+                    types.append(EnrichmentGroup.INDICES.value)
                 if enr.trends is not None:
-                    types.append("trends")
+                    types.append(EnrichmentGroup.TRENDS.value)
                 if enr.derived is not None:
-                    types.append("derived")
+                    types.append(EnrichmentGroup.DERIVED.value)
                 if enr.consensus is not None:
-                    types.append("consensus")
+                    types.append(EnrichmentGroup.CONSENSUS.value)
                 enrichment_types_per_location[loc] = types
 
         data["coordinator"] = {
@@ -54,7 +54,7 @@ async def async_get_config_entry_diagnostics(
             else None,
             "last_update_success": coordinator.last_update_success,
         }
-        data["stream_states"] = dict(coordinator.stream_states)
+        data["stream_states"] = {name.value: state for name, state in coordinator.stream_states.items()}
     else:
         data["coordinator"] = None
         data["stream_states"] = None

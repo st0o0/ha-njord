@@ -5,10 +5,6 @@ from __future__ import annotations
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
-    PERCENTAGE,
-    UnitOfLength,
-    UnitOfPressure,
-    UnitOfSpeed,
     UnitOfTemperature,
     UnitOfTime,
 )
@@ -17,111 +13,11 @@ from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN
+from .const import ALERT_META, DOMAIN, AlertType, DewPointComfort, EnrichmentGroup
 from .coordinator import NjordDataCoordinator, NjordStatusCoordinator
-from .helpers import device_info, server_device_info
+from .helpers import device_info, disabled_groups_of, group_enabled, server_device_info
 from .horizon import current_horizon_offset, find_nearest_horizon
 from .models import AlertData, EnrichmentData, HorizonDerivedData, NjordLocation
-
-ALERT_TYPES = [
-    "frost",
-    "heat",
-    "storm",
-    "heavy_rain",
-    "uv",
-    "fog",
-    "snow",
-    "pressure_drop",
-    "thunderstorm",
-    "ice",
-    "wind_chill",
-    "visibility",
-    "tropical_night",
-    "humidity",
-]
-
-ALERT_NAMES = {
-    "frost": "Frost Alert",
-    "heat": "Heat Alert",
-    "storm": "Storm Alert",
-    "heavy_rain": "Heavy Rain Alert",
-    "uv": "UV Alert",
-    "fog": "Fog Alert",
-    "snow": "Snow Alert",
-    "pressure_drop": "Pressure Drop Alert",
-    "thunderstorm": "Thunderstorm Alert",
-    "ice": "Ice Alert",
-    "wind_chill": "Wind Chill Alert",
-    "visibility": "Visibility Alert",
-    "tropical_night": "Tropical Night Alert",
-    "humidity": "Humidity Alert",
-}
-
-ALERT_UNITS: dict[str, str] = {
-    "frost": UnitOfTemperature.CELSIUS,
-    "heat": UnitOfTemperature.CELSIUS,
-    "storm": UnitOfSpeed.METERS_PER_SECOND,
-    "heavy_rain": "mm",
-    "uv": "UV",
-    "fog": UnitOfLength.METERS,
-    "snow": UnitOfLength.CENTIMETERS,
-    "pressure_drop": UnitOfPressure.HPA,
-    "thunderstorm": UnitOfSpeed.METERS_PER_SECOND,
-    "ice": UnitOfTemperature.CELSIUS,
-    "wind_chill": UnitOfTemperature.CELSIUS,
-    "visibility": UnitOfLength.METERS,
-    "tropical_night": UnitOfTemperature.CELSIUS,
-    "humidity": PERCENTAGE,
-}
-
-ALERT_DEVICE_CLASSES: dict[str, SensorDeviceClass] = {
-    "frost": SensorDeviceClass.TEMPERATURE,
-    "heat": SensorDeviceClass.TEMPERATURE,
-    "storm": SensorDeviceClass.WIND_SPEED,
-    "thunderstorm": SensorDeviceClass.WIND_SPEED,
-    "pressure_drop": SensorDeviceClass.PRESSURE,
-    "fog": SensorDeviceClass.DISTANCE,
-    "snow": SensorDeviceClass.DISTANCE,
-    "ice": SensorDeviceClass.TEMPERATURE,
-    "wind_chill": SensorDeviceClass.TEMPERATURE,
-    "visibility": SensorDeviceClass.DISTANCE,
-    "tropical_night": SensorDeviceClass.TEMPERATURE,
-    "humidity": SensorDeviceClass.HUMIDITY,
-}
-
-ALERT_PRECISION: dict[str, int] = {
-    "frost": 1,
-    "heat": 1,
-    "storm": 0,
-    "heavy_rain": 1,
-    "uv": 0,
-    "fog": 0,
-    "snow": 0,
-    "pressure_drop": 0,
-    "thunderstorm": 0,
-    "ice": 1,
-    "wind_chill": 1,
-    "visibility": 0,
-    "tropical_night": 1,
-    "humidity": 0,
-}
-
-ALERT_ICONS = {
-    "frost": "mdi:snowflake-alert",
-    "heat": "mdi:thermometer-alert",
-    "storm": "mdi:weather-hurricane",
-    "heavy_rain": "mdi:weather-pouring",
-    "uv": "mdi:sun-wireless",
-    "fog": "mdi:weather-fog",
-    "snow": "mdi:snowflake",
-    "pressure_drop": "mdi:gauge-low",
-    "thunderstorm": "mdi:weather-lightning",
-    "ice": "mdi:snowflake-thermometer",
-    "wind_chill": "mdi:thermometer-minus",
-    "visibility": "mdi:eye-off",
-    "tropical_night": "mdi:weather-night",
-    "humidity": "mdi:water-percent",
-}
 
 INDEX_TYPES = [
     ("laundry", "Laundry Index", "mdi:tshirt-crew"),
@@ -150,28 +46,28 @@ async def async_setup_entry(
     """Set up njord sensor entities."""
     coordinator: NjordDataCoordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
     sw_version = _get_sw_version(hass, entry)
-    disabled_groups: list[str] = entry.options.get("disabled_enrichment_groups", [])
+    disabled_groups = disabled_groups_of(entry)
 
     entities: list[SensorEntity] = []
     locations = {loc for loc, _ in coordinator.data.forecasts}
     active = coordinator.data.active_enrichments
 
     for location in sorted(locations):
-        if (active is None or "alerts" in active) and "alerts" not in disabled_groups:
-            for alert_type in ALERT_TYPES:
+        if group_enabled(EnrichmentGroup.ALERTS, active, disabled_groups):
+            for alert_type in ALERT_META:
                 entities.append(NjordAlertSensor(coordinator, entry, location, alert_type, sw_version))
 
-        if (active is None or "indices" in active) and "indices" not in disabled_groups:
+        if group_enabled(EnrichmentGroup.INDICES, active, disabled_groups):
             for key, name, icon in INDEX_TYPES:
                 entities.append(NjordIndexSensor(coordinator, entry, location, key, name, icon, sw_version))
             entities.append(NjordVpdSensor(coordinator, entry, location, sw_version))
             entities.append(NjordFrostHoursSensor(coordinator, entry, location, sw_version))
             entities.append(NjordFrostConfidenceSensor(coordinator, entry, location, sw_version))
 
-        if (active is None or "trends" in active) and "trends" not in disabled_groups:
+        if group_enabled(EnrichmentGroup.TRENDS, active, disabled_groups):
             entities.append(NjordTrendSensor(coordinator, entry, location, sw_version))
 
-        if (active is None or "derived" in active) and "derived" not in disabled_groups:
+        if group_enabled(EnrichmentGroup.DERIVED, active, disabled_groups):
             entities.append(NjordSunshineSensor(coordinator, entry, location, sw_version))
             entities.append(NjordDiurnalAmplitudeSensor(coordinator, entry, location, sw_version))
             entities.append(NjordBeaufortSensor(coordinator, entry, location, sw_version))
@@ -194,18 +90,18 @@ async def async_setup_entry(
     def sensor_factory(location: NjordLocation) -> list[SensorEntity]:
         act = coordinator.data.active_enrichments
         new_entities: list[SensorEntity] = []
-        if (act is None or "alerts" in act) and "alerts" not in disabled_groups:
-            for alert_type in ALERT_TYPES:
+        if group_enabled(EnrichmentGroup.ALERTS, act, disabled_groups):
+            for alert_type in ALERT_META:
                 new_entities.append(NjordAlertSensor(coordinator, entry, location.name, alert_type, sw_version))
-        if (act is None or "indices" in act) and "indices" not in disabled_groups:
+        if group_enabled(EnrichmentGroup.INDICES, act, disabled_groups):
             for key, name, icon in INDEX_TYPES:
                 new_entities.append(NjordIndexSensor(coordinator, entry, location.name, key, name, icon, sw_version))
             new_entities.append(NjordVpdSensor(coordinator, entry, location.name, sw_version))
             new_entities.append(NjordFrostHoursSensor(coordinator, entry, location.name, sw_version))
             new_entities.append(NjordFrostConfidenceSensor(coordinator, entry, location.name, sw_version))
-        if (act is None or "trends" in act) and "trends" not in disabled_groups:
+        if group_enabled(EnrichmentGroup.TRENDS, act, disabled_groups):
             new_entities.append(NjordTrendSensor(coordinator, entry, location.name, sw_version))
-        if (act is None or "derived" in act) and "derived" not in disabled_groups:
+        if group_enabled(EnrichmentGroup.DERIVED, act, disabled_groups):
             new_entities.append(NjordSunshineSensor(coordinator, entry, location.name, sw_version))
             new_entities.append(NjordDiurnalAmplitudeSensor(coordinator, entry, location.name, sw_version))
             new_entities.append(NjordBeaufortSensor(coordinator, entry, location.name, sw_version))
@@ -249,23 +145,25 @@ class NjordAlertSensor(_NjordEnrichmentSensor):
         coordinator: NjordDataCoordinator,
         entry: ConfigEntry,
         location: str,
-        alert_type: str,
+        alert_type: AlertType,
         sw_version: str | None = None,
     ) -> None:
         super().__init__(coordinator, entry, location, sw_version)
         self._alert_type = alert_type
+        meta = ALERT_META.get(alert_type)
         slug = f"{location}_{alert_type}_alert".replace("-", "_").replace(" ", "_").lower()
         self._attr_unique_id = f"{entry.entry_id}_{slug}"
-        self._attr_name = ALERT_NAMES.get(alert_type, f"{alert_type} Alert")
-        self._attr_icon = ALERT_ICONS.get(alert_type, "mdi:alert")
-        self._attr_native_unit_of_measurement = ALERT_UNITS.get(alert_type)
-        device_class = ALERT_DEVICE_CLASSES.get(alert_type)
-        if device_class is not None:
-            self._attr_device_class = device_class
+        if meta is None:
+            self._attr_name = f"{alert_type} Alert"
+            self._attr_icon = "mdi:alert"
+            return
+        self._attr_name = meta.name
+        self._attr_icon = meta.icon
+        self._attr_native_unit_of_measurement = meta.unit
+        if meta.device_class is not None:
+            self._attr_device_class = meta.device_class
             self._attr_state_class = SensorStateClass.MEASUREMENT
-        precision = ALERT_PRECISION.get(alert_type)
-        if precision is not None:
-            self._attr_suggested_display_precision = precision
+        self._attr_suggested_display_precision = meta.precision
 
     def _get_alert(self) -> AlertData | None:
         enrichment = self._enrichment()
@@ -390,7 +288,8 @@ class NjordVpdSensor(_NjordEnrichmentSensor):
         enrichment = self._enrichment()
         if enrichment is None or enrichment.indices is None or enrichment.indices.vpd is None:
             return None
-        return {"category": enrichment.indices.vpd.category}
+        category = enrichment.indices.vpd.category
+        return {"category": category.value} if category.is_known else None
 
 
 class NjordTrendSensor(_NjordEnrichmentSensor):
@@ -430,8 +329,8 @@ class NjordTrendSensor(_NjordEnrichmentSensor):
             return None
         t = enrichment.trends
         attrs: dict[str, object] = {}
-        if t.stability_label is not None:
-            attrs["stability_label"] = t.stability_label
+        if t.stability_label is not None and t.stability_label.is_known:
+            attrs["stability_label"] = t.stability_label.value
         if t.precip_starts_in_hours is not None:
             attrs["precip_starts_in_hours"] = t.precip_starts_in_hours
         if t.precip_ends_in_hours is not None:
@@ -448,7 +347,7 @@ class NjordTrendSensor(_NjordEnrichmentSensor):
             attrs["decay_rate"] = t.decay_rate
         if t.parameter_trends:
             attrs["parameter_trends"] = [
-                {"parameter": p.parameter, "direction": p.direction, "delta": p.delta} for p in t.parameter_trends
+                {"parameter": p.parameter, "direction": p.direction.value, "delta": p.delta} for p in t.parameter_trends
             ]
         return attrs if attrs else None
 
@@ -776,6 +675,8 @@ class NjordDewpointComfortSensor(_NjordDerivedHorizonSensor):
 
     _attr_icon = "mdi:water-thermometer"
     _attr_translation_key = "dewpoint_comfort"
+    _attr_device_class = SensorDeviceClass.ENUM
+    _attr_options = [c.value for c in DewPointComfort if c.is_known]
 
     def __init__(self, coordinator, entry, location, sw_version=None):
         super().__init__(coordinator, entry, location, sw_version)
@@ -786,7 +687,9 @@ class NjordDewpointComfortSensor(_NjordDerivedHorizonSensor):
     @property
     def native_value(self) -> str | None:
         h = self._current_derived_horizon()
-        return h.dewpoint_comfort if h is not None else None
+        if h is None or h.dewpoint_comfort is None or not h.dewpoint_comfort.is_known:
+            return None
+        return h.dewpoint_comfort.value
 
 
 class NjordTargetSensor(CoordinatorEntity[NjordStatusCoordinator], SensorEntity):
@@ -840,7 +743,7 @@ class NjordTargetSensor(CoordinatorEntity[NjordStatusCoordinator], SensorEntity)
         if t is None:
             return None
         attrs: dict[str, object] = {
-            "phase": t.phase,
+            "phase": t.phase.value,
             "model": t.model,
             "miss_count": t.miss_count,
         }

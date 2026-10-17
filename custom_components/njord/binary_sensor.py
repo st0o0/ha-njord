@@ -12,9 +12,9 @@ from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN
+from .const import DOMAIN, EnrichmentGroup, StreamName
 from .coordinator import NjordDataCoordinator, NjordStatusCoordinator
-from .helpers import device_info, server_device_info
+from .helpers import device_info, disabled_groups_of, group_enabled, server_device_info
 from .models import NjordLocation
 
 
@@ -33,28 +33,27 @@ async def async_setup_entry(
     """Set up njord binary sensor entities."""
     coordinator: NjordDataCoordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
     sw_version = _get_sw_version(hass, entry)
-    disabled_groups: list[str] = entry.options.get("disabled_enrichment_groups", [])
+    disabled_groups = disabled_groups_of(entry)
 
     entities: list[BinarySensorEntity] = []
     active = coordinator.data.active_enrichments
 
-    if (active is None or "derived" in active) and "derived" not in disabled_groups:
+    if group_enabled(EnrichmentGroup.DERIVED, active, disabled_groups):
         locations = {loc for loc, _ in coordinator.data.forecasts}
         for location in sorted(locations):
             enrichment = coordinator.data.enrichments.get(location)
             if enrichment and enrichment.derived is not None:
                 entities.append(NjordInversionEntity(coordinator, entry, location, sw_version))
 
-    entities.append(NjordStreamSensor(coordinator, entry, "forecast", sw_version))
-    entities.append(NjordStreamSensor(coordinator, entry, "enrichment", sw_version))
-    entities.append(NjordStreamSensor(coordinator, entry, "config", sw_version))
+    for stream_name in StreamName:
+        entities.append(NjordStreamSensor(coordinator, entry, stream_name, sw_version))
 
     async_add_entities(entities)
 
     def binary_sensor_factory(location: NjordLocation) -> list[BinarySensorEntity]:
         new_entities: list[BinarySensorEntity] = []
         act = coordinator.data.active_enrichments
-        if (act is None or "derived" in act) and "derived" not in disabled_groups:
+        if group_enabled(EnrichmentGroup.DERIVED, act, disabled_groups):
             enrichment = coordinator.data.enrichments.get(location.name)
             if enrichment and enrichment.derived is not None:
                 new_entities.append(NjordInversionEntity(coordinator, entry, location.name, sw_version))
@@ -111,16 +110,16 @@ class NjordStreamSensor(CoordinatorEntity[NjordDataCoordinator], BinarySensorEnt
     _attr_entity_category = EntityCategory.DIAGNOSTIC
 
     _STREAM_NAMES = {
-        "forecast": "Forecast Stream",
-        "enrichment": "Enrichment Stream",
-        "config": "Config Stream",
+        StreamName.FORECAST: "Forecast Stream",
+        StreamName.ENRICHMENT: "Enrichment Stream",
+        StreamName.CONFIG: "Config Stream",
     }
 
     def __init__(
         self,
         coordinator: NjordDataCoordinator,
         entry: ConfigEntry,
-        stream_name: str,
+        stream_name: StreamName,
         sw_version: str | None = None,
     ) -> None:
         super().__init__(coordinator)

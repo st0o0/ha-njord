@@ -7,7 +7,14 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from custom_components.njord.const import DOMAIN
+from custom_components.njord.const import (
+    DOMAIN,
+    DewPointComfort,
+    PollPhase,
+    Stability,
+    TrendDirection,
+    VpdCategory,
+)
 from custom_components.njord.models import (
     AlertData,
     BudgetStatusData,
@@ -243,23 +250,25 @@ def _default_enrichment(location: str = "home") -> EnrichmentData:
             solar=38,
             night_ventilation=22,
             frost=FrostData(hours_until=4, confidence=0.85),
-            vpd=VpdData(kpa=0.59, category="optimal"),
+            vpd=VpdData(kpa=0.59, category=VpdCategory.OPTIMAL),
             forecast=[DayScoreData(day_offset=1, laundry=40, outdoor=50, bbq=45)],
         ),
         trends=TrendData(
             parameter_trends=[
-                ParameterTrendData(parameter="temperature_2m", direction="stable", delta=0.3),
+                ParameterTrendData(parameter="temperature_2m", direction=TrendDirection.STABLE, delta=0.3),
             ],
             weather_change_description="Light rain expected in 2 hours",
-            stability_label="stable",
+            stability_label=Stability.STABLE,
             stability_ratio=0.83,
             precip_starts_in_hours=2,
             reliable_hours=3,
         ),
         derived=DerivedData(
             by_horizon=[
-                HorizonDerivedData(horizon="h3", beaufort=3, wind_chill=18.5, dewpoint_comfort="comfortable"),
-                HorizonDerivedData(horizon="h6", beaufort=2, wind_chill=16.2, dewpoint_comfort="sticky"),
+                HorizonDerivedData(
+                    horizon="h3", beaufort=3, wind_chill=18.5, dewpoint_comfort=DewPointComfort.COMFORTABLE
+                ),
+                HorizonDerivedData(horizon="h6", beaufort=2, wind_chill=16.2, dewpoint_comfort=DewPointComfort.STICKY),
             ],
             diurnal_amplitude=7.3,
             sunshine_pct=66.4,
@@ -302,14 +311,14 @@ def mock_client():
             TargetData(
                 location="home",
                 model="icon_d2",
-                phase="polling",
+                phase=PollPhase.STEADY,
                 next_poll=datetime(2026, 7, 15, 12, 30, tzinfo=UTC),
                 miss_count=0,
             ),
             TargetData(
                 location="home",
                 model="ecmwf_ifs025",
-                phase="polling",
+                phase=PollPhase.STEADY,
                 next_poll=datetime(2026, 7, 15, 13, 0, tzinfo=UTC),
                 miss_count=1,
             ),

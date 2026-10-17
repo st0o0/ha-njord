@@ -13,7 +13,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.issue_registry import IssueSeverity, async_create_issue, async_delete_issue
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .const import DOMAIN
+from .const import DOMAIN, StreamName
 from .grpc_client import NjordClient
 from .models import EnrichmentData, ForecastData, ModelInfoData, NjordLocation, ServerStatusData
 
@@ -87,13 +87,9 @@ class NjordDataCoordinator(DataUpdateCoordinator[NjordCoordinatorData]):
         self._known_locations: set[str] = set()
         self._stream_tasks: list[asyncio.Task] = []
         self._entity_factories: dict[str, tuple[AddEntitiesCallback, EntityFactory]] = {}
-        self.stream_states: dict[str, bool] = {
-            "forecast": False,
-            "enrichment": False,
-            "config": False,
-        }
-        self._stream_disconnect_times: dict[str, float] = {}
-        self._stream_issue_created: dict[str, bool] = {}
+        self.stream_states: dict[StreamName, bool] = {name: False for name in StreamName}
+        self._stream_disconnect_times: dict[StreamName, float] = {}
+        self._stream_issue_created: dict[StreamName, bool] = {}
 
     async def _async_update_data(self) -> NjordCoordinatorData:
         """Unary first-refresh: fetch all data via single calls."""
@@ -156,7 +152,7 @@ class NjordDataCoordinator(DataUpdateCoordinator[NjordCoordinatorData]):
         await asyncio.gather(*self._stream_tasks, return_exceptions=True)
         self._stream_tasks.clear()
 
-    def _on_stream_connect(self, name: str) -> None:
+    def _on_stream_connect(self, name: StreamName) -> None:
         self.stream_states[name] = True
         self._stream_disconnect_times.pop(name, None)
         if self._stream_issue_created.get(name):
@@ -164,7 +160,7 @@ class NjordDataCoordinator(DataUpdateCoordinator[NjordCoordinatorData]):
             self._stream_issue_created[name] = False
         self.async_set_updated_data(self.data)
 
-    def _on_stream_disconnect(self, name: str) -> None:
+    def _on_stream_disconnect(self, name: StreamName) -> None:
         self.stream_states[name] = False
         if name not in self._stream_disconnect_times:
             self._stream_disconnect_times[name] = self.hass.loop.time()
@@ -186,8 +182,8 @@ class NjordDataCoordinator(DataUpdateCoordinator[NjordCoordinatorData]):
         try:
             async for update in self.client.stream_forecasts(
                 location=None,
-                on_reconnect=lambda: self._on_stream_connect("forecast"),
-                on_disconnect=lambda: self._on_stream_disconnect("forecast"),
+                on_reconnect=lambda: self._on_stream_connect(StreamName.FORECAST),
+                on_disconnect=lambda: self._on_stream_disconnect(StreamName.FORECAST),
             ):
                 self.data.forecasts[(update.location, update.model)] = update
                 self.async_set_updated_data(self.data)
@@ -195,14 +191,14 @@ class NjordDataCoordinator(DataUpdateCoordinator[NjordCoordinatorData]):
             return
         except Exception:
             _LOGGER.exception("Forecast stream task failed")
-            self._on_stream_disconnect("forecast")
+            self._on_stream_disconnect(StreamName.FORECAST)
 
     async def _run_enrichment_stream(self) -> None:
         try:
             async for event in self.client.stream_enrichments(
                 location=None,
-                on_reconnect=lambda: self._on_stream_connect("enrichment"),
-                on_disconnect=lambda: self._on_stream_disconnect("enrichment"),
+                on_reconnect=lambda: self._on_stream_connect(StreamName.ENRICHMENT),
+                on_disconnect=lambda: self._on_stream_disconnect(StreamName.ENRICHMENT),
             ):
                 existing = self.data.enrichments.get(event.location)
                 self.data.enrichments[event.location] = merge_enrichment(existing, event)
@@ -211,13 +207,13 @@ class NjordDataCoordinator(DataUpdateCoordinator[NjordCoordinatorData]):
             return
         except Exception:
             _LOGGER.exception("Enrichment stream task failed")
-            self._on_stream_disconnect("enrichment")
+            self._on_stream_disconnect(StreamName.ENRICHMENT)
 
     async def _run_config_stream(self) -> None:
         try:
             async for config in self.client.stream_config(
-                on_reconnect=lambda: self._on_stream_connect("config"),
-                on_disconnect=lambda: self._on_stream_disconnect("config"),
+                on_reconnect=lambda: self._on_stream_connect(StreamName.CONFIG),
+                on_disconnect=lambda: self._on_stream_disconnect(StreamName.CONFIG),
             ):
                 new_locations = [loc for loc in config.locations if loc.name not in self._known_locations]
                 for location in new_locations:
@@ -226,7 +222,7 @@ class NjordDataCoordinator(DataUpdateCoordinator[NjordCoordinatorData]):
             return
         except Exception:
             _LOGGER.exception("Config stream task failed")
-            self._on_stream_disconnect("config")
+            self._on_stream_disconnect(StreamName.CONFIG)
 
     async def _create_entities_for_location(self, location: NjordLocation) -> None:
         self._known_locations.add(location.name)

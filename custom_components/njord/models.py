@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
 
+from .const import AlertSeverity, AlertType, DewPointComfort, PollPhase, Stability, TrendDirection, VpdCategory
+
 
 @dataclass(frozen=True)
 class HourlyForecastData:
@@ -95,7 +97,7 @@ class BudgetStatusData:
 class ModelStatusData:
     location: str
     model: str
-    phase: str = ""
+    phase: PollPhase = PollPhase.UNSPECIFIED
     next_poll: datetime | None = None
     last_change: datetime | None = None
     miss_count: int = 0
@@ -106,7 +108,7 @@ class ModelStatusData:
 class TargetData:
     location: str
     model: str
-    phase: str = ""
+    phase: PollPhase = PollPhase.UNSPECIFIED
     next_poll: datetime | None = None
     last_change: datetime | None = None
     miss_count: int = 0
@@ -131,14 +133,18 @@ class ServerStatusData:
 
 @dataclass(frozen=True)
 class AlertData:
-    type: str
-    severity: str = "none"
+    type: AlertType
+    severity: AlertSeverity = AlertSeverity.NONE
     confidence: float = 0.0
     trigger_value: float = 0.0
     threshold: float = 0.0
     peak_value: float | None = None
     hours_until: int | None = None
     duration_hours: int | None = None
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "type", AlertType(self.type))
+        object.__setattr__(self, "severity", AlertSeverity(self.severity))
 
 
 @dataclass(frozen=True)
@@ -164,7 +170,7 @@ class FrostData:
 @dataclass(frozen=True)
 class VpdData:
     kpa: float = 0.0
-    category: str = ""
+    category: VpdCategory = VpdCategory.UNSPECIFIED
 
 
 @dataclass(frozen=True)
@@ -185,7 +191,7 @@ class IndexData:
 @dataclass(frozen=True)
 class ParameterTrendData:
     parameter: str
-    direction: str = "stable"
+    direction: TrendDirection = TrendDirection.STABLE
     delta: float = 0.0
 
 
@@ -197,7 +203,7 @@ class TrendData:
     precip_ends_in_hours: int | None = None
     temp_max_in_hours: int | None = None
     temp_min_in_hours: int | None = None
-    stability_label: str | None = None
+    stability_label: Stability | None = None
     stability_ratio: float | None = None
     decay_rate: float | None = None
     reliable_hours: int | None = None
@@ -208,7 +214,7 @@ class HorizonDerivedData:
     horizon: str
     beaufort: int | None = None
     wind_chill: float | None = None
-    dewpoint_comfort: str | None = None
+    dewpoint_comfort: DewPointComfort | None = None
     wmo_description: str | None = None
 
 

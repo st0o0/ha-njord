@@ -7,14 +7,20 @@ from datetime import timedelta
 
 import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import Platform
+from homeassistant.const import CONF_HOST, CONF_PORT, Platform
 from homeassistant.core import Event, HomeAssistant, ServiceCall
 from homeassistant.core import callback as ha_callback
 from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.event import async_track_state_change_event
 
-from .const import DOMAIN
+from .const import (
+    CONF_SENSOR_PUSH,
+    CONF_STATUS_POLL_INTERVAL,
+    DEFAULT_STATUS_POLL_INTERVAL,
+    DOMAIN,
+    SensorKind,
+)
 from .coordinator import NjordDataCoordinator, NjordStatusCoordinator
 from .grpc_client import SENSOR_KIND_MAP, NjordClient
 
@@ -40,8 +46,6 @@ SERVICE_PUSH_SENSOR_SCHEMA = vol.Schema(
     }
 )
 
-DEFAULT_STATUS_POLL_INTERVAL = 30
-
 _STALE_UNIQUE_ID_SUFFIXES = ("_model_performance",)
 
 
@@ -57,15 +61,15 @@ def _remove_stale_entities(hass: HomeAssistant, entry: ConfigEntry) -> None:
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up njord from a config entry."""
     client = NjordClient(
-        host=entry.data["host"],
-        port=entry.data["port"],
+        host=entry.data[CONF_HOST],
+        port=entry.data[CONF_PORT],
     )
     await client.connect()
 
     coordinator = NjordDataCoordinator(hass, client)
     await coordinator.async_config_entry_first_refresh()
 
-    poll_interval = entry.options.get("status_poll_interval", DEFAULT_STATUS_POLL_INTERVAL)
+    poll_interval = entry.options.get(CONF_STATUS_POLL_INTERVAL, DEFAULT_STATUS_POLL_INTERVAL)
     status_coordinator = NjordStatusCoordinator(hass, client, poll_interval=poll_interval)
     try:
         await status_coordinator.async_config_entry_first_refresh()
@@ -104,16 +108,21 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         entry.async_on_unload(status_coordinator.async_add_listener(_check_enrichment_changes))
 
     async def _async_options_updated(hass: HomeAssistant, config_entry: ConfigEntry) -> None:
-        new_interval = config_entry.options.get("status_poll_interval", DEFAULT_STATUS_POLL_INTERVAL)
+        new_interval = config_entry.options.get(CONF_STATUS_POLL_INTERVAL, DEFAULT_STATUS_POLL_INTERVAL)
         if status_coordinator is not None:
             status_coordinator.update_interval = timedelta(seconds=new_interval)
 
     entry.async_on_unload(entry.add_update_listener(_async_options_updated))
 
-    sensor_push_config = entry.options.get("sensor_push", {})
-    reverse_map: dict[str, tuple[str, str]] = {}
+    sensor_push_config = entry.options.get(CONF_SENSOR_PUSH, {})
+    reverse_map: dict[str, tuple[str, SensorKind]] = {}
     for location, kinds in sensor_push_config.items():
-        for kind, entity_ids in kinds.items():
+        for stored_kind, entity_ids in kinds.items():
+            try:
+                kind = SensorKind(stored_kind)
+            except ValueError:
+                _LOGGER.debug("Skipping unsupported stored sensor kind %r for %s", stored_kind, location)
+                continue
             for entity_id in entity_ids:
                 reverse_map[entity_id] = (location, kind)
 
@@ -199,7 +208,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return True
 
 
-async def _async_push_sensor(client: NjordClient, kind: str, location: str, value: float, entity_id: str) -> None:
+async def _async_push_sensor(
+    client: NjordClient, kind: SensorKind, location: str, value: float, entity_id: str
+) -> None:
     try:
         await client.push_sensor(kind, location, value, source=entity_id)
     except Exception:

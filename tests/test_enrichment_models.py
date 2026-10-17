@@ -2,6 +2,7 @@
 
 import pytest
 
+from custom_components.njord.const import DewPointComfort, Stability, TrendDirection, VpdCategory
 from custom_components.njord.models import (
     AlertData,
     ConsensusData,
@@ -54,13 +55,13 @@ def test_index_data_with_values():
         outdoor=56,
         bbq=51,
         frost=FrostData(hours_until=4, confidence=0.85),
-        vpd=VpdData(kpa=0.59, category="optimal"),
+        vpd=VpdData(kpa=0.59, category=VpdCategory.OPTIMAL),
         forecast=[DayScoreData(day_offset=1, laundry=40, bbq=30)],
     )
     assert idx.laundry == 47
     assert idx.frost.hours_until == 4
     assert idx.frost.confidence == 0.85
-    assert idx.vpd.category == "optimal"
+    assert idx.vpd.category is VpdCategory.OPTIMAL
     assert len(idx.forecast) == 1
     assert idx.forecast[0].day_offset == 1
 
@@ -74,7 +75,7 @@ def test_frost_data_defaults():
 def test_vpd_data_defaults():
     v = VpdData()
     assert v.kpa == 0.0
-    assert v.category == ""
+    assert v.category is VpdCategory.UNSPECIFIED
 
 
 def test_day_score_data_defaults():
@@ -86,9 +87,9 @@ def test_day_score_data_defaults():
 
 
 def test_parameter_trend_data():
-    t = ParameterTrendData(parameter="temperature_2m", direction="rising", delta=1.5)
+    t = ParameterTrendData(parameter="temperature_2m", direction=TrendDirection.RISING, delta=1.5)
     assert t.parameter == "temperature_2m"
-    assert t.direction == "rising"
+    assert t.direction is TrendDirection.RISING
 
 
 def test_trend_data_defaults():
@@ -100,20 +101,21 @@ def test_trend_data_defaults():
 
 def test_trend_data_with_values():
     t = TrendData(
-        stability_label="stable",
+        stability_label=Stability.STABLE,
         stability_ratio=0.83,
         precip_starts_in_hours=2,
         precip_ends_in_hours=24,
         reliable_hours=3,
     )
-    assert t.stability_label == "stable"
+    assert t.stability_label is Stability.STABLE
     assert t.precip_starts_in_hours == 2
 
 
 def test_horizon_derived_data():
-    h = HorizonDerivedData(horizon="h3", beaufort=2, dewpoint_comfort="sticky")
+    h = HorizonDerivedData(horizon="h3", beaufort=2, dewpoint_comfort=DewPointComfort.STICKY)
     assert h.horizon == "h3"
     assert h.beaufort == 2
+    assert h.dewpoint_comfort is DewPointComfort.STICKY
     assert h.wmo_description is None
 
 

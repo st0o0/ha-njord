@@ -12,6 +12,16 @@ import grpc
 
 # Ensure proto package path is on sys.path before importing generated stubs.
 from . import proto as _proto_pkg  # noqa: F401
+from .const import (
+    AlertSeverity,
+    AlertType,
+    DewPointComfort,
+    PollPhase,
+    SensorKind,
+    Stability,
+    TrendDirection,
+    VpdCategory,
+)
 from .models import (
     AlertData,
     BudgetStatusData,
@@ -55,9 +65,9 @@ _LOGGER = logging.getLogger(__name__)
 
 T = TypeVar("T")
 
-SENSOR_KIND_MAP: dict[str, int] = {
-    "indoor_temperature": sensor_pb2.SENSOR_KIND_INDOOR_TEMPERATURE,
-    "indoor_humidity": sensor_pb2.SENSOR_KIND_INDOOR_HUMIDITY,
+SENSOR_KIND_MAP: dict[SensorKind, int] = {
+    SensorKind.INDOOR_TEMPERATURE: sensor_pb2.SENSOR_KIND_INDOOR_TEMPERATURE,
+    SensorKind.INDOOR_HUMIDITY: sensor_pb2.SENSOR_KIND_INDOOR_HUMIDITY,
 }
 
 _BACKOFF_INITIAL = 1.0
@@ -188,11 +198,49 @@ def _to_budget_status(pb: ops_pb2.BudgetStatus) -> BudgetStatusData:
     )
 
 
+_POLL_PHASE_MAP: dict[int, PollPhase] = {
+    ops_pb2.POLL_PHASE_UNSPECIFIED: PollPhase.UNSPECIFIED,
+    ops_pb2.POLL_PHASE_DISCOVERY: PollPhase.DISCOVERY,
+    ops_pb2.POLL_PHASE_STEADY: PollPhase.STEADY,
+}
+
+_TREND_DIRECTION_MAP: dict[int, TrendDirection] = {
+    common_pb2.TREND_DIRECTION_UNSPECIFIED: TrendDirection.UNSPECIFIED,
+    common_pb2.TREND_DIRECTION_RISING: TrendDirection.RISING,
+    common_pb2.TREND_DIRECTION_FALLING: TrendDirection.FALLING,
+    common_pb2.TREND_DIRECTION_STABLE: TrendDirection.STABLE,
+}
+
+_STABILITY_MAP: dict[int, Stability] = {
+    common_pb2.STABILITY_UNSPECIFIED: Stability.UNSPECIFIED,
+    common_pb2.STABILITY_CONVERGING: Stability.CONVERGING,
+    common_pb2.STABILITY_DIVERGING: Stability.DIVERGING,
+    common_pb2.STABILITY_STABLE: Stability.STABLE,
+}
+
+_DEW_POINT_COMFORT_MAP: dict[int, DewPointComfort] = {
+    common_pb2.DEW_POINT_COMFORT_UNSPECIFIED: DewPointComfort.UNSPECIFIED,
+    common_pb2.DEW_POINT_COMFORT_DRY: DewPointComfort.DRY,
+    common_pb2.DEW_POINT_COMFORT_COMFORTABLE: DewPointComfort.COMFORTABLE,
+    common_pb2.DEW_POINT_COMFORT_STICKY: DewPointComfort.STICKY,
+    common_pb2.DEW_POINT_COMFORT_OPPRESSIVE: DewPointComfort.OPPRESSIVE,
+    common_pb2.DEW_POINT_COMFORT_DANGEROUS: DewPointComfort.DANGEROUS,
+}
+
+_VPD_CATEGORY_MAP: dict[int, VpdCategory] = {
+    common_pb2.VPD_CATEGORY_UNSPECIFIED: VpdCategory.UNSPECIFIED,
+    common_pb2.VPD_CATEGORY_LOW: VpdCategory.LOW,
+    common_pb2.VPD_CATEGORY_OPTIMAL: VpdCategory.OPTIMAL,
+    common_pb2.VPD_CATEGORY_HIGH: VpdCategory.HIGH,
+    common_pb2.VPD_CATEGORY_CRITICAL: VpdCategory.CRITICAL,
+}
+
+
 def _to_model_status(pb: ops_pb2.ModelStatus) -> ModelStatusData:
     return ModelStatusData(
         location=pb.location,
         model=pb.model,
-        phase=pb.phase,
+        phase=_POLL_PHASE_MAP.get(pb.phase, PollPhase.UNSPECIFIED),
         next_poll=_ts_to_dt(pb.next_poll) if pb.next_poll.seconds or pb.next_poll.nanos else None,
         last_change=_ts_to_dt(pb.last_change) if pb.HasField("last_change") else None,
         miss_count=pb.miss_count,
@@ -217,7 +265,7 @@ def _to_target_data(pb: ops_pb2.TriggerTarget) -> TargetData:
     return TargetData(
         location=pb.location,
         model=pb.model,
-        phase=pb.phase,
+        phase=_POLL_PHASE_MAP.get(pb.phase, PollPhase.UNSPECIFIED),
         next_poll=_ts_to_dt(pb.next_poll) if pb.next_poll.seconds or pb.next_poll.nanos else None,
         last_change=_ts_to_dt(pb.last_change) if pb.HasField("last_change") else None,
         miss_count=pb.miss_count,
@@ -227,36 +275,36 @@ def _to_target_data(pb: ops_pb2.TriggerTarget) -> TargetData:
 
 # --- Enrichment protobuf converters ---
 
-_ALERT_TYPE_MAP: dict[int, str] = {
-    0: "unspecified",
-    1: "frost",
-    2: "heat",
-    3: "storm",
-    4: "heavy_rain",
-    5: "uv",
-    6: "fog",
-    7: "snow",
-    8: "pressure_drop",
-    9: "thunderstorm",
-    10: "ice",
-    11: "wind_chill",
-    12: "visibility",
-    13: "tropical_night",
-    14: "humidity",
+_ALERT_TYPE_MAP: dict[int, AlertType] = {
+    0: AlertType.UNSPECIFIED,
+    1: AlertType.FROST,
+    2: AlertType.HEAT,
+    3: AlertType.STORM,
+    4: AlertType.HEAVY_RAIN,
+    5: AlertType.UV,
+    6: AlertType.FOG,
+    7: AlertType.SNOW,
+    8: AlertType.PRESSURE_DROP,
+    9: AlertType.THUNDERSTORM,
+    10: AlertType.ICE,
+    11: AlertType.WIND_CHILL,
+    12: AlertType.VISIBILITY,
+    13: AlertType.TROPICAL_NIGHT,
+    14: AlertType.HUMIDITY,
 }
 
-_ALERT_SEVERITY_MAP: dict[int, str] = {
-    0: "none",
-    1: "yellow",
-    2: "orange",
-    3: "red",
+_ALERT_SEVERITY_MAP: dict[int, AlertSeverity] = {
+    0: AlertSeverity.NONE,
+    1: AlertSeverity.YELLOW,
+    2: AlertSeverity.ORANGE,
+    3: AlertSeverity.RED,
 }
 
 
 def _to_alert(pb: common_pb2.Alert) -> AlertData:
     return AlertData(
-        type=_ALERT_TYPE_MAP.get(pb.type, "unspecified"),
-        severity=_ALERT_SEVERITY_MAP.get(pb.severity, "none"),
+        type=_ALERT_TYPE_MAP.get(pb.type, AlertType.UNSPECIFIED),
+        severity=_ALERT_SEVERITY_MAP.get(pb.severity, AlertSeverity.NONE),
         confidence=pb.confidence,
         trigger_value=pb.trigger_value,
         threshold=pb.threshold,
@@ -286,7 +334,7 @@ def _to_frost_data(pb: common_pb2.FrostInfo) -> FrostData:
 
 
 def _to_vpd_data(pb: common_pb2.VpdInfo) -> VpdData:
-    return VpdData(kpa=pb.kpa, category=pb.category)
+    return VpdData(kpa=pb.kpa, category=_VPD_CATEGORY_MAP.get(pb.category, VpdCategory.UNSPECIFIED))
 
 
 def _to_index_data(pb: common_pb2.IndexUpdate) -> IndexData:
@@ -310,7 +358,7 @@ def _to_index_data(pb: common_pb2.IndexUpdate) -> IndexData:
 def _to_parameter_trend(pb: common_pb2.ParameterTrend) -> ParameterTrendData:
     return ParameterTrendData(
         parameter=pb.parameter,
-        direction=pb.direction,
+        direction=_TREND_DIRECTION_MAP.get(pb.direction, TrendDirection.UNSPECIFIED),
         delta=pb.delta,
     )
 
@@ -323,7 +371,9 @@ def _to_trend_data(pb: common_pb2.TrendUpdate) -> TrendData:
         precip_ends_in_hours=pb.precip_ends_in_hours if pb.HasField("precip_ends_in_hours") else None,
         temp_max_in_hours=pb.temp_max_in_hours if pb.HasField("temp_max_in_hours") else None,
         temp_min_in_hours=pb.temp_min_in_hours if pb.HasField("temp_min_in_hours") else None,
-        stability_label=pb.stability_label if pb.HasField("stability_label") else None,
+        stability_label=(
+            _STABILITY_MAP.get(pb.stability_label, Stability.UNSPECIFIED) if pb.HasField("stability_label") else None
+        ),
         stability_ratio=pb.stability_ratio if pb.HasField("stability_ratio") else None,
         decay_rate=pb.decay_rate if pb.HasField("decay_rate") else None,
         reliable_hours=pb.reliable_hours if pb.HasField("reliable_hours") else None,
@@ -335,7 +385,11 @@ def _to_horizon_derived(pb: common_pb2.HorizonDerived) -> HorizonDerivedData:
         horizon=pb.horizon,
         beaufort=pb.beaufort if pb.HasField("beaufort") else None,
         wind_chill=pb.wind_chill if pb.HasField("wind_chill") else None,
-        dewpoint_comfort=pb.dewpoint_comfort if pb.HasField("dewpoint_comfort") else None,
+        dewpoint_comfort=(
+            _DEW_POINT_COMFORT_MAP.get(pb.dewpoint_comfort, DewPointComfort.UNSPECIFIED)
+            if pb.HasField("dewpoint_comfort")
+            else None
+        ),
         wmo_description=pb.wmo_description if pb.HasField("wmo_description") else None,
     )
 

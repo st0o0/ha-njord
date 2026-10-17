@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 import pytest
 from homeassistant.components.sensor import SensorDeviceClass
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 
-from tests.conftest import init_integration
+from custom_components.njord.const import DewPointComfort
+from tests.conftest import _default_enrichment, init_integration
 
 
 async def _setup_with_sensors_enabled(hass, mock_config_entry):
@@ -177,3 +180,27 @@ async def test_frost_hours_device_class(hass: HomeAssistant, mock_client, mock_c
     state = hass.states.get("sensor.home_frost_hours")
     assert state is not None
     assert state.attributes.get("device_class") == SensorDeviceClass.DURATION.value
+
+
+async def test_dewpoint_comfort_sensor_is_enum_with_options(
+    hass: HomeAssistant, mock_client, mock_config_entry
+) -> None:
+    await _setup_with_sensors_enabled(hass, mock_config_entry)
+
+    state = hass.states.get("sensor.home_dewpoint_comfort")
+    assert state is not None
+    assert state.attributes["device_class"] == SensorDeviceClass.ENUM.value
+    assert state.attributes["options"] == ["dry", "comfortable", "sticky", "oppressive", "dangerous"]
+
+
+async def test_dewpoint_comfort_unspecified_is_unknown(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+    enrichment = _default_enrichment()
+    derived = enrichment.derived
+    horizons = [replace(h, dewpoint_comfort=DewPointComfort.UNSPECIFIED) for h in derived.by_horizon]
+    enrichment_unspec = replace(enrichment, derived=replace(derived, by_horizon=horizons))
+    mock_client.get_enrichments.side_effect = lambda loc: enrichment_unspec
+    await _setup_with_sensors_enabled(hass, mock_config_entry)
+
+    state = hass.states.get("sensor.home_dewpoint_comfort")
+    assert state is not None
+    assert state.state == "unknown"
