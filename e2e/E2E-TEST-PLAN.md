@@ -47,7 +47,7 @@ gRPC path only (no MQTT). Real Open-Meteo API.
 
 - **Location:** lucerne (47.05, 8.31)
 - **Models:** icon_d2, ecmwf_ifs025
-- **Enrichments:** consensus, alerts, derived, trends, indices, history (all enabled)
+- **Enrichments:** consensus, alerts, derived, trends, indices (all enabled)
 - **Horizons:** +3, +6, +12, +24, +48, +72 h
 - **Poll interval:** 3600 s (default)
 - **Forecast days:** 4
@@ -64,7 +64,6 @@ Derived from config: 1 location × 2 models × all enrichments.
 | sensor (indices) | 3 | `lucerne_vpd`, `lucerne_frost_hours`, `lucerne_frost_confidence` | — | — | kPa, h, % | numeric |
 | sensor (trends) | 1 | `lucerne_weather_trend` | — | — | — | non-empty string |
 | sensor (derived) | 5 | `lucerne_{sunshine,diurnal_amplitude,beaufort,wind_chill,dewpoint_comfort}` | — | — | h, °C, Bft, °C, — | beaufort 0–12, sunshine ≥ 0 |
-| sensor (history) | 1 | `lucerne_model_performance` | — | — | — | not unavailable |
 | sensor (server) | 4 | `server_monthly_usage`, `server_daily_usage`, `server_version`, `server_uptime` | — | — | requests, requests, —, — | version=semver, usage=numeric |
 | sensor (targets) | 2 | `lucerne_icon_d2_target`, `lucerne_ecmwf_ifs_0_25deg_target` | timestamp | — | — | ISO timestamp |
 | binary_sensor | 4 | `lucerne_inversion`, `server_forecast_stream`, `server_enrichment_stream`, `server_config_stream` | connectivity (streams) | — | — | on/off |
@@ -182,8 +181,7 @@ Derived from config: 1 location × 2 models × all enrichments.
 | 6.3 | Verify `indices` field present with `days` array containing `dayScoreSet` entries | Indices populated |
 | 6.4 | Verify `trends` field present with `parameterTrends` array | Trends populated |
 | 6.5 | Verify `derived` field present with `byHorizon` and `scalars` | Derived populated |
-| 6.6 | Verify `history` field present with `models` array | History populated |
-| 6.7 | Verify `consensus` field present with `hourlyParameters` array | Consensus populated |
+| 6.6 | Verify `consensus` field present with `hourlyParameters` array | Consensus populated |
 
 ---
 
@@ -230,13 +228,12 @@ Derived from config: 1 location × 2 models × all enrichments.
 | 7.18 | Verify `sensor.lucerne_vpd` state is numeric (kPa) | Numeric |
 | 7.19 | Verify `sensor.lucerne_frost_hours` state is numeric (hours) | Numeric |
 
-### Derived, Trend, History Sensors
+### Derived and Trend Sensors
 
 | Step | Action | Pass Criteria |
 |------|--------|---------------|
 | 7.20 | Verify 5 derived sensors exist; `beaufort` state is numeric 0–12, `sunshine` ≥ 0 | In range |
 | 7.21 | Verify `sensor.lucerne_weather_trend` state is non-empty descriptive string | Not empty |
-| 7.22 | Verify `sensor.lucerne_model_performance` state ≠ "unavailable" | Not unavailable |
 
 ---
 
@@ -328,7 +325,7 @@ Derived from config: 1 location × 2 models × all enrichments.
 
 | Step | Action | Pass Criteria |
 |------|--------|---------------|
-| 13.1 | Filter states by `sensor.lucerne_` | Enrichment entities visible (alerts, indices, derived, trends, history) |
+| 13.1 | Filter states by `sensor.lucerne_` | Enrichment entities visible (alerts, indices, derived, trends) |
 | 13.2 | Click on an alert sensor (e.g., `sensor.lucerne_frost_alert`) | Attributes visible: severity, confidence, trigger_value, threshold |
 | 13.3 | Click on an index sensor (e.g., `sensor.lucerne_outdoor_index`) | State is numeric 0–10 |
 

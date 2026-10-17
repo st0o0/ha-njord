@@ -10,7 +10,6 @@ from custom_components.njord.models import (
     ConsensusData,
     DerivedData,
     EnrichmentData,
-    HistoryData,
     IndexData,
     TrendData,
 )
@@ -23,7 +22,6 @@ def _base_enrichment() -> EnrichmentData:
         indices=IndexData(laundry=80, outdoor=60),
         trends=TrendData(stability_label="stable"),
         derived=DerivedData(sunshine_pct=70.0),
-        history=HistoryData(seasonal_best="icon_d2"),
         consensus=ConsensusData(hourly_parameters=[]),
     )
 
@@ -60,7 +58,6 @@ def test_all_enrichment_types_merge_independently() -> None:
         ("indices", IndexData(laundry=99)),
         ("trends", TrendData(stability_label="changing")),
         ("derived", DerivedData(sunshine_pct=20.0)),
-        ("history", HistoryData(seasonal_best="gfs")),
         ("consensus", ConsensusData(hourly_parameters=[])),
     ]
 
@@ -88,7 +85,6 @@ def test_merge_with_no_existing_base() -> None:
     assert result.indices is None
     assert result.trends is None
     assert result.derived is None
-    assert result.history is None
     assert result.consensus is None
 
 

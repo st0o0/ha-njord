@@ -1,9 +1,7 @@
 ## Purpose
 
 Provides HA-standard "Download Diagnostics" support so users and developers can export a debug snapshot of the integration's state.
-
 ## Requirements
-
 ### Requirement: Config entry diagnostics are downloadable
 The integration SHALL provide `async_get_config_entry_diagnostics` in a `diagnostics.py` module. The returned dict SHALL contain sections for config entry data, coordinator state, stream status, and server status.
 
@@ -33,12 +31,13 @@ The stream status section SHALL include the connection state (connected/disconne
 - **THEN** the stream section shows `forecast: connected`, `enrichment: connected`, `config: connected`
 
 ### Requirement: Diagnostics include server status
-The server status section SHALL include version, uptime, and budget usage if the status coordinator has data. If unavailable, the section SHALL indicate `"unavailable"`.
+The server status section SHALL include version, uptime, budget usage, `budget_partial` and `models_partial` if the status coordinator has data. If unavailable, the section SHALL indicate `"unavailable"`. The enrichment types listed in diagnostics SHALL NOT include `history`.
 
 #### Scenario: Server status available
 - **WHEN** diagnostics are downloaded and status coordinator has data
-- **THEN** the server section shows version, uptime_seconds, and budget usage percent
+- **THEN** the server section shows version, uptime_seconds, budget usage percent, `budget_partial` and `models_partial`
 
 #### Scenario: Server status unavailable
 - **WHEN** diagnostics are downloaded but the status coordinator has no data
 - **THEN** the server section shows `"unavailable"`
+

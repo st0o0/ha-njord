@@ -84,7 +84,6 @@
       "weather_trend": { "name": "Weather Trend" },
       "sunshine": { "name": "Sunshine" },
       "diurnal_amplitude": { "name": "Diurnal Amplitude" },
-      "model_performance": { "name": "Model Performance" },
       "frost_hours": { "name": "Frost Hours" },
       "frost_confidence": { "name": "Frost Confidence" },
       "beaufort": { "name": "Beaufort" },

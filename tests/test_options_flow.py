@@ -67,7 +67,7 @@ async def test_options_flow_custom_values(hass: HomeAssistant, mock_client, mock
         hass,
         mock_config_entry,
         status_poll_interval=60,
-        enabled_enrichment_groups=[g for g in ENRICHMENT_GROUPS if g != "history"],
+        enabled_enrichment_groups=[g for g in ENRICHMENT_GROUPS if g != "trends"],
     )
     assert result["step_id"] == "sensors"
 
@@ -81,7 +81,7 @@ async def test_options_flow_custom_values(hass: HomeAssistant, mock_client, mock
     assert result["type"] == "create_entry"
 
     assert mock_config_entry.options["status_poll_interval"] == 60
-    assert "history" in mock_config_entry.options["disabled_enrichment_groups"]
+    assert "trends" in mock_config_entry.options["disabled_enrichment_groups"]
     assert "alerts" not in mock_config_entry.options["disabled_enrichment_groups"]
 
 

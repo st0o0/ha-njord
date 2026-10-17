@@ -121,6 +121,8 @@ class ServerStatusData:
     process_start: datetime | None = None
     model_statuses: list[ModelStatusData] = field(default_factory=list)
     active_enrichments: list[str] = field(default_factory=list)
+    budget_partial: bool = False
+    models_partial: bool = False
     targets: list[TargetData] = field(default_factory=list)
 
 
@@ -219,24 +221,6 @@ class DerivedData:
 
 
 @dataclass(frozen=True)
-class ModelMetricsData:
-    model: str
-    mae_7d: float | None = None
-    mae_30d: float | None = None
-    weight: float = 0.0
-    drift: float | None = None
-
-
-@dataclass(frozen=True)
-class HistoryData:
-    models: list[ModelMetricsData] = field(default_factory=list)
-    seasonal_best: str | None = None
-    anomaly: bool | None = None
-    anomaly_deviation: float | None = None
-    weighted_temperature: float | None = None
-
-
-@dataclass(frozen=True)
 class HorizonConsensusData:
     horizon: str
     median: float | None = None
@@ -273,7 +257,6 @@ class EnrichmentData:
     indices: IndexData | None = None
     trends: TrendData | None = None
     derived: DerivedData | None = None
-    history: HistoryData | None = None
     consensus: ConsensusData | None = None
     consensus_updated_at: datetime | None = None
     derived_updated_at: datetime | None = None

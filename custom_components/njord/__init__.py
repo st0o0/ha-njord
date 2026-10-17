@@ -11,6 +11,7 @@ from homeassistant.const import Platform
 from homeassistant.core import Event, HomeAssistant, ServiceCall
 from homeassistant.core import callback as ha_callback
 from homeassistant.exceptions import ServiceValidationError
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.event import async_track_state_change_event
 
 from .const import DOMAIN
@@ -41,6 +42,17 @@ SERVICE_PUSH_SENSOR_SCHEMA = vol.Schema(
 
 DEFAULT_STATUS_POLL_INTERVAL = 30
 
+_STALE_UNIQUE_ID_SUFFIXES = ("_model_performance",)
+
+
+@ha_callback
+def _remove_stale_entities(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Remove registry entries of entities njord no longer provides (History enrichment)."""
+    registry = er.async_get(hass)
+    for reg_entry in er.async_entries_for_config_entry(registry, entry.entry_id):
+        if reg_entry.domain == Platform.SENSOR and reg_entry.unique_id.endswith(_STALE_UNIQUE_ID_SUFFIXES):
+            registry.async_remove(reg_entry.entity_id)
+
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up njord from a config entry."""
@@ -69,6 +81,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         "coordinator": coordinator,
         "status_coordinator": status_coordinator,
     }
+
+    _remove_stale_entities(hass, entry)
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 

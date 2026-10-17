@@ -1,9 +1,7 @@
 ## Purpose
 
 Defines naming conventions for entity unique_id slugs, class names, and display names to ensure consistency across all platforms.
-
 ## Requirements
-
 ### Requirement: Unique ID slugs use descriptive suffixes
 Every enrichment sensor's unique_id slug SHALL follow the pattern `{location}_{feature}_{category}` where `{category}` is a descriptive suffix indicating the sensor domain (e.g., `_alert`, `_index`). Slugs SHALL NOT encode units (e.g., `_pct`) or omit the category suffix.
 
@@ -16,14 +14,6 @@ Every enrichment sensor's unique_id slug SHALL follow the pattern `{location}_{f
 - **WHEN** any enrichment sensor is created
 - **THEN** its slug matches the pattern `{location}_{feature}` or `{location}_{feature}_{category}`
 - **AND** `{category}` is never a unit abbreviation
-
-### Requirement: Class names match display names
-Entity class names SHALL reflect their display name, not an internal concept. When a class is renamed, all references (instantiation, tests, imports) SHALL be updated. No aliases or backward-compatibility shims SHALL be maintained.
-
-#### Scenario: Model performance sensor class name
-- **WHEN** the sensor displaying "Model Performance" is defined
-- **THEN** the class is named `NjordModelPerformanceSensor`
-- **AND** no class named `NjordHistorySensor` exists
 
 ### Requirement: Display names do not repeat device context
 Entity display names (`_attr_name`) SHALL NOT include information already provided by the parent device name. Entities on a location device SHALL use only the feature name. Entities on the Server device SHALL include enough context to distinguish instances but SHALL NOT repeat the device name.
@@ -48,3 +38,4 @@ All unique_id slugs SHALL be constructed by applying `.replace("-", "_").replace
 #### Scenario: Location with spaces
 - **WHEN** a sensor is created for location "new york"
 - **THEN** the slug contains `new_york` (spaces replaced with underscores)
+

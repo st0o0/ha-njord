@@ -33,7 +33,6 @@ ENRICHMENT_GROUPS = [
     "indices",
     "trends",
     "derived",
-    "history",
     "consensus",
 ]
 

@@ -74,15 +74,6 @@ async def test_diurnal_amplitude(hass: HomeAssistant, mock_client, mock_config_e
     assert float(state.state) == pytest.approx(7.3)
 
 
-async def test_model_performance_diagnostic(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
-    await _setup_with_sensors_enabled(hass, mock_config_entry)
-
-    state = hass.states.get("sensor.home_model_performance")
-    assert state is not None
-    assert float(state.state) == pytest.approx(24.48)
-    assert "models" in state.attributes
-
-
 async def test_frost_hours_sensor(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
     await _setup_with_sensors_enabled(hass, mock_config_entry)
 
@@ -176,14 +167,6 @@ async def test_diurnal_amplitude_device_class(hass: HomeAssistant, mock_client, 
     await _setup_with_sensors_enabled(hass, mock_config_entry)
 
     state = hass.states.get("sensor.home_diurnal_amplitude")
-    assert state is not None
-    assert state.attributes.get("device_class") == SensorDeviceClass.TEMPERATURE.value
-
-
-async def test_model_performance_device_class(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
-    await _setup_with_sensors_enabled(hass, mock_config_entry)
-
-    state = hass.states.get("sensor.home_model_performance")
     assert state is not None
     assert state.attributes.get("device_class") == SensorDeviceClass.TEMPERATURE.value
 

@@ -78,7 +78,7 @@ async def test_all_enrichments_active_creates_all_entities(hass: HomeAssistant, 
         hass,
         mock_client,
         mock_config_entry,
-        ["consensus", "alerts", "derived", "trends", "indices", "history"],
+        ["consensus", "alerts", "derived", "trends", "indices"],
     )
 
     registry = er.async_get(hass)

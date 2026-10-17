@@ -41,8 +41,6 @@ async def async_get_config_entry_diagnostics(
                     types.append("trends")
                 if enr.derived is not None:
                     types.append("derived")
-                if enr.history is not None:
-                    types.append("history")
                 if enr.consensus is not None:
                     types.append("consensus")
                 enrichment_types_per_location[loc] = types
@@ -76,6 +74,8 @@ async def async_get_config_entry_diagnostics(
             }
             if status.budget
             else None,
+            "budget_partial": status.budget_partial,
+            "models_partial": status.models_partial,
             "targets_count": len(status.targets),
         }
     else:

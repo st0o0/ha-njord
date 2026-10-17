@@ -23,13 +23,11 @@ from .models import (
     EnrichmentData,
     ForecastData,
     FrostData,
-    HistoryData,
     HorizonConsensusData,
     HorizonDerivedData,
     HourlyForecastData,
     IndexData,
     ModelInfoData,
-    ModelMetricsData,
     ModelStatusData,
     NjordConfigData,
     NjordLocation,
@@ -210,6 +208,8 @@ def _to_server_status(pb: ops_pb2.StatusResponse) -> ServerStatusData:
         process_start=_ts_to_dt(pb.process_start) if pb.process_start.seconds or pb.process_start.nanos else None,
         model_statuses=[_to_model_status(m) for m in pb.models],
         active_enrichments=list(pb.active_enrichments),
+        budget_partial=pb.budget_partial,
+        models_partial=pb.models_partial,
     )
 
 
@@ -350,26 +350,6 @@ def _to_derived_data(pb: common_pb2.DerivedUpdate) -> DerivedData:
     )
 
 
-def _to_model_metrics(pb: common_pb2.ModelMetrics) -> ModelMetricsData:
-    return ModelMetricsData(
-        model=pb.model,
-        mae_7d=pb.mae_7d if pb.HasField("mae_7d") else None,
-        mae_30d=pb.mae_30d if pb.HasField("mae_30d") else None,
-        weight=pb.weight,
-        drift=pb.drift if pb.HasField("drift") else None,
-    )
-
-
-def _to_history_data(pb: common_pb2.HistoryUpdate) -> HistoryData:
-    return HistoryData(
-        models=[_to_model_metrics(m) for m in pb.models],
-        seasonal_best=pb.seasonal_best if pb.HasField("seasonal_best") else None,
-        anomaly=pb.anomaly if pb.HasField("anomaly") else None,
-        anomaly_deviation=pb.anomaly_deviation if pb.HasField("anomaly_deviation") else None,
-        weighted_temperature=pb.weighted_temperature if pb.HasField("weighted_temperature") else None,
-    )
-
-
 def _to_horizon_consensus(pb: common_pb2.HorizonConsensus) -> HorizonConsensusData:
     return HorizonConsensusData(
         horizon=pb.horizon,
@@ -407,7 +387,6 @@ def _to_enrichment_data(pb: weather_pb2.GetEnrichmentsResponse) -> EnrichmentDat
         indices=_to_index_data(pb.indices) if pb.HasField("indices") else None,
         trends=_to_trend_data(pb.trends) if pb.HasField("trends") else None,
         derived=_to_derived_data(pb.derived) if has_derived else None,
-        history=_to_history_data(pb.history) if pb.HasField("history") else None,
         consensus=_to_consensus_data(pb.consensus) if has_consensus else None,
         consensus_updated_at=_ts_to_dt(pb.consensus_updated_at)
         if has_consensus and pb.HasField("consensus_updated_at")
@@ -419,7 +398,7 @@ def _to_enrichment_data(pb: weather_pb2.GetEnrichmentsResponse) -> EnrichmentDat
 def _to_enrichment_event(pb: weather_pb2.EnrichmentEvent) -> EnrichmentData:
     payload_field = pb.WhichOneof("payload")
     alerts = []
-    indices = trends = derived = history = consensus = None
+    indices = trends = derived = consensus = None
     consensus_updated_at = None
     derived_updated_at = None
     if payload_field == "alerts":
@@ -431,8 +410,6 @@ def _to_enrichment_event(pb: weather_pb2.EnrichmentEvent) -> EnrichmentData:
     elif payload_field == "derived":
         derived = _to_derived_data(pb.derived)
         derived_updated_at = _ts_to_dt(pb.updated_at)
-    elif payload_field == "history":
-        history = _to_history_data(pb.history)
     elif payload_field == "consensus":
         consensus = _to_consensus_data(pb.consensus)
         consensus_updated_at = _ts_to_dt(pb.updated_at)
@@ -442,7 +419,6 @@ def _to_enrichment_event(pb: weather_pb2.EnrichmentEvent) -> EnrichmentData:
         indices=indices,
         trends=trends,
         derived=derived,
-        history=history,
         consensus=consensus,
         consensus_updated_at=consensus_updated_at,
         derived_updated_at=derived_updated_at,

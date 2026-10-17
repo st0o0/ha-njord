@@ -153,10 +153,6 @@ class MockWeatherServicer(weather_pb2_grpc.WeatherServiceServicer):
                 ],
                 scalars=common_pb2.ScalarDerived(diurnal_amplitude=7.3, sunshine_pct=66.4, inversion=False),
             ),
-            history=common_pb2.HistoryUpdate(
-                models=[common_pb2.ModelMetrics(model="icon_global", weight=0.1667, drift=0.0)],
-                weighted_temperature=24.48,
-            ),
             consensus=common_pb2.ConsensusUpdate(
                 hourly_parameters=[
                     common_pb2.ParameterConsensus(
@@ -359,6 +355,17 @@ async def test_get_config(client):
     assert config.default_models == ["icon_d2", "ecmwf_ifs025"]
     assert config.horizons == [1, 3, 6]
     assert config.forecast_days == 7
+
+
+@pytest.mark.parametrize("budget_partial,models_partial", [(False, False), (True, False), (False, True), (True, True)])
+def test_server_status_maps_partial_flags(budget_partial, models_partial):
+    from custom_components.njord.grpc_client import _to_server_status
+
+    status = _to_server_status(
+        ops_pb2.StatusResponse(version="1", budget_partial=budget_partial, models_partial=models_partial)
+    )
+    assert status.budget_partial is budget_partial
+    assert status.models_partial is models_partial
 
 
 @pytest.mark.asyncio
@@ -587,9 +594,6 @@ async def test_get_enrichments(client):
     assert enrichment.derived.by_horizon[0].beaufort == 2
     assert enrichment.derived.sunshine_pct == pytest.approx(66.4)
     assert enrichment.derived.inversion is False
-
-    assert enrichment.history is not None
-    assert enrichment.history.weighted_temperature == pytest.approx(24.48)
 
     assert enrichment.consensus is not None
     assert enrichment.consensus.hourly_parameters[0].by_horizon[0].median == pytest.approx(20.4)

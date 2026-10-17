@@ -31,7 +31,6 @@ from .models import (
     ForecastData,
     HorizonConsensusData,
     HourlyForecastData,
-    ModelMetricsData,
     NjordLocation,
 )
 
@@ -190,17 +189,6 @@ class NjordWeatherEntity(SingleCoordinatorWeatherEntity[NjordDataCoordinator]):
         h = self._current_hourly()
         return h.cloud_cover if h is not None else None
 
-    def _model_metrics(self) -> ModelMetricsData | None:
-        if self.coordinator.data is None:
-            return None
-        enrichment = self.coordinator.data.enrichments.get(self._location)
-        if enrichment is None or enrichment.history is None:
-            return None
-        for m in enrichment.history.models:
-            if m.model == self._model:
-                return m
-        return None
-
     @property
     def extra_state_attributes(self) -> dict[str, object] | None:
         attrs: dict[str, object] = {}
@@ -208,16 +196,6 @@ class NjordWeatherEntity(SingleCoordinatorWeatherEntity[NjordDataCoordinator]):
         h = self._current_hourly()
         if h is not None and h.extra:
             attrs.update(h.extra)
-
-        metrics = self._model_metrics()
-        if metrics is not None:
-            if metrics.mae_7d is not None:
-                attrs["model_mae_7d"] = round(metrics.mae_7d, 2)
-            if metrics.mae_30d is not None:
-                attrs["model_mae_30d"] = round(metrics.mae_30d, 2)
-            attrs["model_weight"] = round(metrics.weight, 3)
-            if metrics.drift is not None:
-                attrs["model_drift"] = round(metrics.drift, 2)
 
         if self.coordinator.data is not None:
             info = self.coordinator.data.model_info.get(self._model)

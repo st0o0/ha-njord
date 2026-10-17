@@ -1,9 +1,7 @@
 ## Purpose
 
 Defines the gRPC client module for communicating with the njord weather service — channel management, unary RPCs, server-streaming RPCs, reconnect logic, and typed data models.
-
 ## Requirements
-
 ### Requirement: Channel lifecycle
 The `NjordClient` SHALL manage a gRPC channel to a njord server specified by host and port, supporting explicit connect, close, and async context manager usage. On connect, it SHALL create four service stubs: `WeatherServiceStub`, `AdminServiceStub`, `OpsServiceStub`, and `SensorServiceStub`.
 
@@ -104,7 +102,8 @@ The client SHALL provide an async method to retrieve enrichment data for a given
 
 #### Scenario: Successful retrieval
 - **WHEN** `await client.get_enrichments(location)` is called
-- **THEN** an `EnrichmentData` object is returned containing alerts, indices, trends, derived, history, and consensus data for that location
+- **THEN** an `EnrichmentData` object is returned containing alerts, indices, trends, derived, and consensus data for that location
+- **AND** `EnrichmentData` has no `history` field
 
 ### Requirement: Stream enrichments
 The client SHALL provide an async iterator for real-time enrichment updates via `WeatherService.StreamEnrichments` server-streaming RPC.
@@ -159,3 +158,15 @@ All public API methods SHALL return typed Python dataclasses, never raw protobuf
 #### Scenario: ventilation field renamed to night_ventilation
 - **WHEN** the proto `DayScoreSet` contains `night_ventilation = 22`
 - **THEN** `IndexData.night_ventilation` is `22`
+
+### Requirement: Status maps partial flags
+`get_status` SHALL map `StatusResponse.budget_partial` and `StatusResponse.models_partial` to `ServerStatusData.budget_partial` and `ServerStatusData.models_partial`.
+
+#### Scenario: Complete status
+- **WHEN** the response has `budget_partial = false` and `models_partial = false`
+- **THEN** both `ServerStatusData` flags are `False`
+
+#### Scenario: Partial status
+- **WHEN** the response has `budget_partial = true` and `models_partial = true`
+- **THEN** both `ServerStatusData` flags are `True`
+

@@ -19,13 +19,11 @@ from custom_components.njord.models import (
     EnrichmentData,
     ForecastData,
     FrostData,
-    HistoryData,
     HorizonConsensusData,
     HorizonDerivedData,
     HourlyForecastData,
     IndexData,
     ModelInfoData,
-    ModelMetricsData,
     NjordConfigData,
     NjordLocation,
     ParameterConsensusData,
@@ -268,10 +266,6 @@ def _default_enrichment(location: str = "home") -> EnrichmentData:
             inversion=False,
         ),
         derived_updated_at=datetime.now(UTC),
-        history=HistoryData(
-            models=[ModelMetricsData(model="icon_d2", weight=0.5)],
-            weighted_temperature=24.48,
-        ),
         consensus=_default_consensus(),
     )
 
@@ -299,7 +293,7 @@ def mock_client():
             budget=BudgetStatusData(
                 monthly_limit=20000, monthly_used=5000, daily_limit=700, daily_used=100, usage_percent=25.0
             ),
-            active_enrichments=["consensus", "alerts", "derived", "trends", "indices", "history"],
+            active_enrichments=["consensus", "alerts", "derived", "trends", "indices"],
         )
     )
     mock.trigger_poll = AsyncMock(return_value=6)

@@ -9,11 +9,9 @@ from custom_components.njord.models import (
     DerivedData,
     EnrichmentData,
     FrostData,
-    HistoryData,
     HorizonConsensusData,
     HorizonDerivedData,
     IndexData,
-    ModelMetricsData,
     ParameterConsensusData,
     ParameterTrendData,
     TrendData,
@@ -137,29 +135,6 @@ def test_derived_data_with_values():
     assert d.inversion is False
 
 
-def test_model_metrics_data():
-    m = ModelMetricsData(model="icon_global", weight=0.1667, mae_7d=1.2)
-    assert m.model == "icon_global"
-    assert m.weight == 0.1667
-    assert m.drift is None
-
-
-def test_history_data_defaults():
-    h = HistoryData()
-    assert h.models == []
-    assert h.weighted_temperature is None
-    assert h.anomaly is None
-
-
-def test_history_data_with_values():
-    h = HistoryData(
-        models=[ModelMetricsData(model="icon_eu", weight=0.5)],
-        weighted_temperature=24.48,
-        seasonal_best="icon_d2",
-    )
-    assert h.weighted_temperature == 24.48
-
-
 def test_horizon_consensus_data():
     hc = HorizonConsensusData(horizon="h3", median=20.4, spread=5.2, agreement=0.67, available_models=6)
     assert hc.median == 20.4
@@ -189,7 +164,6 @@ def test_enrichment_data_defaults():
     assert e.indices is None
     assert e.trends is None
     assert e.derived is None
-    assert e.history is None
     assert e.consensus is None
 
 
@@ -200,7 +174,6 @@ def test_enrichment_data_with_all():
         indices=IndexData(bbq=51),
         trends=TrendData(stability_label="stable"),
         derived=DerivedData(sunshine_pct=66.4),
-        history=HistoryData(weighted_temperature=24.48),
         consensus=ConsensusData(),
     )
     assert len(e.alerts) == 1

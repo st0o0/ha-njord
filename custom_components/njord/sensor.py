@@ -178,9 +178,6 @@ async def async_setup_entry(
             entities.append(NjordWindChillSensor(coordinator, entry, location, sw_version))
             entities.append(NjordDewpointComfortSensor(coordinator, entry, location, sw_version))
 
-        if (active is None or "history" in active) and "history" not in disabled_groups:
-            entities.append(NjordModelPerformanceSensor(coordinator, entry, location, sw_version))
-
     status_coordinator: NjordStatusCoordinator | None = hass.data[DOMAIN][entry.entry_id].get("status_coordinator")
     if status_coordinator is not None:
         entities.append(NjordMonthlyUsageSensor(status_coordinator, entry, sw_version))
@@ -214,8 +211,6 @@ async def async_setup_entry(
             new_entities.append(NjordBeaufortSensor(coordinator, entry, location.name, sw_version))
             new_entities.append(NjordWindChillSensor(coordinator, entry, location.name, sw_version))
             new_entities.append(NjordDewpointComfortSensor(coordinator, entry, location.name, sw_version))
-        if (act is None or "history" in act) and "history" not in disabled_groups:
-            new_entities.append(NjordModelPerformanceSensor(coordinator, entry, location.name, sw_version))
         return new_entities
 
     coordinator.register_entity_factory("sensor", async_add_entities, sensor_factory)
@@ -525,67 +520,6 @@ class NjordDiurnalAmplitudeSensor(_NjordEnrichmentSensor):
         return enrichment.derived.diurnal_amplitude
 
 
-class NjordModelPerformanceSensor(_NjordEnrichmentSensor):
-    """Diagnostic sensor for model performance."""
-
-    _attr_entity_category = EntityCategory.DIAGNOSTIC
-    _attr_device_class = SensorDeviceClass.TEMPERATURE
-    _attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
-    _attr_suggested_display_precision = 1
-    _attr_icon = "mdi:chart-line"
-    _attr_translation_key = "model_performance"
-
-    def __init__(
-        self,
-        coordinator: NjordDataCoordinator,
-        entry: ConfigEntry,
-        location: str,
-        sw_version: str | None = None,
-    ) -> None:
-        super().__init__(coordinator, entry, location, sw_version)
-        slug = f"{location}_model_performance".replace("-", "_").replace(" ", "_").lower()
-        self._attr_unique_id = f"{entry.entry_id}_{slug}"
-        self._attr_name = "Model Performance"
-
-    @property
-    def available(self) -> bool:
-        enrichment = self._enrichment()
-        return enrichment is not None and enrichment.history is not None
-
-    @property
-    def native_value(self) -> float | None:
-        enrichment = self._enrichment()
-        if enrichment is None or enrichment.history is None:
-            return None
-        return enrichment.history.weighted_temperature
-
-    @property
-    def extra_state_attributes(self) -> dict[str, object] | None:
-        enrichment = self._enrichment()
-        if enrichment is None or enrichment.history is None:
-            return None
-        h = enrichment.history
-        attrs: dict[str, object] = {
-            "models": [
-                {
-                    "model": m.model,
-                    "mae_7d": m.mae_7d,
-                    "mae_30d": m.mae_30d,
-                    "weight": m.weight,
-                    "drift": m.drift,
-                }
-                for m in h.models
-            ],
-        }
-        if h.seasonal_best is not None:
-            attrs["seasonal_best"] = h.seasonal_best
-        if h.anomaly is not None:
-            attrs["anomaly"] = h.anomaly
-        if h.anomaly_deviation is not None:
-            attrs["anomaly_deviation"] = h.anomaly_deviation
-        return attrs
-
-
 class NjordFrostHoursSensor(_NjordEnrichmentSensor):
     """Sensor for frost hours."""
 
@@ -661,6 +595,7 @@ class NjordMonthlyUsageSensor(CoordinatorEntity[NjordStatusCoordinator], SensorE
     def available(self) -> bool:
         return (
             self.coordinator.data is not None
+            and not self.coordinator.data.budget_partial
             and self.coordinator.data.budget is not None
             and self.coordinator.data.budget.monthly_limit > 0
         )
@@ -703,6 +638,7 @@ class NjordDailyUsageSensor(CoordinatorEntity[NjordStatusCoordinator], SensorEnt
     def available(self) -> bool:
         return (
             self.coordinator.data is not None
+            and not self.coordinator.data.budget_partial
             and self.coordinator.data.budget is not None
             and self.coordinator.data.budget.daily_limit > 0
         )

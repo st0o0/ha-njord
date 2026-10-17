@@ -8,7 +8,7 @@ context: |
 
   Architecture: ha-njord is a pure consumer — reads forecasts, enrichments,
   and config via gRPC streaming (no polling on the HA side). Enrichment
-  sensors (alerts, indices, trends, derived, history) are toggleable via
+  sensors (alerts, indices, trends, derived) are toggleable via
   options flow. Sensor push feeds indoor readings back to njord.
 
   Structure: `custom_components/njord/` contains the HA integration code.

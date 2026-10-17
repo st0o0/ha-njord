@@ -1,9 +1,7 @@
 ## Purpose
 
 Replaces the single combined API budget sensor with two dedicated usage percentage sensors (monthly and daily), each exposing limit and used values as attributes.
-
 ## Requirements
-
 ### Requirement: Monthly usage sensor shows percentage with limit and used
 A `sensor.server_monthly_usage` entity SHALL display `monthly_used / monthly_limit * 100` as its state (unit: %). Attributes SHALL include `limit` and `used`.
 
@@ -41,3 +39,15 @@ Both usage sensors SHALL have `entity_category=DIAGNOSTIC`, belong to the Server
 #### Scenario: Entity does not exist
 - **WHEN** the integration is set up
 - **THEN** no `sensor.server_api_budget` entity is created
+
+### Requirement: Usage sensors are unavailable on partial budget status
+While `ServerStatusData.budget_partial` is true, both usage sensors SHALL be unavailable, because njord reports zero usage in that case and it is not a real measurement.
+
+#### Scenario: Budget tracker timed out
+- **WHEN** the status response has `budget_partial = true` with `monthly_used=0`
+- **THEN** `sensor.server_monthly_usage` and `sensor.server_daily_usage` are unavailable
+
+#### Scenario: Budget status recovers
+- **WHEN** the next status response has `budget_partial = false`
+- **THEN** both sensors show their computed percentages again
+
