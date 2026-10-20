@@ -5,7 +5,7 @@
 <h1 align="center">ha-njord</h1>
 
 <p align="center">
-  Home Assistant custom integration for the <a href="https://github.com/st0o0/njord">njord</a> weather service
+  Home Assistant custom integration for the <a href="https://github.com/st0o0/njord">njord</a> weather intelligence service
 </p>
 
 <p align="center">
@@ -16,20 +16,20 @@
 
 ---
 
-Connects to a [njord](https://github.com/st0o0/njord) instance via gRPC streaming and creates native Home Assistant entities: weather forecasts, alerts, activity indices, trends, derived metrics, and more. Data arrives in real time, with no polling delay on the HA side.
+Connects to a [njord](https://github.com/st0o0/njord) instance via gRPC streaming and creates native Home Assistant entities for multi-domain weather intelligence. Data arrives in real time, with no polling delay on the HA side.
 
 ## Features
 
-- **Multi-model weather entities.** One `weather` entity per model (ICON, ECMWF, GFS, UKMO, MeteoSwiss, ...) with hourly and daily forecasts
-- **Consensus entity.** Multi-model median with agreement score and daily forecast
-- **14 weather alerts.** Frost, heat, storm, UV, fog, ice, wind chill, humidity, and more as `sensor` entities with severity and confidence
-- **Alert events.** Event entity that fires on alert state changes (started, escalated, deescalated, cleared)
-- **8 activity indices.** BBQ, outdoor, running, cycling, laundry, irrigation, solar, night ventilation (0 to 100%)
-- **Derived metrics.** Sunshine percentage, diurnal amplitude, Beaufort scale, wind chill, dewpoint comfort, temperature inversion
-- **Weather trends.** Stability label, precipitation timing, reliable forecast hours
-- **Model performance.** Weighted temperature, per-model MAE and drift (diagnostic)
-- **Server diagnostics.** API usage, version, uptime, per-target poll state, gRPC stream connectivity
-- **Manual poll trigger.** Button entity to trigger an immediate forecast poll
+- **Multi-domain weather data.** Weather (Ensemble), Air Quality, Flood and Marine data as sensor entities per location
+- **19 weather alerts.** Frost, heat, storm, UV, fog, pollen, PM2.5, flood risk, swimming conditions and more as `binary_sensor` entities with severity and trigger value
+- **Lifestyle enrichments.** Laundry drying score, commute safety, ventilation window, exercise advisory, BBQ score, outdoor score and more as `sensor` entities
+- **Alert events.** Event entity that fires on alert state changes
+- **Air quality sensors.** PM2.5, PM10, ozone, birch/grass/alder/mugwort pollen per location
+- **Flood monitoring.** River discharge sensor with flood risk alerts
+- **Marine conditions.** Wave height, wave period, wave direction, water temperature
+- **Server diagnostics.** API usage, poll state per location, gRPC stream connectivity
+- **Manual poll trigger.** Button entity to trigger an immediate poll for a location
+- **Enrichment-driven config.** Toggle individual enrichments in HA; njord derives which API domains to fetch
 
 ## Prerequisites
 
@@ -54,9 +54,9 @@ Copy the `custom_components/njord` directory to your Home Assistant `config/cust
 1. Go to **Settings > Devices & Services > Add Integration**
 2. Search for **njord Weather**
 3. Enter the host and gRPC port (default: 8081) of your njord instance
-4. The integration auto-discovers all locations and models
+4. Choose which enrichments to enable (weather alerts, pollen, flood risk, lifestyle scores, etc.)
 
-Entities appear immediately after setup. Many enrichment sensors are disabled by default; enable them via the entity registry.
+Entities appear immediately after setup. Locations are auto-discovered from the njord configuration. Coordinates are resolved automatically via geocoding.
 
 ## Documentation
 
@@ -78,9 +78,7 @@ docker run --rm -v "$PWD:/work" -w /work python:3.12-slim \
     --grpc_python_out=custom_components/njord/proto \
     protos/njord/v2/common.proto \
     protos/njord/v2/weather.proto \
-    protos/njord/v2/admin.proto \
-    protos/njord/v2/ops.proto \
-    protos/njord/v2/sensor.proto"
+    protos/njord/v2/ops.proto"
 ```
 
 ## License
