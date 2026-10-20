@@ -28,7 +28,6 @@ DEFAULT_STATUS_POLL_INTERVAL = 30
 __all__ = ["CONF_HOST", "CONF_PORT"]
 CONF_STATUS_POLL_INTERVAL = "status_poll_interval"
 CONF_ENABLED_ENRICHMENTS = "enabled_enrichments"
-CONF_ENABLED_DOMAINS = "enabled_domains"
 
 
 class Domain(StrEnum):
@@ -66,12 +65,6 @@ DEFAULT_ENABLED_ENRICHMENTS: frozenset[Enrichment] = frozenset(
 def parse_enrichments(values: Iterable[str] | None) -> frozenset[Enrichment]:
     """Convert stored enrichment names, ignoring unknown names."""
     known = {item.value: item for item in Enrichment}
-    return frozenset(known[value] for value in values or () if value in known)
-
-
-def parse_domains(values: Iterable[str] | None) -> frozenset[Domain]:
-    """Convert stored domain names, ignoring unknown and unspecified names."""
-    known = {item.value: item for item in Domain if item is not Domain.UNSPECIFIED}
     return frozenset(known[value] for value in values or () if value in known)
 
 
