@@ -16,6 +16,16 @@
           "host": "Host",
           "port": "Port"
         }
+      },
+      "enrichments": {
+        "title": "Warn-Enrichments",
+        "description": "Wähle, welche Warngruppen Entitäten erzeugen. {locations} Standort(e) gefunden.",
+        "data": {
+          "enabled_enrichments": "Aktivierte Enrichments"
+        },
+        "data_description": {
+          "enabled_enrichments": "Wähle welche Warngruppen aktiviert sein sollen. Deaktivierte Gruppen erzeugen keine Entitäten."
+        }
       }
     },
     "error": {
@@ -29,75 +39,52 @@
     "step": {
       "init": {
         "title": "njord Optionen",
-        "description": "Status-Abfrageintervall und Enrichment-Gruppen konfigurieren.",
+        "description": "Status-Abfrageintervall und Warn-Enrichments konfigurieren.",
         "data": {
           "status_poll_interval": "Status-Abfrageintervall (Sekunden)",
-          "enabled_enrichment_groups": "Aktivierte Enrichment-Gruppen"
+          "enabled_enrichments": "Aktivierte Enrichments"
         },
         "data_description": {
           "status_poll_interval": "Wie oft der Server-Status abgefragt wird (10–300 Sekunden, Standard 30).",
-          "enabled_enrichment_groups": "Wähle welche Enrichment-Gruppen aktiviert sein sollen. Deaktivierte Gruppen erzeugen keine Entitäten."
-        }
-      },
-      "sensors": {
-        "title": "Sensor-Weiterleitung",
-        "description": "Wähle Home Assistant Sensoren, die an njord weitergeleitet werden. Messwerte werden bei jeder Änderung gesendet.",
-        "data": {
-          "indoor_temperature": "Innentemperatur",
-          "indoor_humidity": "Luftfeuchtigkeit innen"
-        },
-        "data_description": {
-          "indoor_temperature": "Temperatursensoren, die für diesen Standort an njord weitergeleitet werden.",
-          "indoor_humidity": "Feuchtigkeitssensoren, die für diesen Standort an njord weitergeleitet werden."
+          "enabled_enrichments": "Wähle welche Warngruppen aktiviert sein sollen. Deaktivierte Gruppen erzeugen keine Entitäten."
         }
       }
     }
   },
   "issues": {
-    "stream_forecast_disconnected": {
-      "title": "Vorhersage-Stream getrennt",
-      "description": "Der njord Vorhersage-Stream ist seit über 60 Sekunden getrennt. Daten könnten veraltet sein."
+    "stream_domain_disconnected": {
+      "title": "Domänendaten-Stream getrennt",
+      "description": "Der njord Domänendaten-Stream ist seit über 60 Sekunden getrennt. Daten könnten veraltet sein."
     },
     "stream_enrichment_disconnected": {
       "title": "Enrichment-Stream getrennt",
       "description": "Der njord Enrichment-Stream ist seit über 60 Sekunden getrennt. Enrichment-Daten könnten veraltet sein."
-    },
-    "stream_config_disconnected": {
-      "title": "Konfigurations-Stream getrennt",
-      "description": "Der njord Konfigurations-Stream ist seit über 60 Sekunden getrennt. Neue Standorte werden nicht erkannt."
     }
   },
   "entity": {
     "button": {
-      "trigger_poll": { "name": "Abfrage auslösen" }
+      "trigger_poll": {
+        "name": "Abfrage auslösen"
+      }
     },
     "sensor": {
-      "laundry_index": { "name": "Wäsche-Index" },
-      "outdoor_index": { "name": "Outdoor-Index" },
-      "running_index": { "name": "Lauf-Index" },
-      "cycling_index": { "name": "Rad-Index" },
-      "bbq_index": { "name": "Grillwetter-Index" },
-      "irrigation_index": { "name": "Bewässerungs-Index" },
-      "solar_index": { "name": "Solar-Index" },
-      "night_ventilation_index": { "name": "Nachtlüftungs-Index" },
-      "vpd": { "name": "VPD" },
-      "weather_trend": { "name": "Wettertrend" },
-      "sunshine": { "name": "Sonnenschein" },
-      "diurnal_amplitude": { "name": "Tagesamplitude" },
-      "frost_hours": { "name": "Froststunden" },
-      "frost_confidence": { "name": "Frostwahrscheinlichkeit" },
-      "beaufort": { "name": "Beaufort" },
-      "wind_chill": { "name": "Windchill" },
-      "dewpoint_comfort": { "name": "Taupunkt-Komfort", "state": { "dry": "Trocken", "comfortable": "Angenehm", "sticky": "Schwül", "oppressive": "Drückend", "dangerous": "Gefährlich" } },
-      "api_budget": { "name": "API-Budget" },
-      "uptime": { "name": "Betriebszeit" },
-      "target_poll": { "name": "Abfrage-Ziel" }
+      "target_poll": {
+        "name": "Abfrage-Ziel"
+      },
+      "uptime": {
+        "name": "Betriebszeit"
+      },
+      "api_budget": {
+        "name": "API-Budget"
+      }
     },
     "binary_sensor": {
-      "inversion": { "name": "Inversion" },
-      "forecast_stream": { "name": "Vorhersage-Stream" },
-      "enrichment_stream": { "name": "Enrichment-Stream" },
-      "config_stream": { "name": "Konfigurations-Stream" }
+      "domain_stream": {
+        "name": "Domänendaten-Stream"
+      },
+      "enrichment_stream": {
+        "name": "Enrichment-Stream"
+      }
     },
     "event": {
       "weather_alert": {
@@ -112,6 +99,18 @@
             }
           }
         }
+      }
+    }
+  },
+  "selector": {
+    "enabled_enrichments": {
+      "options": {
+        "weather_alerts": "Wetterwarnungen",
+        "pollen_alert": "Pollenwarnung",
+        "pm25_alert": "PM2.5-Warnung",
+        "flood_risk": "Hochwasserrisiko",
+        "flood_rain": "Starkregen-Hochwasser",
+        "swimming_conditions": "Badebedingungen"
       }
     }
   }

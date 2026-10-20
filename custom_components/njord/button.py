@@ -30,7 +30,7 @@ async def async_setup_entry(
 
 
 class NjordTriggerPollButton(ButtonEntity):
-    """Button to trigger a forecast poll on njord."""
+    """Button to trigger a poll of every location on njord."""
 
     _attr_has_entity_name = True
     _attr_name = "Trigger Poll"

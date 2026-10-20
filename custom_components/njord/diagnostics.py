@@ -8,7 +8,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.redact import async_redact_data
 
-from .const import DOMAIN, EnrichmentGroup
+from .const import DOMAIN
 from .coordinator import NjordDataCoordinator, NjordStatusCoordinator
 
 REDACT_KEYS = {"host"}
@@ -27,28 +27,14 @@ async def async_get_config_entry_diagnostics(
 
     coordinator: NjordDataCoordinator | None = entry_data.get("coordinator")
     if coordinator is not None and coordinator.data is not None:
-        locations = sorted({loc for loc, _ in coordinator.data.forecasts})
-        enrichment_types_per_location: dict[str, list[str]] = {}
-        for loc in locations:
-            enr = coordinator.data.enrichments.get(loc)
-            if enr is not None:
-                types = []
-                if enr.alerts:
-                    types.append(EnrichmentGroup.ALERTS.value)
-                if enr.indices is not None:
-                    types.append(EnrichmentGroup.INDICES.value)
-                if enr.trends is not None:
-                    types.append(EnrichmentGroup.TRENDS.value)
-                if enr.derived is not None:
-                    types.append(EnrichmentGroup.DERIVED.value)
-                if enr.consensus is not None:
-                    types.append(EnrichmentGroup.CONSENSUS.value)
-                enrichment_types_per_location[loc] = types
+        domains_per_location: dict[str, list[str]] = {}
+        for location, domain in coordinator.data.domains:
+            domains_per_location.setdefault(location, []).append(domain.value)
 
         data["coordinator"] = {
-            "locations": locations,
-            "forecast_keys": len(coordinator.data.forecasts),
-            "enrichment_types": enrichment_types_per_location,
+            "locations": coordinator.data.location_names,
+            "domains": {location: sorted(domains) for location, domains in sorted(domains_per_location.items())},
+            "enrichment_locations": sorted(coordinator.data.enrichments),
             "active_enrichments": sorted(coordinator.data.active_enrichments)
             if coordinator.data.active_enrichments
             else None,

@@ -16,6 +16,16 @@
           "host": "Host",
           "port": "Port"
         }
+      },
+      "enrichments": {
+        "title": "Alert enrichments",
+        "description": "Choose which alert groups create entities. Found {locations} location(s).",
+        "data": {
+          "enabled_enrichments": "Enabled enrichments"
+        },
+        "data_description": {
+          "enabled_enrichments": "Alert groups to enable. Disabled groups will not create entities."
+        }
       }
     },
     "error": {
@@ -29,75 +39,52 @@
     "step": {
       "init": {
         "title": "njord Options",
-        "description": "Configure status polling and enrichment groups.",
+        "description": "Configure status polling and alert enrichments.",
         "data": {
           "status_poll_interval": "Status poll interval (seconds)",
-          "enabled_enrichment_groups": "Enabled enrichment groups"
+          "enabled_enrichments": "Enabled enrichments"
         },
         "data_description": {
           "status_poll_interval": "How often to poll server status (10–300 seconds, default 30).",
-          "enabled_enrichment_groups": "Select which enrichment groups to enable. Disabled groups will not create entities."
-        }
-      },
-      "sensors": {
-        "title": "Sensor Push",
-        "description": "Select Home Assistant sensors to forward to njord. Readings are pushed on every state change.",
-        "data": {
-          "indoor_temperature": "Indoor Temperature",
-          "indoor_humidity": "Indoor Humidity"
-        },
-        "data_description": {
-          "indoor_temperature": "Temperature sensors to forward to njord for this location.",
-          "indoor_humidity": "Humidity sensors to forward to njord for this location."
+          "enabled_enrichments": "Alert groups to enable. Disabled groups will not create entities."
         }
       }
     }
   },
   "issues": {
-    "stream_forecast_disconnected": {
-      "title": "Forecast stream disconnected",
-      "description": "The njord forecast stream has been disconnected for over 60 seconds. Data may be stale."
+    "stream_domain_disconnected": {
+      "title": "Domain data stream disconnected",
+      "description": "The njord domain data stream has been disconnected for over 60 seconds. Data may be stale."
     },
     "stream_enrichment_disconnected": {
       "title": "Enrichment stream disconnected",
       "description": "The njord enrichment stream has been disconnected for over 60 seconds. Enrichment data may be stale."
-    },
-    "stream_config_disconnected": {
-      "title": "Config stream disconnected",
-      "description": "The njord config stream has been disconnected for over 60 seconds. New locations will not be detected."
     }
   },
   "entity": {
     "button": {
-      "trigger_poll": { "name": "Trigger Poll" }
+      "trigger_poll": {
+        "name": "Trigger Poll"
+      }
     },
     "sensor": {
-      "laundry_index": { "name": "Laundry Index" },
-      "outdoor_index": { "name": "Outdoor Index" },
-      "running_index": { "name": "Running Index" },
-      "cycling_index": { "name": "Cycling Index" },
-      "bbq_index": { "name": "BBQ Index" },
-      "irrigation_index": { "name": "Irrigation Index" },
-      "solar_index": { "name": "Solar Index" },
-      "night_ventilation_index": { "name": "Night Ventilation Index" },
-      "vpd": { "name": "VPD" },
-      "weather_trend": { "name": "Weather Trend" },
-      "sunshine": { "name": "Sunshine" },
-      "diurnal_amplitude": { "name": "Diurnal Amplitude" },
-      "frost_hours": { "name": "Frost Hours" },
-      "frost_confidence": { "name": "Frost Confidence" },
-      "beaufort": { "name": "Beaufort" },
-      "wind_chill": { "name": "Wind Chill" },
-      "dewpoint_comfort": { "name": "Dewpoint Comfort", "state": { "dry": "Dry", "comfortable": "Comfortable", "sticky": "Sticky", "oppressive": "Oppressive", "dangerous": "Dangerous" } },
-      "api_budget": { "name": "API Budget" },
-      "uptime": { "name": "Uptime" },
-      "target_poll": { "name": "Poll Target" }
+      "target_poll": {
+        "name": "Poll Target"
+      },
+      "uptime": {
+        "name": "Uptime"
+      },
+      "api_budget": {
+        "name": "API Budget"
+      }
     },
     "binary_sensor": {
-      "inversion": { "name": "Inversion" },
-      "forecast_stream": { "name": "Forecast Stream" },
-      "enrichment_stream": { "name": "Enrichment Stream" },
-      "config_stream": { "name": "Config Stream" }
+      "domain_stream": {
+        "name": "Domain Data Stream"
+      },
+      "enrichment_stream": {
+        "name": "Enrichment Stream"
+      }
     },
     "event": {
       "weather_alert": {
@@ -112,6 +99,18 @@
             }
           }
         }
+      }
+    }
+  },
+  "selector": {
+    "enabled_enrichments": {
+      "options": {
+        "weather_alerts": "Weather alerts",
+        "pollen_alert": "Pollen alert",
+        "pm25_alert": "PM2.5 alert",
+        "flood_risk": "Flood risk",
+        "flood_rain": "Flood rain",
+        "swimming_conditions": "Swimming conditions"
       }
     }
   }

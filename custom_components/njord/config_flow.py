@@ -10,26 +10,23 @@ from homeassistant.config_entries import ConfigFlow, ConfigFlowResult, OptionsFl
 from homeassistant.const import CONF_HOST, CONF_PORT
 from homeassistant.core import callback as ha_callback
 from homeassistant.helpers.selector import (
-    EntitySelector,
-    EntitySelectorConfig,
     SelectSelector,
     SelectSelectorConfig,
     SelectSelectorMode,
 )
 
 from .const import (
-    CONF_DISABLED_ENRICHMENT_GROUPS,
-    CONF_ENABLED_ENRICHMENT_GROUPS,
-    CONF_SENSOR_PUSH,
+    CONF_ENABLED_ENRICHMENTS,
     CONF_STATUS_POLL_INTERVAL,
+    DEFAULT_ENABLED_ENRICHMENTS,
     DEFAULT_PORT,
     DEFAULT_STATUS_POLL_INTERVAL,
     DOMAIN,
-    EnrichmentGroup,
-    SensorKind,
-    parse_enrichment_groups,
+    Enrichment,
+    parse_enrichments,
 )
 from .grpc_client import NjordClient
+from .helpers import enabled_enrichments_of
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -40,13 +37,24 @@ STEP_USER_DATA_SCHEMA = vol.Schema(
     }
 )
 
-ENRICHMENT_GROUPS = [group.value for group in EnrichmentGroup]
+ENRICHMENT_OPTIONS = [enrichment.value for enrichment in Enrichment]
+
+
+def _enrichment_selector() -> SelectSelector:
+    return SelectSelector(
+        SelectSelectorConfig(
+            options=ENRICHMENT_OPTIONS,
+            multiple=True,
+            mode=SelectSelectorMode.LIST,
+            translation_key=CONF_ENABLED_ENRICHMENTS,
+        )
+    )
 
 
 class NjordConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle a config flow for njord."""
 
-    VERSION = 1
+    VERSION = 2
 
     @staticmethod
     @ha_callback
@@ -58,17 +66,15 @@ class NjordConfigFlow(ConfigFlow, domain=DOMAIN):
         self._host: str = ""
         self._port: int = DEFAULT_PORT
         self._locations: list[str] = []
-        self._model_count: int = 0
 
     async def _async_validate_connection(self, host: str, port: int) -> dict[str, str]:
-        """Validate gRPC connection and populate location/model counts."""
+        """Validate the gRPC connection and remember the catalog's locations."""
         errors: dict[str, str] = {}
         client = NjordClient(host=host, port=port)
         try:
             await client.connect()
             catalog = await client.get_catalog()
             self._locations = [loc.name for loc in catalog.locations]
-            self._model_count = sum(len(loc.models) for loc in catalog.locations)
         except Exception:
             _LOGGER.exception("Failed to connect to njord at %s:%s", host, port)
             errors["base"] = "cannot_connect"
@@ -84,26 +90,41 @@ class NjordConfigFlow(ConfigFlow, domain=DOMAIN):
             self._host = user_input[CONF_HOST]
             self._port = user_input[CONF_PORT]
 
-            unique_id = f"{self._host}:{self._port}"
-            await self.async_set_unique_id(unique_id)
+            await self.async_set_unique_id(f"{self._host}:{self._port}")
             self._abort_if_unique_id_configured()
 
             errors = await self._async_validate_connection(self._host, self._port)
 
             if not errors:
-                return self.async_create_entry(
-                    title=f"njord ({self._host})",
-                    data={CONF_HOST: self._host, CONF_PORT: self._port},
-                    description_placeholders={
-                        "locations": str(len(self._locations)),
-                        "models": str(self._model_count),
-                    },
-                )
+                return await self.async_step_enrichments()
 
         return self.async_show_form(
             step_id="user",
             data_schema=STEP_USER_DATA_SCHEMA,
             errors=errors,
+        )
+
+    async def async_step_enrichments(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        """Choose which alert enrichments create entities."""
+        if user_input is not None:
+            enabled = parse_enrichments(user_input[CONF_ENABLED_ENRICHMENTS])
+            return self.async_create_entry(
+                title=f"njord ({self._host})",
+                data={CONF_HOST: self._host, CONF_PORT: self._port},
+                options={CONF_ENABLED_ENRICHMENTS: sorted(e.value for e in enabled)},
+            )
+
+        return self.async_show_form(
+            step_id="enrichments",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(
+                        CONF_ENABLED_ENRICHMENTS,
+                        default=sorted(e.value for e in DEFAULT_ENABLED_ENRICHMENTS),
+                    ): _enrichment_selector(),
+                }
+            ),
+            description_placeholders={"locations": str(len(self._locations))},
         )
 
     async def async_step_reconfigure(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
@@ -146,23 +167,24 @@ class NjordOptionsFlow(OptionsFlow):
 
     def __init__(self, config_entry) -> None:
         self._config_entry = config_entry
-        self._init_data: dict[str, Any] = {}
-
-    def _get_locations(self) -> list[str]:
-        entry_data = self.hass.data.get(DOMAIN, {}).get(self._config_entry.entry_id, {})
-        coordinator = entry_data.get("coordinator")
-        if coordinator is not None and hasattr(coordinator, "_known_locations"):
-            return sorted(coordinator._known_locations)
-        return []
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         if user_input is not None:
-            self._init_data = user_input
-            return await self.async_step_sensors()
+            old_enabled = enabled_enrichments_of(self._config_entry)
+            new_enabled = parse_enrichments(user_input[CONF_ENABLED_ENRICHMENTS])
 
-        current_disabled = parse_enrichment_groups(self._config_entry.options.get(CONF_DISABLED_ENRICHMENT_GROUPS, []))
-        current_enabled = [g for g in ENRICHMENT_GROUPS if g not in current_disabled]
+            result = self.async_create_entry(
+                title="",
+                data={
+                    CONF_STATUS_POLL_INTERVAL: user_input[CONF_STATUS_POLL_INTERVAL],
+                    CONF_ENABLED_ENRICHMENTS: sorted(e.value for e in new_enabled),
+                },
+            )
+            if new_enabled != old_enabled:
+                self.hass.async_create_task(self.hass.config_entries.async_reload(self._config_entry.entry_id))
+            return result
 
+        current_enabled = sorted(e.value for e in enabled_enrichments_of(self._config_entry))
         return self.async_show_form(
             step_id="init",
             data_schema=vol.Schema(
@@ -171,66 +193,7 @@ class NjordOptionsFlow(OptionsFlow):
                         CONF_STATUS_POLL_INTERVAL,
                         default=self._config_entry.options.get(CONF_STATUS_POLL_INTERVAL, DEFAULT_STATUS_POLL_INTERVAL),
                     ): vol.All(int, vol.Range(min=10, max=300)),
-                    vol.Required(
-                        CONF_ENABLED_ENRICHMENT_GROUPS,
-                        default=current_enabled,
-                    ): SelectSelector(
-                        SelectSelectorConfig(
-                            options=ENRICHMENT_GROUPS,
-                            multiple=True,
-                            mode=SelectSelectorMode.LIST,
-                        )
-                    ),
+                    vol.Required(CONF_ENABLED_ENRICHMENTS, default=current_enabled): _enrichment_selector(),
                 }
             ),
-        )
-
-    async def async_step_sensors(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
-        if user_input is not None:
-            old_disabled = parse_enrichment_groups(self._config_entry.options.get(CONF_DISABLED_ENRICHMENT_GROUPS, []))
-            new_disabled = frozenset(EnrichmentGroup) - parse_enrichment_groups(
-                self._init_data.get(CONF_ENABLED_ENRICHMENT_GROUPS, ENRICHMENT_GROUPS)
-            )
-            old_sensor_push = self._config_entry.options.get(CONF_SENSOR_PUSH, {})
-
-            locations = self._get_locations()
-            sensor_push: dict[str, dict[str, list[str]]] = {}
-            for location in locations:
-                sensor_push[location] = {}
-                for kind in SensorKind:
-                    key = f"{location}_{kind}"
-                    sensor_push[location][kind.value] = user_input.get(key, [])
-
-            options = {
-                CONF_STATUS_POLL_INTERVAL: self._init_data[CONF_STATUS_POLL_INTERVAL],
-                CONF_DISABLED_ENRICHMENT_GROUPS: sorted(group.value for group in new_disabled),
-                CONF_SENSOR_PUSH: sensor_push,
-            }
-            result = self.async_create_entry(title="", data=options)
-
-            needs_reload = new_disabled != old_disabled or sensor_push != old_sensor_push
-            if needs_reload:
-                self.hass.async_create_task(self.hass.config_entries.async_reload(self._config_entry.entry_id))
-
-            return result
-
-        locations = self._get_locations()
-        current_sensor_push = self._config_entry.options.get(CONF_SENSOR_PUSH, {})
-
-        schema_dict: dict[vol.Marker, Any] = {}
-        for location in locations:
-            loc_config = current_sensor_push.get(location, {})
-            for kind in SensorKind:
-                key = f"{location}_{kind}"
-                default = loc_config.get(kind.value, [])
-                schema_dict[vol.Optional(key, default=default)] = EntitySelector(
-                    EntitySelectorConfig(
-                        domain="sensor",
-                        multiple=True,
-                    )
-                )
-
-        return self.async_show_form(
-            step_id="sensors",
-            data_schema=vol.Schema(schema_dict),
         )
