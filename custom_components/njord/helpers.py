@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Collection, Sequence
+from collections.abc import Sequence
 from datetime import datetime
 from typing import Protocol
 
@@ -10,7 +10,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.util import dt as dt_util
 
-from .const import CONF_ENABLED_ENRICHMENTS, DEFAULT_ENABLED_ENRICHMENTS, DOMAIN, Enrichment, parse_enrichments
+from .const import DOMAIN
 
 
 class _Timed(Protocol):
@@ -43,14 +43,6 @@ def server_device_info(entry: ConfigEntry, sw_version: str | None = None) -> Dev
     )
 
 
-def enabled_enrichments_of(entry: ConfigEntry) -> frozenset[Enrichment]:
-    """Enrichments the user enabled; njord's defaults apply until the options were saved."""
-    stored = entry.options.get(CONF_ENABLED_ENRICHMENTS)
-    if stored is None:
-        return DEFAULT_ENABLED_ENRICHMENTS
-    return parse_enrichments(stored)
-
-
 def current_point[T: _Timed](points: Sequence[T], now: datetime | None = None) -> T | None:
     """The latest sample at or before now, else the first sample."""
     if not points:
@@ -63,8 +55,3 @@ def current_point[T: _Timed](points: Sequence[T], now: datetime | None = None) -
         else:
             break
     return current if current is not None else points[0]
-
-
-def alerts_active(active_enrichments: Collection[str] | None) -> bool:
-    """Alerts are available when the server reports them active, or reports no list at all."""
-    return active_enrichments is None or "alerts" in active_enrichments

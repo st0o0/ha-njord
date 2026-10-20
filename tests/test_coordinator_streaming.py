@@ -8,9 +8,9 @@ from unittest.mock import MagicMock
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import issue_registry as ir
 
-from custom_components.njord.const import DOMAIN, Domain, StreamName
+from custom_components.njord.const import DOMAIN, Domain, Feature, StreamName
 from custom_components.njord.coordinator import NjordCoordinatorData, NjordDataCoordinator
-from custom_components.njord.models import AlertData, EnrichmentData, WeatherDomainData
+from custom_components.njord.models import AlertData, FeatureData, WeatherDomainData
 from tests.conftest import weather_sample
 
 
@@ -53,15 +53,18 @@ async def test_domain_stream_requests_tracked_domains(hass: HomeAssistant, mock_
     assert set(kwargs["domains"]) == {Domain.WEATHER, Domain.AIR_QUALITY, Domain.FLOOD, Domain.MARINE}
 
 
-async def test_enrichment_stream_replaces_location_alerts(hass: HomeAssistant, mock_client) -> None:
+async def test_enrichment_stream_stores_feature_by_location_and_feature(hass: HomeAssistant, mock_client) -> None:
     coordinator = _coordinator(hass, mock_client)
-    coordinator.data.enrichments["home"] = EnrichmentData("home", [AlertData(type="uv", severity="red")])
-    event = EnrichmentData("home", [AlertData(type="storm", severity="orange")])
-    mock_client.stream_enrichments = _stream_of(event)
+    old = FeatureData("home", Feature.UV, alert=AlertData(type="uv", severity="red"))
+    coordinator.data.features[("home", Feature.UV)] = old
+    event = FeatureData("home", Feature.UV, alert=AlertData(type="uv", severity="orange"))
+    other = FeatureData("home", Feature.STORM, alert=AlertData(type="storm", severity="yellow"))
+    mock_client.stream_enrichments = _stream_of(event, other)
 
     await coordinator._run_enrichment_stream()
 
-    assert coordinator.data.enrichments["home"] is event
+    assert coordinator.data.features[("home", Feature.UV)] is event
+    assert coordinator.data.features[("home", Feature.STORM)] is other
 
 
 async def test_factory_error_does_not_stop_other_factories(hass: HomeAssistant, mock_client) -> None:

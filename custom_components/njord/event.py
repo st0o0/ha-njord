@@ -8,10 +8,10 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN, AlertEvent, AlertSeverity, AlertType, Domain, enabled_alert_types
+from .const import DOMAIN, AlertEvent, AlertSeverity, AlertType, Domain, alert_type_of, enabled_alert_types
 from .coordinator import NjordDataCoordinator, NjordStatusCoordinator
-from .helpers import alerts_active, device_info, enabled_enrichments_of, slugify_location
-from .models import EnrichmentData
+from .helpers import device_info, slugify_location
+from .models import AlertData
 
 EVENT_ALERT_STARTED = AlertEvent.STARTED
 EVENT_ALERT_ESCALATED = AlertEvent.ESCALATED
@@ -34,10 +34,10 @@ async def async_setup_entry(
     """Set up njord event entities."""
     coordinator: NjordDataCoordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
     sw_version = _get_sw_version(hass, entry)
-    alert_types = frozenset(enabled_alert_types(enabled_enrichments_of(entry)))
 
     def alert_events(location: str) -> list[EventEntity]:
-        if not alert_types or not alerts_active(coordinator.data.active_enrichments):
+        alert_types = frozenset(enabled_alert_types(coordinator.data.active_enrichments))
+        if not alert_types:
             return []
         return [NjordAlertEvent(coordinator, entry, location, alert_types, sw_version)]
 
@@ -77,43 +77,41 @@ class NjordAlertEvent(CoordinatorEntity[NjordDataCoordinator], EventEntity):
         self._attr_name = "Weather Alert"
         self._attr_device_info = device_info(entry, location, sw_version)
 
-    def _current_alert_map(self) -> dict[AlertType, AlertSeverity]:
+    def _alerts(self) -> dict[AlertType, AlertData]:
         if self.coordinator.data is None:
             return {}
-        enrichment: EnrichmentData | None = self.coordinator.data.enrichments.get(self._location)
-        if enrichment is None:
-            return {}
-        return {
-            a.type: a.severity
-            for a in enrichment.alerts
-            if a.severity != AlertSeverity.NONE and a.type in self._alert_types
-        }
+        result: dict[AlertType, AlertData] = {}
+        for (location, feature), item in self.coordinator.data.features.items():
+            if location != self._location or item.alert is None:
+                continue
+            alert_type = alert_type_of(feature)
+            if alert_type in self._alert_types:
+                result[alert_type] = item.alert
+        return result
+
+    def _current_alert_map(self) -> dict[AlertType, AlertSeverity]:
+        return {t: a.severity for t, a in self._alerts().items() if a.severity != AlertSeverity.NONE}
 
     def _alert_data(self, alert_type: AlertType) -> dict[str, object]:
         base: dict[str, object] = {"type": alert_type, "location": self._location}
-        if self.coordinator.data is None:
+        a = self._alerts().get(alert_type)
+        if a is None:
             return base
-        enrichment = self.coordinator.data.enrichments.get(self._location)
-        if enrichment is None:
-            return base
-        for a in enrichment.alerts:
-            if a.type == alert_type:
-                data: dict[str, object] = {
-                    "type": a.type,
-                    "location": self._location,
-                    "severity": a.severity,
-                    "confidence": a.confidence,
-                    "trigger_value": a.trigger_value,
-                    "threshold": a.threshold,
-                }
-                if a.peak_value is not None:
-                    data["peak_value"] = a.peak_value
-                if a.hours_until is not None:
-                    data["hours_until"] = a.hours_until
-                if a.duration_hours is not None:
-                    data["duration_hours"] = a.duration_hours
-                return data
-        return base
+        data: dict[str, object] = {
+            "type": alert_type,
+            "location": self._location,
+            "severity": a.severity,
+            "confidence": a.confidence,
+            "trigger_value": a.trigger_value,
+            "threshold": a.threshold,
+        }
+        if a.peak_value is not None:
+            data["peak_value"] = a.peak_value
+        if a.hours_until is not None:
+            data["hours_until"] = a.hours_until
+        if a.duration_hours is not None:
+            data["duration_hours"] = a.duration_hours
+        return data
 
     @callback
     def _handle_coordinator_update(self) -> None:

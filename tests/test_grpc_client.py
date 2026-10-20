@@ -9,11 +9,11 @@ import grpc
 import pytest
 from google.protobuf.timestamp_pb2 import Timestamp
 
-from custom_components.njord.const import AlertSeverity, AlertType, Domain, PollPhase
+from custom_components.njord.const import AlertSeverity, AlertType, Domain, Feature, PollPhase
 from custom_components.njord.grpc_client import (
     NjordClient,
     _to_domain_data,
-    _to_enrichment_event,
+    _to_feature,
     _to_server_status,
     _to_target_data,
 )
@@ -21,7 +21,6 @@ from custom_components.njord.models import (
     AirQualityDomainData,
     FloodDomainData,
     MarineDomainData,
-    SolarDomainData,
     WeatherDomainData,
 )
 from custom_components.njord.proto.njord.v2 import common_pb2, ops_pb2, weather_pb2
@@ -34,10 +33,6 @@ def _ts(epoch: int = EPOCH) -> Timestamp:
     ts = Timestamp()
     ts.FromSeconds(epoch)
     return ts
-
-
-def _alert_update(*alerts: common_pb2.Alert) -> common_pb2.AlertUpdate:
-    return common_pb2.AlertUpdate(alerts=list(alerts))
 
 
 async def _aiter(*items, error: Exception | None = None):
@@ -138,18 +133,10 @@ def test_marine_update_converted():
     assert data.points[0].water_temperature is None
 
 
-def test_solar_update_converted():
-    pb = weather_pb2.DomainDataUpdate(
-        location="home",
-        solar=weather_pb2.SolarData(
-            points=[weather_pb2.SolarSample(valid_at=_ts(), direct_radiation=500.0, sunshine_duration=3000.0)]
-        ),
-    )
+def test_satellite_update_is_not_consumed():
+    pb = weather_pb2.DomainDataUpdate(location="home", satellite=weather_pb2.SatelliteData())
 
-    data = _to_domain_data(pb)
-
-    assert isinstance(data, SolarDomainData)
-    assert data.points[0].direct_radiation == 500.0
+    assert _to_domain_data(pb) is None
 
 
 def test_update_without_payload_is_none():
@@ -159,52 +146,55 @@ def test_update_without_payload_is_none():
 # --- Enrichment converters ---
 
 
-def test_enrichment_event_alerts_converted():
+def test_alert_feature_converted():
     pb = weather_pb2.EnrichmentEvent(
         location="home",
         updated_at=_ts(),
-        alerts=_alert_update(
-            common_pb2.Alert(
-                type=common_pb2.ALERT_TYPE_FLOOD_RISK,
+        flood_risk=weather_pb2.FloodRiskAlert(
+            alert=weather_pb2.AlertData(
                 severity=common_pb2.ALERT_SEVERITY_ORANGE,
                 confidence=0.8,
                 trigger_value=300.0,
                 threshold=200.0,
                 peak_value=310.0,
                 hours_until=5,
-            ),
-            common_pb2.Alert(type=common_pb2.ALERT_TYPE_SWIMMING_CONDITIONS),
+            )
         ),
     )
 
-    event = _to_enrichment_event(pb)
+    item = _to_feature(pb)
 
-    assert event is not None
-    assert event.location == "home"
-    assert event.updated_at == EXPECTED_DT
-    flood, swim = event.alerts
-    assert flood.type is AlertType.FLOOD_RISK
-    assert flood.severity is AlertSeverity.ORANGE
-    assert (flood.confidence, flood.trigger_value, flood.threshold) == (0.8, 300.0, 200.0)
-    assert flood.peak_value == 310.0
-    assert flood.hours_until == 5
-    assert flood.duration_hours is None
-    assert swim.type is AlertType.SWIMMING_CONDITIONS
-    assert swim.severity is AlertSeverity.NONE
-
-
-def test_enrichment_event_without_known_payload_is_none():
-    assert _to_enrichment_event(weather_pb2.EnrichmentEvent(location="home", type_name="other")) is None
+    assert item is not None
+    assert item.location == "home"
+    assert item.feature is Feature.FLOOD_RISK
+    assert item.updated_at == EXPECTED_DT
+    alert = item.alert
+    assert alert is not None
+    assert alert.type is AlertType.FLOOD_RISK
+    assert alert.severity is AlertSeverity.ORANGE
+    assert (alert.confidence, alert.trigger_value, alert.threshold) == (0.8, 300.0, 200.0)
+    assert alert.peak_value == 310.0
+    assert alert.hours_until == 5
+    assert alert.duration_hours is None
 
 
-def test_unknown_alert_enum_numbers_read_as_unspecified():
-    pb = weather_pb2.EnrichmentEvent(location="home", alerts=_alert_update(common_pb2.Alert(type=99, severity=99)))
+def test_score_feature_converted():
+    pb = weather_pb2.EnrichmentEvent(
+        location="home",
+        laundry=weather_pb2.Laundry(score=weather_pb2.ScoreData(score=72, best_hours=3)),
+    )
 
-    event = _to_enrichment_event(pb)
+    item = _to_feature(pb)
 
-    assert event is not None
-    assert event.alerts[0].type is AlertType.UNSPECIFIED
-    assert event.alerts[0].severity is AlertSeverity.NONE
+    assert item is not None
+    assert item.feature is Feature.LAUNDRY
+    assert item.alert is None
+    assert item.score is not None
+    assert (item.score.score, item.score.best_hours) == (72, 3)
+
+
+def test_event_without_feature_is_none():
+    assert _to_feature(weather_pb2.EnrichmentEvent(location="home")) is None
 
 
 # --- Ops converters ---
@@ -221,7 +211,7 @@ def test_server_status_converted():
         models=[
             ops_pb2.ModelStatus(location="home", phase=ops_pb2.POLL_PHASE_DISCOVERY, next_poll=_ts(), miss_count=2)
         ],
-        active_enrichments=["alerts"],
+        active_enrichments=["Weather:Frost"],
         budget_partial=True,
     )
 
@@ -234,7 +224,7 @@ def test_server_status_converted():
     assert status.budget.monthly_used == 10
     assert status.budget_partial is True
     assert status.models_partial is False
-    assert status.active_enrichments == ["alerts"]
+    assert status.active_enrichments == ["Weather:Frost"]
     location_status = status.location_statuses[0]
     assert location_status.phase is PollPhase.DISCOVERY
     assert location_status.next_poll == EXPECTED_DT
@@ -352,19 +342,27 @@ async def test_get_enrichments():
     client._weather_stub.GetEnrichments = AsyncMock(
         return_value=weather_pb2.GetEnrichmentsResponse(
             location="home",
-            alerts=_alert_update(
-                common_pb2.Alert(type=common_pb2.ALERT_TYPE_UV, severity=common_pb2.ALERT_SEVERITY_RED)
-            ),
+            events=[
+                weather_pb2.EnrichmentEvent(
+                    location="home",
+                    updated_at=_ts(),
+                    uv=weather_pb2.UvAlert(
+                        alert=weather_pb2.AlertData(severity=common_pb2.ALERT_SEVERITY_RED), uv_index=9.0
+                    ),
+                ),
+                weather_pb2.EnrichmentEvent(location="home"),
+            ],
         )
     )
 
-    enrichment = await client.get_enrichments("home")
+    items = await client.get_enrichments("home")
 
     assert client._weather_stub.GetEnrichments.await_args.args[0].location == "home"
-    assert enrichment.location == "home"
-    assert enrichment.alerts[0].type is AlertType.UV
-    assert enrichment.alerts[0].severity is AlertSeverity.RED
-    assert enrichment.updated_at is not None
+    assert len(items) == 1
+    assert items[0].feature is Feature.UV
+    assert items[0].alert is not None
+    assert items[0].alert.severity is AlertSeverity.RED
+    assert items[0].updated_at is not None
 
 
 async def test_get_status_and_targets_and_trigger():
@@ -400,7 +398,7 @@ async def test_stream_domain_data_skips_unconvertible_messages():
 
     received = []
     async for item in client.stream_domain_data(
-        domains=[Domain.WEATHER, Domain.AIR_QUALITY, Domain.SOLAR], on_reconnect=on_reconnect
+        domains=[Domain.WEATHER, Domain.AIR_QUALITY, Domain.SATELLITE], on_reconnect=on_reconnect
     ):
         received.append(item)
         if len(received) == 2:
@@ -412,7 +410,7 @@ async def test_stream_domain_data_skips_unconvertible_messages():
     assert list(request.domains) == [
         weather_pb2.DOMAIN_WEATHER,
         weather_pb2.DOMAIN_AIR_QUALITY,
-        weather_pb2.DOMAIN_SOLAR,
+        weather_pb2.DOMAIN_SATELLITE,
     ]
     on_reconnect.assert_called_once_with()
 
@@ -420,14 +418,12 @@ async def test_stream_domain_data_skips_unconvertible_messages():
 async def test_stream_enrichments_skips_unknown_payloads():
     client = _connected_client()
     unknown = weather_pb2.EnrichmentEvent(location="home")
-    known = weather_pb2.EnrichmentEvent(
-        location="bern", alerts=_alert_update(common_pb2.Alert(type=common_pb2.ALERT_TYPE_FROST))
-    )
+    known = weather_pb2.EnrichmentEvent(location="bern", frost=weather_pb2.FrostAlert())
     client._weather_stub.StreamEnrichments = MagicMock(return_value=_aiter(unknown, known))
 
-    async for event in client.stream_enrichments(location="bern"):
-        assert event.location == "bern"
-        assert event.alerts[0].type is AlertType.FROST
+    async for item in client.stream_enrichments(location="bern"):
+        assert item.location == "bern"
+        assert item.feature is Feature.FROST
         break
 
     assert client._weather_stub.StreamEnrichments.call_args.args[0].location == "bern"

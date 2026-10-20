@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Collection
 from dataclasses import dataclass
 from enum import StrEnum
 
@@ -28,7 +28,6 @@ DEFAULT_STATUS_POLL_INTERVAL = 30
 # Config entry data keys (HA's own constants where they exist) and option keys.
 __all__ = ["CONF_HOST", "CONF_PORT"]
 CONF_STATUS_POLL_INTERVAL = "status_poll_interval"
-CONF_ENABLED_ENRICHMENTS = "enabled_enrichments"
 
 
 class Domain(StrEnum):
@@ -38,49 +37,13 @@ class Domain(StrEnum):
     WEATHER = "weather"
     AIR_QUALITY = "air_quality"
     FLOOD = "flood"
-    SOLAR = "solar"
     MARINE = "marine"
+    SEASONAL = "seasonal"
+    SATELLITE = "satellite"
 
     @classmethod
     def _missing_(cls, value: object) -> Domain:
         return cls.UNSPECIFIED
-
-
-class Enrichment(StrEnum):
-    """Enrichment toggles (alerts and lifestyle advisories), named like njord's EnrichmentOptions keys in snake_case."""
-
-    WEATHER_ALERTS = "weather_alerts"
-    POLLEN_ALERT = "pollen_alert"
-    PM25_ALERT = "pm25_alert"
-    FLOOD_RISK = "flood_risk"
-    FLOOD_RAIN = "flood_rain"
-    SWIMMING_CONDITIONS = "swimming_conditions"
-    COMMUTE_SAFETY = "commute_safety"
-    VENTILATION_WINDOW = "ventilation_window"
-    EXERCISE_ADVISORY = "exercise_advisory"
-    LAUNDRY_SCORE = "laundry_score"
-    POLLEN_TREND = "pollen_trend"
-    NIGHT_VENTILATION = "night_ventilation"
-    CONFIDENCE_TREND = "confidence_trend"
-    SOLAR_YIELD = "solar_yield"
-    GARDENING_ADVISORY = "gardening_advisory"
-    OUTDOOR_SCORE = "outdoor_score"
-    BBQ_SCORE = "bbq_score"
-    FLOOD_TIMELINE = "flood_timeline"
-    APPROACHING_FRONT = "approaching_front"
-    CLIMATE_ANOMALY = "climate_anomaly"
-
-
-# Enrichments njord enables by default (EnrichmentOptions property initializers).
-DEFAULT_ENABLED_ENRICHMENTS: frozenset[Enrichment] = frozenset(
-    {Enrichment.WEATHER_ALERTS, Enrichment.COMMUTE_SAFETY, Enrichment.POLLEN_ALERT, Enrichment.PM25_ALERT}
-)
-
-
-def parse_enrichments(values: Iterable[str] | None) -> frozenset[Enrichment]:
-    """Convert stored enrichment names, ignoring unknown names."""
-    known = {item.value: item for item in Enrichment}
-    return frozenset(known[value] for value in values or () if value in known)
 
 
 class StreamName(StrEnum):
@@ -144,6 +107,7 @@ class AlertType(StrEnum):
     HUMIDITY = "humidity"
     POLLEN = "pollen"
     PM25 = "pm25"
+    DUST = "dust"
     FLOOD_RISK = "flood_risk"
     FLOOD_RAIN = "flood_rain"
     SWIMMING_CONDITIONS = "swimming_conditions"
@@ -220,87 +184,107 @@ ALERT_META: dict[AlertType, AlertMeta] = {
     AlertType.PM25: AlertMeta(
         "PM2.5 Alert", CONCENTRATION_MICROGRAMS_PER_CUBIC_METER, "mdi:blur", 1, SensorDeviceClass.PM25
     ),
+    AlertType.DUST: AlertMeta("Dust Alert", CONCENTRATION_MICROGRAMS_PER_CUBIC_METER, "mdi:weather-dust", 1),
     AlertType.FLOOD_RISK: AlertMeta("Flood Risk Alert", DISCHARGE_UNIT, "mdi:home-flood", 1),
     AlertType.FLOOD_RAIN: AlertMeta("Flood Rain Alert", "mm", "mdi:weather-pouring", 1),
     AlertType.SWIMMING_CONDITIONS: AlertMeta("Swimming Conditions Alert", UnitOfLength.METERS, "mdi:swim", 1),
 }
 
 
-# Alert types each enrichment toggle gates. Insertion order of ALERT_META is the entity creation order.
-ENRICHMENT_ALERT_TYPES: dict[Enrichment, frozenset[AlertType]] = {
-    Enrichment.WEATHER_ALERTS: frozenset(
-        {
-            AlertType.FROST,
-            AlertType.HEAT,
-            AlertType.STORM,
-            AlertType.HEAVY_RAIN,
-            AlertType.UV,
-            AlertType.FOG,
-            AlertType.SNOW,
-            AlertType.PRESSURE_DROP,
-            AlertType.THUNDERSTORM,
-            AlertType.ICE,
-            AlertType.WIND_CHILL,
-            AlertType.VISIBILITY,
-            AlertType.TROPICAL_NIGHT,
-            AlertType.HUMIDITY,
-        }
-    ),
-    Enrichment.POLLEN_ALERT: frozenset({AlertType.POLLEN}),
-    Enrichment.PM25_ALERT: frozenset({AlertType.PM25}),
-    Enrichment.FLOOD_RISK: frozenset({AlertType.FLOOD_RISK}),
-    Enrichment.FLOOD_RAIN: frozenset({AlertType.FLOOD_RAIN}),
-    Enrichment.SWIMMING_CONDITIONS: frozenset({AlertType.SWIMMING_CONDITIONS}),
-}
+class Feature(StrEnum):
+    """Njord features as identified by the EnrichmentEvent oneof case (alerts, scores, conditions, trends, forecasts)."""
 
-
-def enabled_alert_types(enabled: Iterable[Enrichment]) -> list[AlertType]:
-    """Alert types gated on by the enabled enrichments, in entity creation order."""
-    allowed: set[AlertType] = set()
-    for enrichment in enabled:
-        allowed |= ENRICHMENT_ALERT_TYPES.get(enrichment, frozenset())
-    return [alert_type for alert_type in ALERT_META if alert_type in allowed]
-
-
-class LifestyleType(StrEnum):
-    """Lifestyle advisory types as sent by njord (LifestyleUpdate.type)."""
-
-    VENTILATION = "ventilation"
-    EXERCISE = "exercise"
-    LAUNDRY_SCORE = "laundry_score"
+    FROST = "frost"
+    HEAT = "heat"
+    STORM = "storm"
+    HEAVY_RAIN = "heavy_rain"
+    UV = "uv"
+    FOG = "fog"
+    SNOW = "snow"
+    PRESSURE_DROP = "pressure_drop"
+    THUNDERSTORM = "thunderstorm"
+    ICE = "ice"
+    WIND_CHILL = "wind_chill"
+    VISIBILITY = "visibility"
+    TROPICAL_NIGHT = "tropical_night"
+    HUMIDITY = "humidity"
+    POLLEN = "pollen"
+    PM25 = "pm25"
+    DUST = "dust"
+    FLOOD_RISK = "flood_risk"
+    FLOOD_RAIN = "flood_rain"
+    SWIMMING_CONDITIONS = "swimming_conditions"
+    BBQ = "bbq"
+    LAUNDRY = "laundry"
+    OUTDOOR = "outdoor"
+    SURF_CONDITIONS = "surf_conditions"
     COMMUTE_SAFETY = "commute_safety"
-    POLLEN_TREND = "pollen_trend"
+    VENTILATION_WINDOW = "ventilation_window"
     NIGHT_VENTILATION = "night_ventilation"
-    CONFIDENCE_TREND = "confidence_trend"
-    SOLAR_YIELD = "solar_yield"
+    EXERCISE_ADVISORY = "exercise_advisory"
     GARDENING = "gardening"
-    OUTDOOR_SCORE = "outdoor_score"
-    BBQ_SCORE = "bbq_score"
     FLOOD_TIMELINE = "flood_timeline"
-    FRONT_APPROACHING = "front_approaching"
-    CLIMATE_ANOMALY = "climate_anomaly"
+    SOLAR_YIELD = "solar_yield"
+    SATELLITE_RADIATION = "satellite_radiation"
+    APPROACHING_FRONT = "approaching_front"
+    CONFIDENCE_TREND = "confidence_trend"
+    POLLEN_TREND = "pollen_trend"
+    SEASONAL_OUTLOOK = "seasonal_outlook"
 
 
-# The enrichment toggle that gates each lifestyle type.
-LIFESTYLE_ENRICHMENT: dict[LifestyleType, Enrichment] = {
-    LifestyleType.VENTILATION: Enrichment.VENTILATION_WINDOW,
-    LifestyleType.EXERCISE: Enrichment.EXERCISE_ADVISORY,
-    LifestyleType.LAUNDRY_SCORE: Enrichment.LAUNDRY_SCORE,
-    LifestyleType.COMMUTE_SAFETY: Enrichment.COMMUTE_SAFETY,
-    LifestyleType.POLLEN_TREND: Enrichment.POLLEN_TREND,
-    LifestyleType.NIGHT_VENTILATION: Enrichment.NIGHT_VENTILATION,
-    LifestyleType.CONFIDENCE_TREND: Enrichment.CONFIDENCE_TREND,
-    LifestyleType.SOLAR_YIELD: Enrichment.SOLAR_YIELD,
-    LifestyleType.GARDENING: Enrichment.GARDENING_ADVISORY,
-    LifestyleType.OUTDOOR_SCORE: Enrichment.OUTDOOR_SCORE,
-    LifestyleType.BBQ_SCORE: Enrichment.BBQ_SCORE,
-    LifestyleType.FLOOD_TIMELINE: Enrichment.FLOOD_TIMELINE,
-    LifestyleType.FRONT_APPROACHING: Enrichment.APPROACHING_FRONT,
-    LifestyleType.CLIMATE_ANOMALY: Enrichment.CLIMATE_ANOMALY,
+# njord's `<Category>:<Name>` toggle key per feature, as listed in StatusResponse.active_enrichments.
+FEATURE_KEYS: dict[Feature, str] = {
+    Feature.FROST: "Weather:Frost",
+    Feature.HEAT: "Weather:Heat",
+    Feature.STORM: "Weather:Storm",
+    Feature.HEAVY_RAIN: "Weather:HeavyRain",
+    Feature.UV: "Weather:Uv",
+    Feature.FOG: "Weather:Fog",
+    Feature.SNOW: "Weather:Snow",
+    Feature.PRESSURE_DROP: "Weather:PressureDrop",
+    Feature.THUNDERSTORM: "Weather:Thunderstorm",
+    Feature.ICE: "Weather:Ice",
+    Feature.WIND_CHILL: "Weather:WindChill",
+    Feature.VISIBILITY: "Weather:Visibility",
+    Feature.TROPICAL_NIGHT: "Weather:TropicalNight",
+    Feature.HUMIDITY: "Weather:Humidity",
+    Feature.POLLEN: "AirQuality:Pollen",
+    Feature.PM25: "AirQuality:Pm25",
+    Feature.DUST: "AirQuality:Dust",
+    Feature.POLLEN_TREND: "AirQuality:PollenTrend",
+    Feature.FLOOD_RISK: "Flood:FloodRisk",
+    Feature.FLOOD_RAIN: "Flood:FloodRain",
+    Feature.FLOOD_TIMELINE: "Flood:FloodTimeline",
+    Feature.SWIMMING_CONDITIONS: "Marine:Swimming",
+    Feature.SURF_CONDITIONS: "Marine:Surf",
+    Feature.COMMUTE_SAFETY: "Lifestyle:Commute",
+    Feature.EXERCISE_ADVISORY: "Lifestyle:Exercise",
+    Feature.LAUNDRY: "Lifestyle:Laundry",
+    Feature.OUTDOOR: "Lifestyle:Outdoor",
+    Feature.BBQ: "Lifestyle:Bbq",
+    Feature.NIGHT_VENTILATION: "Lifestyle:NightVentilation",
+    Feature.VENTILATION_WINDOW: "Lifestyle:Ventilation",
+    Feature.GARDENING: "Lifestyle:Gardening",
+    Feature.CONFIDENCE_TREND: "Insight:ConfidenceTrend",
+    Feature.APPROACHING_FRONT: "Insight:FrontApproaching",
+    Feature.SEASONAL_OUTLOOK: "Insight:SeasonalOutlook",
+    Feature.SOLAR_YIELD: "Energy:SolarYield",
+    Feature.SATELLITE_RADIATION: "Energy:SatelliteRadiation",
 }
 
 
-def enabled_lifestyle_types(enabled: Iterable[Enrichment]) -> frozenset[LifestyleType]:
-    """Lifestyle types whose enrichment toggle is enabled."""
-    enabled_set = set(enabled)
-    return frozenset(kind for kind, toggle in LIFESTYLE_ENRICHMENT.items() if toggle in enabled_set)
+def feature_enabled(feature: Feature, active: Collection[str] | None) -> bool:
+    """Whether njord runs the feature; an unknown or empty active set means every feature is enabled."""
+    if not active:
+        return True
+    return FEATURE_KEYS[feature].lower() in {key.lower() for key in active}
+
+
+def alert_type_of(feature: Feature) -> AlertType:
+    """The alert type of an alert feature; UNSPECIFIED for every other feature."""
+    return AlertType(feature.value)
+
+
+def enabled_alert_types(active: Collection[str] | None) -> list[AlertType]:
+    """Alert types njord runs, in entity creation order."""
+    return [t for t in ALERT_META if feature_enabled(Feature(t.value), active)]

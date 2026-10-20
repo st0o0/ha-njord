@@ -36,31 +36,8 @@ enum CoverageTier {
 }
 
 // ═══════════════════════════════════════
-// Enrichment: Alerts
+// Enrichment: shared enums
 // ═══════════════════════════════════════
-
-enum AlertType {
-  ALERT_TYPE_UNSPECIFIED = 0;
-  ALERT_TYPE_FROST = 1;
-  ALERT_TYPE_HEAT = 2;
-  ALERT_TYPE_STORM = 3;
-  ALERT_TYPE_HEAVY_RAIN = 4;
-  ALERT_TYPE_UV = 5;
-  ALERT_TYPE_FOG = 6;
-  ALERT_TYPE_SNOW = 7;
-  ALERT_TYPE_PRESSURE_DROP = 8;
-  ALERT_TYPE_THUNDERSTORM = 9;
-  ALERT_TYPE_ICE = 10;
-  ALERT_TYPE_WIND_CHILL = 11;
-  ALERT_TYPE_VISIBILITY = 12;
-  ALERT_TYPE_TROPICAL_NIGHT = 13;
-  ALERT_TYPE_HUMIDITY = 14;
-  ALERT_TYPE_POLLEN = 15;
-  ALERT_TYPE_PM25 = 16;
-  ALERT_TYPE_FLOOD_RISK = 17;
-  ALERT_TYPE_FLOOD_RAIN = 18;
-  ALERT_TYPE_SWIMMING_CONDITIONS = 19;
-}
 
 enum AlertSeverity {
   ALERT_SEVERITY_NONE = 0;
@@ -69,17 +46,9 @@ enum AlertSeverity {
   ALERT_SEVERITY_RED = 3;
 }
 
-message Alert {
-  AlertType type = 1;
-  AlertSeverity severity = 2;
-  double confidence = 3;
-  double trigger_value = 4;
-  double threshold = 5;
-  optional double peak_value = 6;
-  optional int32 hours_until = 7;
-  optional int32 duration_hours = 8;
-}
-
-message AlertUpdate {
-  repeated Alert alerts = 1;
+enum ConfidenceLevel {
+  CONFIDENCE_LEVEL_UNSPECIFIED = 0;
+  CONFIDENCE_LEVEL_LOW = 1;
+  CONFIDENCE_LEVEL_MEDIUM = 2;
+  CONFIDENCE_LEVEL_HIGH = 3;
 }

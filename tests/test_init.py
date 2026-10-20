@@ -88,16 +88,33 @@ async def test_migrate_v1_entry(hass: HomeAssistant, mock_client) -> None:
 
     await init_integration(hass, entry)
 
-    assert entry.version == 2
+    assert entry.version == 3
     assert dict(entry.options) == {"status_poll_interval": 60}
     assert registry.async_get_entity_id("sensor", DOMAIN, "old_per_model_sensor") is None
     assert entry.state is ConfigEntryState.LOADED
 
 
-async def test_v2_entry_is_not_migrated(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
-    hass.config_entries.async_update_entry(mock_config_entry, options={"enabled_enrichments": ["flood_risk"]})
+async def test_v2_entry_drops_enrichment_toggles(hass: HomeAssistant, mock_client) -> None:
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={"host": "localhost", "port": 8081},
+        options={"status_poll_interval": 45, "enabled_enrichments": ["flood_risk"]},
+        unique_id="localhost:8081",
+        version=2,
+    )
+    entry.add_to_hass(hass)
+
+    await init_integration(hass, entry)
+
+    assert entry.version == 3
+    assert dict(entry.options) == {"status_poll_interval": 45}
+    assert entry.state is ConfigEntryState.LOADED
+
+
+async def test_v3_entry_is_not_migrated(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+    hass.config_entries.async_update_entry(mock_config_entry, options={"status_poll_interval": 10})
 
     await init_integration(hass, mock_config_entry)
 
-    assert mock_config_entry.version == 2
-    assert dict(mock_config_entry.options) == {"enabled_enrichments": ["flood_risk"]}
+    assert mock_config_entry.version == 3
+    assert dict(mock_config_entry.options) == {"status_poll_interval": 10}

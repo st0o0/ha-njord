@@ -1,4 +1,4 @@
-"""Tests for the njord config flow (version 2: connection, then enrichments)."""
+"""Tests for the njord config flow (version 3: connection only)."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 
 from custom_components.njord.config_flow import NjordConfigFlow
-from custom_components.njord.const import DEFAULT_ENABLED_ENRICHMENTS, DOMAIN
+from custom_components.njord.const import DOMAIN
 
 
 async def _start_user_flow(hass: HomeAssistant, host: str = "localhost", port: int = 8081):
@@ -17,44 +17,18 @@ async def _start_user_flow(hass: HomeAssistant, host: str = "localhost", port: i
     return await hass.config_entries.flow.async_configure(result["flow_id"], user_input={"host": host, "port": port})
 
 
-def test_flow_version_is_2() -> None:
-    assert NjordConfigFlow.VERSION == 2
+def test_flow_version_is_3() -> None:
+    assert NjordConfigFlow.VERSION == 3
 
 
-async def test_user_step_leads_to_enrichments_step(hass: HomeAssistant, mock_client) -> None:
+async def test_user_step_creates_entry(hass: HomeAssistant, mock_client) -> None:
     result = await _start_user_flow(hass)
-
-    assert result["type"] is FlowResultType.FORM
-    assert result["step_id"] == "enrichments"
-    assert result["description_placeholders"] == {"locations": "1"}
-    mock_client.close.assert_awaited()
-
-
-async def test_config_flow_creates_entry_with_default_enrichments(hass: HomeAssistant, mock_client) -> None:
-    result = await _start_user_flow(hass)
-
-    result = await hass.config_entries.flow.async_configure(
-        result["flow_id"],
-        user_input={"enabled_enrichments": sorted(e.value for e in DEFAULT_ENABLED_ENRICHMENTS)},
-    )
 
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert result["title"] == "njord (localhost)"
     assert result["data"] == {"host": "localhost", "port": 8081}
-    assert result["options"] == {
-        "enabled_enrichments": ["commute_safety", "pm25_alert", "pollen_alert", "weather_alerts"]
-    }
-
-
-async def test_config_flow_custom_enrichments(hass: HomeAssistant, mock_client) -> None:
-    result = await _start_user_flow(hass)
-
-    result = await hass.config_entries.flow.async_configure(
-        result["flow_id"], user_input={"enabled_enrichments": ["flood_risk", "swimming_conditions"]}
-    )
-
-    assert result["type"] is FlowResultType.CREATE_ENTRY
-    assert result["options"] == {"enabled_enrichments": ["flood_risk", "swimming_conditions"]}
+    assert not result.get("options")
+    mock_client.close.assert_awaited()
 
 
 async def test_config_flow_cannot_connect(hass: HomeAssistant, mock_client) -> None:

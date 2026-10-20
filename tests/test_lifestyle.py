@@ -1,4 +1,4 @@
-"""Tests for lifestyle advisories: wire conversion, coordinator handling and entities."""
+"""Tests for typed feature entities: wire conversion, coordinator handling, gating and entities."""
 
 from __future__ import annotations
 
@@ -10,153 +10,206 @@ from google.protobuf.timestamp_pb2 import Timestamp
 from homeassistant.core import HomeAssistant
 from homeassistant.util import dt as dt_util
 
-from custom_components.njord.const import (
-    CONF_ENABLED_ENRICHMENTS,
-    LIFESTYLE_ENRICHMENT,
-    Enrichment,
-    LifestyleType,
-    enabled_lifestyle_types,
-)
+from custom_components.njord.const import FEATURE_KEYS, AlertSeverity, AlertType, Feature, feature_enabled
 from custom_components.njord.coordinator import NjordCoordinatorData, NjordDataCoordinator
-from custom_components.njord.grpc_client import NjordClient, _to_enrichment_event
-from custom_components.njord.models import EnrichmentData, LifestyleData
-from custom_components.njord.proto.njord.v2 import weather_pb2
-from tests.conftest import _make_entry, default_enrichment, entity_id_for, init_integration
+from custom_components.njord.grpc_client import NjordClient, _to_feature
+from custom_components.njord.models import FeatureData, ScoreData
+from custom_components.njord.proto.njord.v2 import common_pb2, weather_pb2
+from tests.conftest import PAST, entity_id_for, init_integration
 
 EPOCH = 1720000000
 
 
-def _time(delta: timedelta) -> str:
-    return (dt_util.utcnow() + delta).strftime("%Y-%m-%dT%H:%M:%SZ")
+def _feature(feature: Feature, **values) -> FeatureData:
+    return FeatureData(location="home", feature=feature, updated_at=PAST, values=values)
 
 
-def _lifestyle(kind: str, **data: str) -> LifestyleData:
-    return LifestyleData(type=kind, location="home", data=data)
-
-
-def _event(kind: str, **data: str) -> weather_pb2.EnrichmentEvent:
-    return weather_pb2.EnrichmentEvent(
-        location="home",
-        type_name="lifestyle",
-        updated_at=Timestamp(seconds=EPOCH),
-        lifestyle=weather_pb2.LifestyleUpdate(type=kind, data=data),
-    )
+def _scored(feature: Feature, score: int, **values) -> FeatureData:
+    return FeatureData(location="home", feature=feature, updated_at=PAST, score=ScoreData(score=score), values=values)
 
 
 # --- Wire conversion ---
 
 
-def test_lifestyle_event_converted():
-    item = _to_enrichment_event(_event("laundry_score", score="82", best_hours="3"))
+def test_alert_event_converted_with_extras():
+    event = weather_pb2.EnrichmentEvent(
+        location="home",
+        updated_at=Timestamp(seconds=EPOCH),
+        uv=weather_pb2.UvAlert(
+            alert=weather_pb2.AlertData(
+                severity=common_pb2.ALERT_SEVERITY_ORANGE, confidence=0.8, trigger_value=8.5, threshold=6.0
+            ),
+            uv_level=weather_pb2.UV_LEVEL_HIGH,
+            uv_index=8.5,
+        ),
+    )
 
-    assert isinstance(item, LifestyleData)
-    assert item.type == "laundry_score"
+    item = _to_feature(event)
+
+    assert item is not None
+    assert item.feature is Feature.UV
     assert item.location == "home"
-    assert item.data == {"score": "82", "best_hours": "3"}
     assert item.updated_at is not None
     assert int(item.updated_at.timestamp()) == EPOCH
+    assert item.alert is not None
+    assert item.alert.type is AlertType.UV
+    assert item.alert.severity is AlertSeverity.ORANGE
+    assert item.alert.trigger_value == 8.5
+    assert item.alert.peak_value is None
+    assert item.values["uv_level"] == "high"
+    assert item.values["uv_index"] == 8.5
+    assert "alert" not in item.values
 
 
-async def test_get_enrichments_carries_lifestyle():
+def test_score_event_converted():
+    event = weather_pb2.EnrichmentEvent(
+        location="home",
+        laundry=weather_pb2.Laundry(score=weather_pb2.ScoreData(score=82, best_hours=3)),
+    )
+
+    item = _to_feature(event)
+
+    assert item is not None
+    assert item.feature is Feature.LAUNDRY
+    assert item.alert is None
+    assert item.score == ScoreData(score=82, best_start=None, best_hours=3)
+
+
+def test_condition_event_converted_with_enum_text():
+    event = weather_pb2.EnrichmentEvent(
+        location="home",
+        commute_safety=weather_pb2.CommuteSafety(level=weather_pb2.COMMUTE_LEVEL_CAUTION),
+    )
+
+    item = _to_feature(event)
+
+    assert item is not None
+    assert item.feature is Feature.COMMUTE_SAFETY
+    assert item.values["level"] == "caution"
+
+
+def test_empty_event_is_ignored():
+    assert _to_feature(weather_pb2.EnrichmentEvent(location="home")) is None
+
+
+async def test_get_enrichments_returns_feature_list():
     client = NjordClient("localhost", 1)
     client._channel = MagicMock()
     client._weather_stub = MagicMock()
     client._weather_stub.GetEnrichments = AsyncMock(
         return_value=weather_pb2.GetEnrichmentsResponse(
             location="home",
-            lifestyle=[
-                weather_pb2.LifestyleUpdate(type="commute_safety", data={"level": "Caution", "risks": "Strong wind"}),
-                weather_pb2.LifestyleUpdate(type="exercise", data={"level": "Safe"}),
+            events=[
+                weather_pb2.EnrichmentEvent(
+                    location="home",
+                    commute_safety=weather_pb2.CommuteSafety(level=weather_pb2.COMMUTE_LEVEL_SAFE),
+                ),
+                weather_pb2.EnrichmentEvent(
+                    location="home",
+                    exercise_advisory=weather_pb2.ExerciseAdvisory(level=weather_pb2.EXERCISE_LEVEL_AVOID),
+                ),
+                weather_pb2.EnrichmentEvent(location="home"),
             ],
         )
     )
 
-    enrichment = await client.get_enrichments("home")
+    items = await client.get_enrichments("home")
 
-    assert [(i.type, i.location, i.data["level"]) for i in enrichment.lifestyle] == [
-        ("commute_safety", "home", "Caution"),
-        ("exercise", "home", "Safe"),
+    assert [(i.feature, i.values["level"]) for i in items] == [
+        (Feature.COMMUTE_SAFETY, "safe"),
+        (Feature.EXERCISE_ADVISORY, "avoid"),
     ]
-    assert enrichment.alerts == []
 
 
-# --- Enrichment toggles ---
+# --- Gating ---
 
 
-def test_every_lifestyle_type_has_a_toggle():
-    assert set(LIFESTYLE_ENRICHMENT) == set(LifestyleType)
-    assert len(set(LIFESTYLE_ENRICHMENT.values())) == len(LifestyleType)
+def test_empty_active_list_enables_every_feature():
+    assert feature_enabled(Feature.UV, None)
+    assert feature_enabled(Feature.UV, set())
 
 
-def test_enabled_lifestyle_types_follow_toggles():
-    enabled = enabled_lifestyle_types({Enrichment.VENTILATION_WINDOW, Enrichment.WEATHER_ALERTS})
+def test_active_keys_match_case_insensitively():
+    assert feature_enabled(Feature.COMMUTE_SAFETY, {"lifestyle:commute"})
+    assert not feature_enabled(Feature.EXERCISE_ADVISORY, {"Lifestyle:Commute"})
 
-    assert enabled == {LifestyleType.VENTILATION}
+
+def test_renamed_features_use_njord_config_names():
+    assert FEATURE_KEYS[Feature.SWIMMING_CONDITIONS] == "Marine:Swimming"
+    assert FEATURE_KEYS[Feature.APPROACHING_FRONT] == "Insight:FrontApproaching"
+    assert FEATURE_KEYS[Feature.FLOOD_RAIN] == "Flood:FloodRain"
+    assert len(set(FEATURE_KEYS.values())) == len(FEATURE_KEYS)
 
 
 # --- Coordinator ---
 
 
-async def test_stream_keeps_alerts_and_lifestyle_apart(hass: HomeAssistant, mock_client) -> None:
+async def test_stream_keeps_last_item_per_feature(hass: HomeAssistant, mock_client) -> None:
     coordinator = NjordDataCoordinator(hass, mock_client)
     coordinator.data = NjordCoordinatorData()
-    created: list[tuple[str, str]] = []
-    coordinator.register_lifestyle_factory("sensor", MagicMock(), lambda loc, kind: created.append((loc, kind)) or [])
-    alerts = EnrichmentData(location="home", alerts=[])
-    first = _lifestyle("exercise", level="Safe")
-    second = _lifestyle("exercise", level="Avoid")
+    created: list[tuple[str, Feature]] = []
+    coordinator.register_feature_factory("sensor", MagicMock(), lambda loc, f: created.append((loc, f)) or [])
+    first = _feature(Feature.EXERCISE_ADVISORY, level="safe")
+    second = _feature(Feature.EXERCISE_ADVISORY, level="avoid")
 
     async def gen(**kwargs):
-        for item in (alerts, first, second):
+        for item in (first, second):
             yield item
 
     mock_client.stream_enrichments = MagicMock(side_effect=lambda **kwargs: gen(**kwargs))
 
     await coordinator._run_enrichment_stream()
 
-    assert coordinator.data.enrichments["home"] is alerts
-    assert coordinator.data.lifestyle[("home", "exercise")] is second
-    assert created == [("home", "exercise")]
+    assert coordinator.data.features[("home", Feature.EXERCISE_ADVISORY)] is second
+    assert created == [("home", Feature.EXERCISE_ADVISORY)]
 
 
-async def test_first_refresh_collects_lifestyle(hass: HomeAssistant, mock_client) -> None:
-    mock_client.get_enrichments = AsyncMock(
-        return_value=replace(default_enrichment(), lifestyle=[_lifestyle("laundry_score", score="70")])
-    )
+async def test_stream_skips_entity_creation_for_inactive_feature(hass: HomeAssistant, mock_client) -> None:
+    coordinator = NjordDataCoordinator(hass, mock_client)
+    coordinator.data = NjordCoordinatorData(active_enrichments={"Lifestyle:Commute"})
+    created: list[Feature] = []
+    coordinator.register_feature_factory("sensor", MagicMock(), lambda loc, f: created.append(f) or [])
+
+    coordinator._apply_feature(_feature(Feature.EXERCISE_ADVISORY, level="safe"))
+    coordinator._apply_feature(_feature(Feature.COMMUTE_SAFETY, level="safe"))
+
+    assert created == [Feature.COMMUTE_SAFETY]
+
+
+async def test_first_refresh_collects_features(hass: HomeAssistant, mock_client) -> None:
+    mock_client.get_enrichments = AsyncMock(return_value=[_scored(Feature.LAUNDRY, 70)])
     coordinator = NjordDataCoordinator(hass, mock_client)
 
     data = await coordinator._async_update_data()
 
-    assert data.lifestyle[("home", "laundry_score")].data == {"score": "70"}
+    assert data.features[("home", Feature.LAUNDRY)].score == ScoreData(score=70)
 
 
 # --- Entities ---
 
 
-def _lifestyle_entry(hass: HomeAssistant, *toggles: Enrichment):
-    return _make_entry(hass, {CONF_ENABLED_ENRICHMENTS: [t.value for t in toggles]})
-
-
-def _all_lifestyle(**overrides: LifestyleData) -> list[LifestyleData]:
-    items = {
-        "laundry_score": _lifestyle("laundry_score", score="82", best_start="2099-01-01T10:00:00Z", best_hours="3"),
-        "commute_safety": _lifestyle("commute_safety", level="Caution", risks="Strong wind"),
-        "exercise": _lifestyle("exercise", level="Avoid", reasons="High ozone", best_window="2099-01-01T08:00:00Z"),
-        "ventilation": _lifestyle(
-            "ventilation", best_start=_time(timedelta(hours=-1)), best_end=_time(timedelta(hours=1)), reason="dry"
+def _all_features() -> list[FeatureData]:
+    return [
+        _scored(Feature.LAUNDRY, 82, best_hours=3),
+        _feature(Feature.COMMUTE_SAFETY, level="caution"),
+        _feature(Feature.EXERCISE_ADVISORY, level="avoid"),
+        _feature(
+            Feature.VENTILATION_WINDOW,
+            best_start=dt_util.utcnow() - timedelta(hours=1),
+            best_end=dt_util.utcnow() + timedelta(hours=1),
         ),
-        "gardening": _lifestyle("gardening", planting_safe="true", watering_needed="false", frost_risk="false"),
-        "solar_yield": _lifestyle("solar_yield", kwh_per_kwp="4.25", peak_hour="13"),
-        "night_ventilation": _lifestyle("night_ventilation", open_at="2099-01-01T22:00:00Z", low_temp="12"),
-        "pollen_trend": _lifestyle("pollen_trend", trend_birch="rising", peak_type="birch"),
-        "front_approaching": _lifestyle("front_approaching", estimated_in_hours="6.5", pressure_drop="8"),
-    }
-    items.update(overrides)
-    return list(items.values())
+        _feature(Feature.GARDENING, planting_safe=True, watering_needed=False, frost_risk=False),
+        _feature(Feature.SOLAR_YIELD, kwh_per_kwp=4.25, peak_hour=13),
+        _feature(Feature.POLLEN_TREND, peak_type="birch"),
+        _feature(Feature.APPROACHING_FRONT, estimated_in_hours=6.5),
+        _feature(Feature.SEASONAL_OUTLOOK, months=[{"temperature_anomaly": 1.5}]),
+    ]
 
 
-async def _setup(hass: HomeAssistant, mock_client, entry, items: list[LifestyleData]):
-    mock_client.get_enrichments = AsyncMock(return_value=replace(default_enrichment(), lifestyle=items))
+async def _setup(hass: HomeAssistant, mock_client, entry, items, active: list[str] | None = None):
+    status = await mock_client.get_status()
+    mock_client.get_status.return_value = replace(status, active_enrichments=active or [])
+    mock_client.get_enrichments = AsyncMock(return_value=items)
     await init_integration(hass, entry)
     return entry
 
@@ -166,96 +219,83 @@ def _state(hass: HomeAssistant, entry, platform: str, key: str):
     return hass.states.get(entity_id) if entity_id else None
 
 
-async def test_entities_created_for_enabled_lifestyle_types_only(hass: HomeAssistant, mock_client) -> None:
-    entry = _lifestyle_entry(hass, Enrichment.LAUNDRY_SCORE, Enrichment.VENTILATION_WINDOW)
-    await _setup(hass, mock_client, entry, _all_lifestyle())
+async def test_entities_created_for_active_features_only(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+    await _setup(
+        hass,
+        mock_client,
+        mock_config_entry,
+        _all_features(),
+        active=["Lifestyle:Laundry", "Lifestyle:Ventilation"],
+    )
 
-    assert _state(hass, entry, "sensor", "laundry_score") is not None
-    assert _state(hass, entry, "binary_sensor", "ventilation_window") is not None
-    assert _state(hass, entry, "sensor", "commute_safety") is None
-    assert _state(hass, entry, "sensor", "exercise") is None
-    assert _state(hass, entry, "binary_sensor", "planting_safe") is None
-
-
-async def test_no_entity_without_data(hass: HomeAssistant, mock_client) -> None:
-    entry = _lifestyle_entry(hass, *LIFESTYLE_ENRICHMENT.values())
-    await _setup(hass, mock_client, entry, [_lifestyle("laundry_score", score="10")])
-
-    assert _state(hass, entry, "sensor", "laundry_score") is not None
-    assert _state(hass, entry, "sensor", "exercise") is None
+    assert _state(hass, mock_config_entry, "sensor", "laundry_score") is not None
+    assert _state(hass, mock_config_entry, "binary_sensor", "ventilation_window") is not None
+    assert _state(hass, mock_config_entry, "sensor", "commute_safety") is None
+    assert _state(hass, mock_config_entry, "sensor", "exercise") is None
+    assert _state(hass, mock_config_entry, "binary_sensor", "planting_safe") is None
 
 
-async def test_score_sensor_state_and_attributes(hass: HomeAssistant, mock_client) -> None:
-    entry = _lifestyle_entry(hass, Enrichment.LAUNDRY_SCORE)
-    await _setup(hass, mock_client, entry, _all_lifestyle())
+async def test_no_entity_without_data(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+    await _setup(hass, mock_client, mock_config_entry, [_scored(Feature.LAUNDRY, 10)])
 
-    state = _state(hass, entry, "sensor", "laundry_score")
+    assert _state(hass, mock_config_entry, "sensor", "laundry_score") is not None
+    assert _state(hass, mock_config_entry, "sensor", "exercise") is None
+
+
+async def test_score_sensor_state(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+    await _setup(hass, mock_client, mock_config_entry, _all_features())
+
+    state = _state(hass, mock_config_entry, "sensor", "laundry_score")
     assert state is not None
-    assert state.state == "82.0"
-    assert state.attributes["best_start"] == "2099-01-01T10:00:00Z"
-    assert state.attributes["best_hours"] == "3"
-    assert state.attributes["friendly_name"] == "Home Laundry Score"
+    assert state.state == "82"
 
 
-async def test_level_sensors_expose_safe_caution_dangerous_avoid(hass: HomeAssistant, mock_client) -> None:
-    entry = _lifestyle_entry(hass, Enrichment.COMMUTE_SAFETY, Enrichment.EXERCISE_ADVISORY)
-    await _setup(hass, mock_client, entry, _all_lifestyle())
+async def test_level_sensors_state(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+    await _setup(hass, mock_client, mock_config_entry, _all_features())
 
-    commute = _state(hass, entry, "sensor", "commute_safety")
-    exercise = _state(hass, entry, "sensor", "exercise")
+    commute = _state(hass, mock_config_entry, "sensor", "commute_safety")
+    exercise = _state(hass, mock_config_entry, "sensor", "exercise")
     assert commute is not None
     assert exercise is not None
-    assert commute.state == "Caution"
-    assert commute.attributes["risks"] == "Strong wind"
-    assert exercise.state == "Avoid"
-    assert exercise.attributes["reasons"] == "High ozone"
+    assert commute.state == "caution"
+    assert exercise.state == "avoid"
 
 
-async def test_unknown_level_reads_unknown(hass: HomeAssistant, mock_client) -> None:
-    entry = _lifestyle_entry(hass, Enrichment.COMMUTE_SAFETY)
-    await _setup(hass, mock_client, entry, [_lifestyle("commute_safety", level="Weird")])
+async def test_ventilation_window_open(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+    await _setup(hass, mock_client, mock_config_entry, _all_features())
 
-    state = _state(hass, entry, "sensor", "commute_safety")
+    state = _state(hass, mock_config_entry, "binary_sensor", "ventilation_window")
     assert state is not None
-    assert state.state == "unknown"
+    assert state.state == "on"
 
 
-async def test_ventilation_window_open_and_closed(hass: HomeAssistant, mock_client) -> None:
-    entry = _lifestyle_entry(hass, Enrichment.VENTILATION_WINDOW)
-    await _setup(hass, mock_client, entry, _all_lifestyle())
-    opened = _state(hass, entry, "binary_sensor", "ventilation_window")
-    assert opened is not None
-    assert opened.state == "on"
-    assert opened.attributes["reason"] == "dry"
+async def test_ventilation_window_closed_outside_window(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+    later = _feature(
+        Feature.VENTILATION_WINDOW,
+        best_start=dt_util.utcnow() + timedelta(hours=2),
+        best_end=dt_util.utcnow() + timedelta(hours=4),
+    )
+    await _setup(hass, mock_client, mock_config_entry, [later])
 
-
-async def test_ventilation_window_closed_outside_window(hass: HomeAssistant, mock_client) -> None:
-    entry = _lifestyle_entry(hass, Enrichment.VENTILATION_WINDOW)
-    later = _lifestyle("ventilation", best_start=_time(timedelta(hours=2)), best_end=_time(timedelta(hours=4)))
-    await _setup(hass, mock_client, entry, [later])
-
-    state = _state(hass, entry, "binary_sensor", "ventilation_window")
+    state = _state(hass, mock_config_entry, "binary_sensor", "ventilation_window")
     assert state is not None
     assert state.state == "off"
 
 
-async def test_gardening_planting_safe_binary_sensor(hass: HomeAssistant, mock_client) -> None:
-    entry = _lifestyle_entry(hass, Enrichment.GARDENING_ADVISORY)
-    await _setup(hass, mock_client, entry, _all_lifestyle())
+async def test_gardening_planting_safe(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+    await _setup(hass, mock_client, mock_config_entry, _all_features())
 
-    state = _state(hass, entry, "binary_sensor", "planting_safe")
+    state = _state(hass, mock_config_entry, "binary_sensor", "planting_safe")
     assert state is not None
     assert state.state == "on"
-    assert state.attributes["frost_risk"] == "false"
 
 
-async def test_numeric_and_text_sensors(hass: HomeAssistant, mock_client) -> None:
-    entry = _lifestyle_entry(hass, Enrichment.SOLAR_YIELD, Enrichment.POLLEN_TREND, Enrichment.APPROACHING_FRONT)
-    await _setup(hass, mock_client, entry, _all_lifestyle())
+async def test_numeric_and_text_sensors(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+    await _setup(hass, mock_client, mock_config_entry, _all_features())
 
-    solar = _state(hass, entry, "sensor", "solar_yield")
-    pollen = _state(hass, entry, "sensor", "pollen_trend")
-    front = _state(hass, entry, "sensor", "front_approaching")
+    solar = _state(hass, mock_config_entry, "sensor", "solar_yield")
+    pollen = _state(hass, mock_config_entry, "sensor", "pollen_trend")
+    front = _state(hass, mock_config_entry, "sensor", "front_approaching")
     assert solar is not None
     assert pollen is not None
     assert front is not None
@@ -264,18 +304,14 @@ async def test_numeric_and_text_sensors(hass: HomeAssistant, mock_client) -> Non
     assert front.state == "6.5"
 
 
-async def test_streamed_lifestyle_creates_and_updates_entity(hass: HomeAssistant, mock_client) -> None:
-    entry = _lifestyle_entry(hass, Enrichment.LAUNDRY_SCORE)
-    gate = []
-
+async def test_streamed_feature_creates_and_updates_entity(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
     async def gen(**kwargs):
-        for item in (_lifestyle("laundry_score", score="40"), _lifestyle("laundry_score", score="90")):
-            gate.append(item)
-            yield item
+        for score in (40, 90):
+            yield _scored(Feature.LAUNDRY, score)
 
     mock_client.stream_enrichments = MagicMock(side_effect=lambda **kwargs: gen(**kwargs))
-    await _setup(hass, mock_client, entry, [])
+    await _setup(hass, mock_client, mock_config_entry, [])
 
-    state = _state(hass, entry, "sensor", "laundry_score")
+    state = _state(hass, mock_config_entry, "sensor", "laundry_score")
     assert state is not None
-    assert state.state == "90.0"
+    assert state.state == "90"

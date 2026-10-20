@@ -18,14 +18,16 @@ from .const import (
     AlertSeverity,
     AlertType,
     Domain,
+    Feature,
     StreamName,
     enabled_alert_types,
-    enabled_lifestyle_types,
+    feature_enabled,
 )
 from .coordinator import NjordDataCoordinator, NjordStatusCoordinator
-from .helpers import alerts_active, device_info, enabled_enrichments_of, server_device_info, slugify_location
+from .helpers import device_info, server_device_info, slugify_location
 from .lifestyle import LIFESTYLE_BINARY_SENSORS, LifestyleBinarySensorDescription
-from .models import AlertData, LifestyleData
+from .models import AlertData, FeatureData
+from .sensor import _attributes
 
 
 def _get_sw_version(hass: HomeAssistant, entry: ConfigEntry) -> str | None:
@@ -43,27 +45,22 @@ async def async_setup_entry(
     """Set up njord binary sensor entities."""
     coordinator: NjordDataCoordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
     sw_version = _get_sw_version(hass, entry)
-    alert_types = enabled_alert_types(enabled_enrichments_of(entry))
 
     def alert_entities(location: str) -> list[BinarySensorEntity]:
-        if not alerts_active(coordinator.data.active_enrichments):
-            return []
+        alert_types = enabled_alert_types(coordinator.data.active_enrichments)
         return [NjordAlertBinarySensor(coordinator, entry, location, t, sw_version) for t in alert_types]
 
-    lifestyle_types = enabled_lifestyle_types(enabled_enrichments_of(entry))
-
-    def lifestyle_entities(location: str, lifestyle_type: str) -> list[BinarySensorEntity]:
-        if lifestyle_type not in lifestyle_types:
-            return []
+    def feature_entities(location: str, feature: Feature) -> list[BinarySensorEntity]:
         return [
             NjordLifestyleBinarySensor(coordinator, entry, location, description, sw_version)
             for description in LIFESTYLE_BINARY_SENSORS
-            if description.type == lifestyle_type
+            if description.feature == feature
         ]
 
     entities: list[BinarySensorEntity] = []
-    for location, lifestyle_type in sorted(coordinator.data.lifestyle):
-        entities.extend(lifestyle_entities(location, lifestyle_type))
+    for location, feature in sorted(coordinator.data.features):
+        if feature_enabled(feature, coordinator.data.active_enrichments):
+            entities.extend(feature_entities(location, feature))
     for location in coordinator.data.locations_with(Domain.WEATHER):
         entities.extend(alert_entities(location))
 
@@ -77,7 +74,7 @@ async def async_setup_entry(
         return alert_entities(location) if domain == Domain.WEATHER else []
 
     coordinator.register_entity_factory("binary_sensor", async_add_entities, binary_sensor_factory)
-    coordinator.register_lifestyle_factory("binary_sensor", async_add_entities, lifestyle_entities)
+    coordinator.register_feature_factory("binary_sensor", async_add_entities, feature_entities)
 
 
 class NjordAlertBinarySensor(CoordinatorEntity[NjordDataCoordinator], BinarySensorEntity):
@@ -107,17 +104,12 @@ class NjordAlertBinarySensor(CoordinatorEntity[NjordDataCoordinator], BinarySens
     def _get_alert(self) -> AlertData | None:
         if self.coordinator.data is None:
             return None
-        enrichment = self.coordinator.data.enrichments.get(self._location)
-        if enrichment is None:
-            return None
-        for alert in enrichment.alerts:
-            if alert.type == self._alert_type:
-                return alert
-        return None
+        item = self.coordinator.data.features.get((self._location, Feature(self._alert_type.value)))
+        return item.alert if item is not None else None
 
     @property
     def available(self) -> bool:
-        return self.coordinator.data is not None and self._location in self.coordinator.data.enrichments
+        return self.coordinator.data is not None
 
     @property
     def is_on(self) -> bool:
@@ -168,10 +160,10 @@ class NjordLifestyleBinarySensor(CoordinatorEntity[NjordDataCoordinator], Binary
             self._attr_device_class = BinarySensorDeviceClass(description.device_class)
         self._attr_device_info = device_info(entry, location, sw_version)
 
-    def _item(self) -> LifestyleData | None:
+    def _item(self) -> FeatureData | None:
         if self.coordinator.data is None:
             return None
-        return self.coordinator.data.lifestyle.get((self._location, self._description.type))
+        return self.coordinator.data.features.get((self._location, self._description.feature))
 
     @property
     def available(self) -> bool:
@@ -189,7 +181,7 @@ class NjordLifestyleBinarySensor(CoordinatorEntity[NjordDataCoordinator], Binary
         item = self._item()
         if item is None:
             return None
-        attrs: dict[str, object] = dict(item.data)
+        attrs: dict[str, object] = _attributes(item)
         if item.updated_at is not None:
             attrs["updated_at"] = item.updated_at.isoformat()
         return attrs

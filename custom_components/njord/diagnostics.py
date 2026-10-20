@@ -34,7 +34,10 @@ async def async_get_config_entry_diagnostics(
         data["coordinator"] = {
             "locations": coordinator.data.location_names,
             "domains": {location: sorted(domains) for location, domains in sorted(domains_per_location.items())},
-            "enrichment_locations": sorted(coordinator.data.enrichments),
+            "features": {
+                location: sorted(f.value for loc, f in coordinator.data.features if loc == location)
+                for location in sorted({loc for loc, _ in coordinator.data.features})
+            },
             "active_enrichments": sorted(coordinator.data.active_enrichments)
             if coordinator.data.active_enrichments
             else None,

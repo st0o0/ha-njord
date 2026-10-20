@@ -33,7 +33,7 @@ SERVICE_TRIGGER_POLL_SCHEMA = vol.Schema(
 
 
 async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Migrate a v1 entry: the entities and options of the old per-model API are gone."""
+    """Migrate old entries: v1 drops the per-model entities, v2 drops the enrichment toggles."""
     if entry.version == 1:
         registry = er.async_get(hass)
         for reg_entry in er.async_entries_for_config_entry(registry, entry.entry_id):
@@ -42,6 +42,11 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         options = {k: v for k, v in entry.options.items() if k == CONF_STATUS_POLL_INTERVAL}
         hass.config_entries.async_update_entry(entry, options=options, version=2)
         _LOGGER.info("Migrated njord entry %s to version 2", entry.entry_id)
+    if entry.version == 2:
+        # njord decides which enrichments run; the integration follows StatusResponse.active_enrichments.
+        options = {k: v for k, v in entry.options.items() if k == CONF_STATUS_POLL_INTERVAL}
+        hass.config_entries.async_update_entry(entry, options=options, version=3)
+        _LOGGER.info("Migrated njord entry %s to version 3", entry.entry_id)
     return True
 
 

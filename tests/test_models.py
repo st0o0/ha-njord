@@ -2,20 +2,17 @@
 
 from __future__ import annotations
 
-import pytest
-
 from custom_components.njord.const import (
     ALERT_META,
-    DEFAULT_ENABLED_ENRICHMENTS,
-    ENRICHMENT_ALERT_TYPES,
+    FEATURE_KEYS,
     AlertSeverity,
     AlertType,
     Domain,
-    Enrichment,
+    Feature,
     PollPhase,
     StreamName,
     enabled_alert_types,
-    parse_enrichments,
+    feature_enabled,
 )
 from custom_components.njord.coordinator import NjordCoordinatorData
 from custom_components.njord.models import AlertData, TargetData, WeatherDomainData
@@ -51,42 +48,31 @@ def test_stream_names_are_domain_and_enrichment_only():
 
 def test_alert_meta_covers_all_alert_types_but_unspecified():
     assert set(ALERT_META) == set(AlertType) - {AlertType.UNSPECIFIED}
-    assert len(ALERT_META) == 19
+    assert len(ALERT_META) == 20
 
 
-def test_enrichment_toggles_partition_the_alert_types():
-    gated = [t for types in ENRICHMENT_ALERT_TYPES.values() for t in types]
-    assert sorted(gated) == sorted(ALERT_META)
+def test_every_feature_has_a_njord_key():
+    assert set(FEATURE_KEYS) == set(Feature)
+    assert len(FEATURE_KEYS) == 36
 
 
-def test_enabled_alert_types_defaults():
-    types = enabled_alert_types(DEFAULT_ENABLED_ENRICHMENTS)
-    assert AlertType.FROST in types
-    assert AlertType.POLLEN in types
-    assert AlertType.PM25 in types
-    assert AlertType.FLOOD_RISK not in types
-    assert len(types) == 16
+def test_feature_enabled_matches_case_insensitively():
+    assert feature_enabled(Feature.SWIMMING_CONDITIONS, ["marine:swimming"])
+    assert not feature_enabled(Feature.FROST, ["Marine:Swimming"])
 
 
-def test_enabled_alert_types_keeps_creation_order():
-    types = enabled_alert_types([Enrichment.SWIMMING_CONDITIONS, Enrichment.FLOOD_RISK, Enrichment.POLLEN_ALERT])
-    assert types == [AlertType.POLLEN, AlertType.FLOOD_RISK, AlertType.SWIMMING_CONDITIONS]
+def test_feature_enabled_without_active_list_enables_all():
+    assert feature_enabled(Feature.FROST, None)
+    assert feature_enabled(Feature.FROST, [])
 
 
-def test_enabled_alert_types_empty():
-    assert enabled_alert_types([]) == []
+def test_enabled_alert_types_filters_by_active_keys():
+    types = enabled_alert_types(["Weather:Frost", "AirQuality:Pollen"])
+    assert types == [AlertType.FROST, AlertType.POLLEN]
 
 
-@pytest.mark.parametrize(
-    ("stored", "expected"),
-    [
-        (None, frozenset()),
-        ([], frozenset()),
-        (["pollen_alert", "nonsense"], frozenset({Enrichment.POLLEN_ALERT})),
-    ],
-)
-def test_parse_enrichments_ignores_unknown(stored, expected):
-    assert parse_enrichments(stored) == expected
+def test_enabled_alert_types_without_active_list_returns_all():
+    assert len(enabled_alert_types(None)) == 20
 
 
 def test_coordinator_data_location_helpers():

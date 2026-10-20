@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from homeassistant.core import HomeAssistant
 
-from custom_components.njord.const import DOMAIN, AlertEvent
-from custom_components.njord.models import AlertData, EnrichmentData
+from custom_components.njord.const import DOMAIN, AlertEvent, Feature
+from custom_components.njord.models import AlertData, FeatureData
 from tests.conftest import entity_id_for, init_integration
 
 EVENT_UNIQUE = "{}_home_weather_alert"
@@ -21,8 +21,14 @@ def _state(hass: HomeAssistant, entry):
 
 async def _push(hass: HomeAssistant, entry, *alerts: AlertData) -> None:
     coordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
-    baseline = AlertData(type="pollen", severity="yellow", trigger_value=40.0, threshold=30.0)
-    coordinator.data.enrichments["home"] = EnrichmentData("home", [*alerts, baseline])
+    baseline = [
+        AlertData(type="pollen", severity="yellow", trigger_value=40.0, threshold=30.0),
+        AlertData(type="flood_risk", severity="red", trigger_value=300.0, threshold=200.0),
+    ]
+    coordinator.data.features = {
+        ("home", Feature(a.type.value)): FeatureData("home", Feature(a.type.value), alert=a)
+        for a in [*baseline, *alerts]
+    }
     coordinator.async_set_updated_data(coordinator.data)
     await hass.async_block_till_done()
 
@@ -99,8 +105,8 @@ async def test_unchanged_alerts_fire_nothing(hass: HomeAssistant, mock_client, m
 async def test_disabled_alert_types_are_ignored(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
     await init_integration(hass, mock_config_entry)
 
-    # flood_risk is not an enabled enrichment for the default entry
-    await _push(hass, mock_config_entry, _uv("orange"), AlertData(type="flood_risk", severity="red"))
+    # heat is not an active enrichment for the default entry
+    await _push(hass, mock_config_entry, _uv("orange"), AlertData(type="heat", severity="red"))
 
     assert _state(hass, mock_config_entry).attributes.get("event_type") is None
 

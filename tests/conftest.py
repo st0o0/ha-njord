@@ -2,18 +2,18 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from custom_components.njord.const import (
-    CONF_ENABLED_ENRICHMENTS,
     DOMAIN,
     AlertSeverity,
     AlertType,
     Domain,
-    Enrichment,
+    Feature,
     PollPhase,
 )
 from custom_components.njord.models import (
@@ -22,7 +22,7 @@ from custom_components.njord.models import (
     AlertData,
     BudgetStatusData,
     CatalogData,
-    EnrichmentData,
+    FeatureData,
     FloodDomainData,
     FloodSampleData,
     ModelInfoData,
@@ -97,26 +97,30 @@ def default_domain_data(location: str, domain: Domain):
     return None
 
 
-def default_enrichment(location: str = "home") -> EnrichmentData:
-    return EnrichmentData(
-        location=location,
-        alerts=[
-            AlertData(
-                type=AlertType.UV,
-                severity=AlertSeverity.ORANGE,
-                confidence=1.0,
-                trigger_value=8.5,
-                threshold=6.0,
-                peak_value=9.2,
-                hours_until=2,
-                duration_hours=4,
-            ),
-            AlertData(type=AlertType.FROST, severity=AlertSeverity.NONE),
-            AlertData(type=AlertType.POLLEN, severity=AlertSeverity.YELLOW, trigger_value=40.0, threshold=30.0),
-            AlertData(type=AlertType.FLOOD_RISK, severity=AlertSeverity.RED, trigger_value=300.0, threshold=200.0),
-        ],
-        updated_at=PAST,
-    )
+def default_enrichment(location: str = "home") -> list[FeatureData]:
+    def alert(feature: Feature, **fields) -> FeatureData:
+        return FeatureData(
+            location=location,
+            feature=feature,
+            updated_at=PAST,
+            alert=AlertData(type=AlertType(feature.value), **fields),
+        )
+
+    return [
+        alert(
+            Feature.UV,
+            severity=AlertSeverity.ORANGE,
+            confidence=1.0,
+            trigger_value=8.5,
+            threshold=6.0,
+            peak_value=9.2,
+            hours_until=2,
+            duration_hours=4,
+        ),
+        alert(Feature.FROST, severity=AlertSeverity.NONE),
+        alert(Feature.POLLEN, severity=AlertSeverity.YELLOW, trigger_value=40.0, threshold=30.0),
+        alert(Feature.FLOOD_RISK, severity=AlertSeverity.RED, trigger_value=300.0, threshold=200.0),
+    ]
 
 
 @pytest.fixture(autouse=True)
@@ -146,7 +150,7 @@ def mock_client():
             budget=BudgetStatusData(
                 monthly_limit=20000, monthly_used=5000, daily_limit=700, daily_used=100, usage_percent=25.0
             ),
-            active_enrichments=["alerts"],
+            active_enrichments=["Weather:Uv", "Weather:Frost", "AirQuality:Pollen", "Flood:FloodRisk"],
         )
     )
     mock.trigger_poll = AsyncMock(return_value=2)
@@ -170,7 +174,7 @@ def mock_client():
         yield mock
 
 
-def _make_entry(hass, options: dict | None = None, version: int = 2):
+def _make_entry(hass, options: dict | None = None, version: int = 3):
     from pytest_homeassistant_custom_component.common import MockConfigEntry
 
     entry = MockConfigEntry(
@@ -187,14 +191,15 @@ def _make_entry(hass, options: dict | None = None, version: int = 2):
 
 @pytest.fixture
 def mock_config_entry(hass):
-    """A v2 config entry for njord with njord's default enrichments."""
+    """A v3 config entry for njord."""
     return _make_entry(hass)
 
 
 @pytest.fixture
-def all_alerts_entry(hass):
-    """A v2 config entry with every alert enrichment enabled."""
-    return _make_entry(hass, {CONF_ENABLED_ENRICHMENTS: [e.value for e in Enrichment]})
+def all_alerts_entry(hass, mock_client):
+    """A v3 config entry whose server reports no active-enrichment filter (every feature enabled)."""
+    mock_client.get_status.return_value = replace(mock_client.get_status.return_value, active_enrichments=[])
+    return _make_entry(hass)
 
 
 async def init_integration(hass, entry):

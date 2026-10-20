@@ -16,16 +16,6 @@
           "host": "Host",
           "port": "Port"
         }
-      },
-      "enrichments": {
-        "title": "Warn-Enrichments",
-        "description": "Wähle, welche Warngruppen Entitäten erzeugen. {locations} Standort(e) gefunden.",
-        "data": {
-          "enabled_enrichments": "Aktivierte Enrichments"
-        },
-        "data_description": {
-          "enabled_enrichments": "Wähle welche Warngruppen aktiviert sein sollen. Deaktivierte Gruppen erzeugen keine Entitäten."
-        }
       }
     },
     "error": {
@@ -39,14 +29,12 @@
     "step": {
       "init": {
         "title": "njord Optionen",
-        "description": "Status-Abfrageintervall und Warn-Enrichments konfigurieren.",
+        "description": "Status-Abfrageintervall konfigurieren.",
         "data": {
-          "status_poll_interval": "Status-Abfrageintervall (Sekunden)",
-          "enabled_enrichments": "Aktivierte Enrichments"
+          "status_poll_interval": "Status-Abfrageintervall (Sekunden)"
         },
         "data_description": {
-          "status_poll_interval": "Wie oft der Server-Status abgefragt wird (10–300 Sekunden, Standard 30).",
-          "enabled_enrichments": "Wähle welche Warngruppen aktiviert sein sollen. Deaktivierte Gruppen erzeugen keine Entitäten."
+          "status_poll_interval": "Wie oft der Server-Status abgefragt wird (10–300 Sekunden, Standard 30)."
         }
       }
     }
@@ -99,32 +87,6 @@
             }
           }
         }
-      }
-    }
-  },
-  "selector": {
-    "enabled_enrichments": {
-      "options": {
-        "weather_alerts": "Wetterwarnungen",
-        "pollen_alert": "Pollenwarnung",
-        "pm25_alert": "PM2.5-Warnung",
-        "flood_risk": "Hochwasserrisiko",
-        "flood_rain": "Starkregen-Hochwasser",
-        "swimming_conditions": "Badebedingungen",
-        "commute_safety": "Pendlersicherheit",
-        "ventilation_window": "Lüftungsfenster",
-        "exercise_advisory": "Sportempfehlung",
-        "laundry_score": "Wäsche-Trockenwert",
-        "pollen_trend": "Pollentrend",
-        "night_ventilation": "Nachtlüftung",
-        "confidence_trend": "Trend der Vorhersagesicherheit",
-        "solar_yield": "Solarertrag",
-        "gardening_advisory": "Gartenempfehlung",
-        "outdoor_score": "Outdoor-Wert",
-        "bbq_score": "Grillwert",
-        "flood_timeline": "Hochwasserverlauf",
-        "approaching_front": "Nahende Front",
-        "climate_anomaly": "Klimaanomalie"
       }
     }
   }

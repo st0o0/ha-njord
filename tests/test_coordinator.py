@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
 
-from custom_components.njord.const import DOMAIN, Domain, PollPhase
+from custom_components.njord.const import DOMAIN, Domain, Feature, PollPhase
 from custom_components.njord.coordinator import NjordCoordinatorData, NjordDataCoordinator, NjordStatusCoordinator
 from tests.conftest import default_domain_data, init_integration
 
@@ -26,8 +26,18 @@ async def test_coordinator_fetches_catalog_domains_and_enrichments(
         ("home", Domain.FLOOD),
     }
     assert "icon_d2" in coordinator.data.model_info
-    assert "home" in coordinator.data.enrichments
-    assert coordinator.data.active_enrichments == {"alerts"}
+    assert set(coordinator.data.features) == {
+        ("home", Feature.UV),
+        ("home", Feature.FROST),
+        ("home", Feature.POLLEN),
+        ("home", Feature.FLOOD_RISK),
+    }
+    assert coordinator.data.active_enrichments == {
+        "Weather:Uv",
+        "Weather:Frost",
+        "AirQuality:Pollen",
+        "Flood:FloodRisk",
+    }
 
 
 async def test_solar_is_not_requested(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
@@ -59,7 +69,7 @@ async def test_enrichment_failure_does_not_block_domains(hass: HomeAssistant, mo
 
     coordinator = hass.data[DOMAIN][mock_config_entry.entry_id]["coordinator"]
     assert ("home", Domain.WEATHER) in coordinator.data.domains
-    assert coordinator.data.enrichments == {}
+    assert coordinator.data.features == {}
 
 
 async def test_catalog_failure_retries_setup(hass: HomeAssistant, mock_client, mock_config_entry) -> None:

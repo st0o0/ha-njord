@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 from collections.abc import AsyncIterator, Callable, Iterable
 from datetime import UTC, datetime
 from typing import TypeVar
@@ -12,7 +13,7 @@ import grpc
 
 # Ensure proto package path is on sys.path before importing generated stubs.
 from . import proto as _proto_pkg  # noqa: F401
-from .const import AlertSeverity, AlertType, Domain, PollPhase
+from .const import AlertSeverity, AlertType, Domain, Feature, PollPhase, alert_type_of
 from .models import (
     AirQualityDomainData,
     AirQualitySampleData,
@@ -20,18 +21,16 @@ from .models import (
     BudgetStatusData,
     CatalogData,
     DomainData,
-    EnrichmentData,
+    FeatureData,
     FloodDomainData,
     FloodSampleData,
-    LifestyleData,
     LocationStatusData,
     MarineDomainData,
     MarineSampleData,
     ModelInfoData,
     NjordLocation,
+    ScoreData,
     ServerStatusData,
-    SolarDomainData,
-    SolarSampleData,
     TargetData,
     WeatherDomainData,
     WeatherSampleData,
@@ -79,37 +78,15 @@ _DOMAIN_TO_PB: dict[Domain, int] = {
     Domain.WEATHER: weather_pb2.DOMAIN_WEATHER,
     Domain.AIR_QUALITY: weather_pb2.DOMAIN_AIR_QUALITY,
     Domain.FLOOD: weather_pb2.DOMAIN_FLOOD,
-    Domain.SOLAR: weather_pb2.DOMAIN_SOLAR,
     Domain.MARINE: weather_pb2.DOMAIN_MARINE,
+    Domain.SEASONAL: weather_pb2.DOMAIN_SEASONAL,
+    Domain.SATELLITE: weather_pb2.DOMAIN_SATELLITE,
 }
 
 _POLL_PHASE_MAP: dict[int, PollPhase] = {
     ops_pb2.POLL_PHASE_UNSPECIFIED: PollPhase.UNSPECIFIED,
     ops_pb2.POLL_PHASE_DISCOVERY: PollPhase.DISCOVERY,
     ops_pb2.POLL_PHASE_STEADY: PollPhase.STEADY,
-}
-
-_ALERT_TYPE_MAP: dict[int, AlertType] = {
-    common_pb2.ALERT_TYPE_UNSPECIFIED: AlertType.UNSPECIFIED,
-    common_pb2.ALERT_TYPE_FROST: AlertType.FROST,
-    common_pb2.ALERT_TYPE_HEAT: AlertType.HEAT,
-    common_pb2.ALERT_TYPE_STORM: AlertType.STORM,
-    common_pb2.ALERT_TYPE_HEAVY_RAIN: AlertType.HEAVY_RAIN,
-    common_pb2.ALERT_TYPE_UV: AlertType.UV,
-    common_pb2.ALERT_TYPE_FOG: AlertType.FOG,
-    common_pb2.ALERT_TYPE_SNOW: AlertType.SNOW,
-    common_pb2.ALERT_TYPE_PRESSURE_DROP: AlertType.PRESSURE_DROP,
-    common_pb2.ALERT_TYPE_THUNDERSTORM: AlertType.THUNDERSTORM,
-    common_pb2.ALERT_TYPE_ICE: AlertType.ICE,
-    common_pb2.ALERT_TYPE_WIND_CHILL: AlertType.WIND_CHILL,
-    common_pb2.ALERT_TYPE_VISIBILITY: AlertType.VISIBILITY,
-    common_pb2.ALERT_TYPE_TROPICAL_NIGHT: AlertType.TROPICAL_NIGHT,
-    common_pb2.ALERT_TYPE_HUMIDITY: AlertType.HUMIDITY,
-    common_pb2.ALERT_TYPE_POLLEN: AlertType.POLLEN,
-    common_pb2.ALERT_TYPE_PM25: AlertType.PM25,
-    common_pb2.ALERT_TYPE_FLOOD_RISK: AlertType.FLOOD_RISK,
-    common_pb2.ALERT_TYPE_FLOOD_RAIN: AlertType.FLOOD_RAIN,
-    common_pb2.ALERT_TYPE_SWIMMING_CONDITIONS: AlertType.SWIMMING_CONDITIONS,
 }
 
 _ALERT_SEVERITY_MAP: dict[int, AlertSeverity] = {
@@ -196,16 +173,6 @@ def _to_flood_sample(pb: weather_pb2.FloodSample) -> FloodSampleData:
     )
 
 
-def _to_solar_sample(pb: weather_pb2.SolarSample) -> SolarSampleData:
-    return SolarSampleData(
-        valid_at=_ts_to_dt(pb.valid_at),
-        direct_radiation=pb.direct_radiation,
-        diffuse_radiation=pb.diffuse_radiation,
-        shortwave_radiation=pb.shortwave_radiation,
-        sunshine_duration=pb.sunshine_duration,
-    )
-
-
 def _to_marine_sample(pb: weather_pb2.MarineSample) -> MarineSampleData:
     return MarineSampleData(
         valid_at=_ts_to_dt(pb.valid_at),
@@ -228,8 +195,6 @@ def _to_domain_data(pb: weather_pb2.DomainDataUpdate) -> DomainData | None:
             )
         case "flood":
             return FloodDomainData(pb.location, model_run, [_to_flood_sample(p) for p in pb.flood.points])
-        case "solar":
-            return SolarDomainData(pb.location, model_run, [_to_solar_sample(p) for p in pb.solar.points])
         case "marine":
             return MarineDomainData(pb.location, model_run, [_to_marine_sample(p) for p in pb.marine.points])
     return None
@@ -280,9 +245,51 @@ def _to_target_data(pb: ops_pb2.TriggerTarget) -> TargetData:
     )
 
 
-def _to_alert(pb: common_pb2.Alert) -> AlertData:
+_WRAPPER_FIELDS = {"alert", "score", "condition", "trend", "forecast"}
+
+
+def _enum_text(field, number: int) -> str:
+    """Lowercase wire text of an enum value without the enum-name prefix (UV_LEVEL_HIGH -> high)."""
+    name = field.enum_type.values_by_number[number].name
+    prefix = re.sub(r"(?<!^)(?=[A-Z])", "_", field.enum_type.name).upper() + "_"
+    return (name[len(prefix) :] if name.startswith(prefix) else name).lower()
+
+
+def _field_value(pb, field):
+    """Native Python value of one proto field; None when an optional field is unset."""
+    repeated = field.is_repeated if hasattr(field, "is_repeated") else field.label == field.LABEL_REPEATED
+    if repeated:
+        return [_scalar(field, item) for item in getattr(pb, field.name)]
+    if field.type == field.TYPE_MESSAGE or getattr(field, "has_presence", False):
+        if not pb.HasField(field.name):
+            return None
+    return _scalar(field, getattr(pb, field.name))
+
+
+def _scalar(field, value):
+    if field.type == field.TYPE_ENUM:
+        return _enum_text(field, value)
+    if field.type == field.TYPE_MESSAGE:
+        if field.message_type.full_name == "google.protobuf.Timestamp":
+            return _ts_to_dt(value)
+        return _message_values(value)
+    return value
+
+
+def _message_values(pb, skip: frozenset[str] = frozenset()) -> dict:
+    values = {}
+    for field in pb.DESCRIPTOR.fields:
+        if field.name in skip:
+            continue
+        value = _field_value(pb, field)
+        if value is not None:
+            values[field.name] = value
+    return values
+
+
+def _to_alert(alert_type: AlertType, pb: weather_pb2.AlertData) -> AlertData:
     return AlertData(
-        type=_ALERT_TYPE_MAP.get(pb.type, AlertType.UNSPECIFIED),
+        type=alert_type,
         severity=_ALERT_SEVERITY_MAP.get(pb.severity, AlertSeverity.NONE),
         confidence=pb.confidence,
         trigger_value=pb.trigger_value,
@@ -293,32 +300,32 @@ def _to_alert(pb: common_pb2.Alert) -> AlertData:
     )
 
 
-def _to_lifestyle(pb: weather_pb2.LifestyleUpdate, location: str, updated_at: datetime | None) -> LifestyleData:
-    return LifestyleData(type=pb.type, location=location, data=dict(pb.data), updated_at=updated_at)
-
-
-def _to_enrichment_data(pb: weather_pb2.GetEnrichmentsResponse) -> EnrichmentData:
-    now = datetime.now(UTC)
-    return EnrichmentData(
+def _to_feature(pb: weather_pb2.EnrichmentEvent) -> FeatureData | None:
+    """Convert an EnrichmentEvent; None for feature kinds this client does not know."""
+    case = pb.WhichOneof("feature")
+    if case is None:
+        return None
+    try:
+        feature = Feature(case)
+    except ValueError:
+        return None
+    payload = getattr(pb, case)
+    alert = None
+    score = None
+    if (alert_type := alert_type_of(feature)) != AlertType.UNSPECIFIED:
+        alert = _to_alert(alert_type, payload.alert)
+    elif "score" in payload.DESCRIPTOR.fields_by_name:
+        sc = payload.score
+        score = ScoreData(score=sc.score, best_start=_optional_ts(sc.best_start), best_hours=sc.best_hours)
+    values = _message_values(payload, skip=frozenset(_WRAPPER_FIELDS))
+    return FeatureData(
         location=pb.location,
-        alerts=[_to_alert(a) for a in pb.alerts.alerts],
-        updated_at=now,
-        lifestyle=[_to_lifestyle(item, pb.location, now) for item in pb.lifestyle],
+        feature=feature,
+        updated_at=_optional_ts(pb.updated_at),
+        alert=alert,
+        score=score,
+        values=values,
     )
-
-
-def _to_enrichment_event(pb: weather_pb2.EnrichmentEvent) -> EnrichmentData | LifestyleData | None:
-    """Convert an EnrichmentEvent; None for payload kinds this client does not know."""
-    match pb.WhichOneof("payload"):
-        case "alerts":
-            return EnrichmentData(
-                location=pb.location,
-                alerts=[_to_alert(a) for a in pb.alerts.alerts],
-                updated_at=_optional_ts(pb.updated_at),
-            )
-        case "lifestyle":
-            return _to_lifestyle(pb.lifestyle, pb.location, _optional_ts(pb.updated_at))
-    return None
 
 
 # --- Client ---
@@ -388,12 +395,12 @@ class NjordClient:
         resp = await self._ops_stub.GetStatus(ops_pb2.GetStatusRequest())
         return _to_server_status(resp)
 
-    async def get_enrichments(self, location: str) -> EnrichmentData:
-        """Retrieve enrichment data (alerts and lifestyle advisories) for a location."""
+    async def get_enrichments(self, location: str) -> list[FeatureData]:
+        """Retrieve the current typed feature results of a location."""
         self._ensure_connected()
         assert self._weather_stub is not None
         resp = await self._weather_stub.GetEnrichments(weather_pb2.GetEnrichmentsRequest(location=location))
-        return _to_enrichment_data(resp)
+        return [f for e in resp.events if (f := _to_feature(e)) is not None]
 
     async def get_targets(self) -> list[TargetData]:
         """Retrieve all poll targets and their state."""
@@ -441,15 +448,15 @@ class NjordClient:
         *,
         on_disconnect: Callable[[], None] | None = None,
         on_reconnect: Callable[[], None] | None = None,
-    ) -> AsyncIterator[EnrichmentData | LifestyleData]:
-        """Stream real-time enrichment updates (alerts of a location or one lifestyle advisory) with auto-reconnect."""
+    ) -> AsyncIterator[FeatureData]:
+        """Stream real-time typed feature results with auto-reconnect."""
         self._ensure_connected()
         assert self._weather_stub is not None
         req = weather_pb2.StreamEnrichmentsRequest(location=location or "")
 
         async for item in self._stream_with_reconnect(
             lambda: self._weather_stub.StreamEnrichments(req),
-            _to_enrichment_event,
+            _to_feature,
             on_disconnect=on_disconnect,
             on_reconnect=on_reconnect,
         ):

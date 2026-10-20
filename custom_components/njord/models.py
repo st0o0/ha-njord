@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
+from typing import Any
 
-from .const import AlertSeverity, AlertType, Domain, PollPhase
+from .const import AlertSeverity, AlertType, Domain, Feature, PollPhase
 
 # --- Domain data ---
 
@@ -60,15 +61,6 @@ class FloodSampleData:
 
 
 @dataclass(frozen=True)
-class SolarSampleData:
-    valid_at: datetime
-    direct_radiation: float
-    diffuse_radiation: float
-    shortwave_radiation: float
-    sunshine_duration: float
-
-
-@dataclass(frozen=True)
 class MarineSampleData:
     valid_at: datetime
     wave_height: float
@@ -102,14 +94,6 @@ class FloodDomainData:
 
 
 @dataclass(frozen=True)
-class SolarDomainData:
-    location: str
-    model_run: datetime | None = None
-    points: list[SolarSampleData] = field(default_factory=list)
-    domain: Domain = Domain.SOLAR
-
-
-@dataclass(frozen=True)
 class MarineDomainData:
     location: str
     model_run: datetime | None = None
@@ -117,7 +101,7 @@ class MarineDomainData:
     domain: Domain = Domain.MARINE
 
 
-DomainData = WeatherDomainData | AirQualityDomainData | FloodDomainData | SolarDomainData | MarineDomainData
+DomainData = WeatherDomainData | AirQualityDomainData | FloodDomainData | MarineDomainData
 
 
 # --- Catalog ---
@@ -214,20 +198,23 @@ class AlertData:
 
 
 @dataclass(frozen=True)
-class LifestyleData:
-    """One lifestyle advisory; the keys of data depend on type (all values are strings)."""
-
-    type: str
-    location: str
-    data: dict[str, str] = field(default_factory=dict)
-    updated_at: datetime | None = None
+class ScoreData:
+    score: int = 0
+    best_start: datetime | None = None
+    best_hours: int = 0
 
 
 @dataclass(frozen=True)
-class EnrichmentData:
-    """Alerts of a location, plus the lifestyle advisories a unary GetEnrichments returned."""
+class FeatureData:
+    """One typed feature result of a location.
+
+    Alert features carry `alert`, score features carry `score`; the feature-specific fields of every feature are in
+    `values` with native types (numbers, bools, datetimes, lowercase enum text, lists).
+    """
 
     location: str
-    alerts: list[AlertData] = field(default_factory=list)
+    feature: Feature
     updated_at: datetime | None = None
-    lifestyle: list[LifestyleData] = field(default_factory=list)
+    alert: AlertData | None = None
+    score: ScoreData | None = None
+    values: dict[str, Any] = field(default_factory=dict)

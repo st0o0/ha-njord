@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import datetime
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
@@ -19,11 +20,11 @@ from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DISCHARGE_UNIT, DOMAIN, Domain, enabled_lifestyle_types
+from .const import DISCHARGE_UNIT, DOMAIN, Domain, Feature, feature_enabled
 from .coordinator import NjordDataCoordinator, NjordStatusCoordinator
-from .helpers import current_point, device_info, enabled_enrichments_of, server_device_info, slugify_location
+from .helpers import current_point, device_info, server_device_info, slugify_location
 from .lifestyle import LIFESTYLE_SENSORS, LifestyleSensorDescription
-from .models import DomainData, LifestyleData
+from .models import DomainData, FeatureData
 
 POLLEN_UNIT = "grains/m³"
 
@@ -191,20 +192,18 @@ async def async_setup_entry(
     """Set up njord sensor entities."""
     coordinator: NjordDataCoordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
     sw_version = _get_sw_version(hass, entry)
-    lifestyle_types = enabled_lifestyle_types(enabled_enrichments_of(entry))
 
-    def lifestyle_sensors(location: str, lifestyle_type: str) -> list[SensorEntity]:
-        if lifestyle_type not in lifestyle_types:
-            return []
+    def feature_sensors(location: str, feature: Feature) -> list[SensorEntity]:
         return [
             NjordLifestyleSensor(coordinator, entry, location, description, sw_version)
             for description in LIFESTYLE_SENSORS
-            if description.type == lifestyle_type
+            if description.feature == feature
         ]
 
     entities: list[SensorEntity] = []
-    for location, lifestyle_type in sorted(coordinator.data.lifestyle):
-        entities.extend(lifestyle_sensors(location, lifestyle_type))
+    for location, feature in sorted(coordinator.data.features):
+        if feature_enabled(feature, coordinator.data.active_enrichments):
+            entities.extend(feature_sensors(location, feature))
     for location, domain in sorted(coordinator.data.domains, key=lambda key: (key[0], key[1].value)):
         entities.extend(_domain_sensors(coordinator, entry, location, domain, sw_version))
 
@@ -225,7 +224,7 @@ async def async_setup_entry(
         return _domain_sensors(coordinator, entry, location, domain, sw_version)
 
     coordinator.register_entity_factory("sensor", async_add_entities, sensor_factory)
-    coordinator.register_lifestyle_factory("sensor", async_add_entities, lifestyle_sensors)
+    coordinator.register_feature_factory("sensor", async_add_entities, feature_sensors)
 
 
 class NjordDomainSensor(CoordinatorEntity[NjordDataCoordinator], SensorEntity):
@@ -291,6 +290,15 @@ class NjordDomainSensor(CoordinatorEntity[NjordDataCoordinator], SensorEntity):
         return attrs
 
 
+def _attributes(item: FeatureData) -> dict[str, object]:
+    attrs: dict[str, object] = {}
+    for name, value in item.values.items():
+        if value is None:
+            continue
+        attrs[name] = value.isoformat() if isinstance(value, datetime) else value
+    return attrs
+
+
 class NjordLifestyleSensor(CoordinatorEntity[NjordDataCoordinator], SensorEntity):
     """Sensor for one lifestyle advisory of a location."""
 
@@ -317,10 +325,10 @@ class NjordLifestyleSensor(CoordinatorEntity[NjordDataCoordinator], SensorEntity
             self._attr_options = list(description.options)
         self._attr_device_info = device_info(entry, location, sw_version)
 
-    def _item(self) -> LifestyleData | None:
+    def _item(self) -> FeatureData | None:
         if self.coordinator.data is None:
             return None
-        return self.coordinator.data.lifestyle.get((self._location, self._description.type))
+        return self.coordinator.data.features.get((self._location, self._description.feature))
 
     @property
     def available(self) -> bool:
@@ -341,7 +349,7 @@ class NjordLifestyleSensor(CoordinatorEntity[NjordDataCoordinator], SensorEntity
         item = self._item()
         if item is None:
             return None
-        attrs: dict[str, object] = dict(item.data)
+        attrs: dict[str, object] = _attributes(item)
         if item.updated_at is not None:
             attrs["updated_at"] = item.updated_at.isoformat()
         return attrs

@@ -6,7 +6,7 @@ binary sensor, event, and button entities with real-time updates.
 
 ## Architecture
 
-ha-njord is a **pure consumer** — it reads domain data and alert enrichments
+ha-njord is a **pure consumer** — it reads domain data and typed enrichments
 from njord via gRPC streaming and presents them as Home Assistant entities.
 There is no polling on the HA side; updates arrive in real time.
 
@@ -15,11 +15,12 @@ njord (gRPC server)  ──►  ha-njord (HA integration)
   StreamDomainData()          NjordDataCoordinator (streaming)
   StreamEnrichments()         weather, sensor, binary_sensor,
   GetDomainData()             event, button entities
+  GetEnrichments()
   GetStatus()                 NjordStatusCoordinator (polling)
 ```
 
-Domains: weather, air quality, flood, marine (solar is served but has no entities).
-Enrichments on the wire are alerts (19 alert types) and lifestyle advisories (14 types, `lifestyle.py`), each gated by an enrichment toggle.
+Domains: weather, air quality, flood, marine are tracked and get entities. The proto also carries seasonal and satellite (`DomainDataUpdate` oneof has weather, air_quality, flood, marine, satellite); they are not consumed.
+Enrichments on the wire are typed per-feature `EnrichmentEvent`s (oneof `feature`: alerts, scores, conditions, trends, forecasts). Which features get entities follows `StatusResponse.active_enrichments` (`<Category>:<Name>` keys, see `FEATURE_KEYS` in `const.py`); an empty list means all enabled. There are no enrichment toggles on the HA side.
 
 ## Tech Stack
 
@@ -59,30 +60,28 @@ docker run --rm -v "$PWD:/work" -w /work python:3.12-slim \
     --grpc_python_out=custom_components/njord/proto \
     protos/njord/v2/common.proto \
     protos/njord/v2/weather.proto \
-    protos/njord/v2/admin.proto \
-    protos/njord/v2/ops.proto \
-    protos/njord/v2/sensor.proto"
+    protos/njord/v2/ops.proto"
 ```
 
 ## Project Structure
 
 ```
 custom_components/njord/
-├── __init__.py          # Setup: client, coordinators, platforms, v1->v2 migration, trigger_poll service
-├── config_flow.py       # Config flow (host+port, enrichment toggles) + options flow (poll interval, toggles)
-├── coordinator.py       # NjordDataCoordinator (domain + enrichment streams) + NjordStatusCoordinator (polling)
+├── __init__.py          # Setup: client, coordinators, platforms, v1->v2->v3 migration, trigger_poll service
+├── config_flow.py       # Config flow (host+port) + options flow (status poll interval)
+├── coordinator.py       # NjordDataCoordinator (domain + typed feature streams) + NjordStatusCoordinator (polling)
 ├── weather.py           # One weather entity per location (weather domain, hourly forecast)
 ├── sensor.py            # Domain sensors (air quality, flood, marine) + server diagnostics
-├── lifestyle.py         # Lifestyle sensor and binary sensor descriptions
-├── binary_sensor.py     # Lifestyle binary sensors, alert binary sensors (one per enabled alert type), stream connectivity
+├── lifestyle.py         # Feature-keyed sensor and binary sensor descriptions (scores, conditions, trends, forecasts)
+├── binary_sensor.py     # Feature binary sensors, alert binary sensors (one per active alert feature), stream connectivity
 ├── event.py             # Alert event entity (started, escalated, deescalated, cleared)
 ├── button.py            # Trigger poll button
 ├── grpc_client.py       # NjordClient: async gRPC wrapper (unary + reconnecting streams)
-├── models.py            # Frozen dataclasses (domain data, alerts, status, catalog)
+├── models.py            # Frozen dataclasses (domain data, alerts, FeatureData/ScoreData, status, catalog)
 ├── condition_mapper.py  # WMO weather_code + is_day -> HA condition string
-├── helpers.py           # Device info, enabled enrichments, current sample picker
+├── helpers.py           # Device info, current sample picker
 ├── diagnostics.py       # HA diagnostics download
-├── const.py             # DOMAIN, Domain, AlertType (19), Enrichment toggles, ALERT_META
+├── const.py             # DOMAIN, Domain, Feature/FEATURE_KEYS, AlertType (20), ALERT_META
 ├── manifest.json        # HA integration metadata
 ├── strings.json         # English UI strings
 ├── translations/de.json # German UI strings

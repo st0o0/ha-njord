@@ -13,15 +13,15 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.issue_registry import IssueSeverity, async_create_issue, async_delete_issue
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .const import DOMAIN, Domain, StreamName
+from .const import DOMAIN, Domain, Feature, StreamName, feature_enabled
 from .grpc_client import NjordClient
-from .models import DomainData, EnrichmentData, LifestyleData, ModelInfoData, NjordLocation, ServerStatusData
+from .models import DomainData, FeatureData, ModelInfoData, NjordLocation, ServerStatusData
 
 _LOGGER = logging.getLogger(__name__)
 
 _STREAM_DISCONNECT_GRACE = 60.0
 
-# Domains the integration creates entities for; solar data is served but has no entities yet.
+# Domains the integration creates entities for.
 TRACKED_DOMAINS: tuple[Domain, ...] = (Domain.WEATHER, Domain.AIR_QUALITY, Domain.FLOOD, Domain.MARINE)
 
 
@@ -29,8 +29,7 @@ TRACKED_DOMAINS: tuple[Domain, ...] = (Domain.WEATHER, Domain.AIR_QUALITY, Domai
 class NjordCoordinatorData:
     locations: list[NjordLocation] = field(default_factory=list)
     domains: dict[tuple[str, Domain], DomainData] = field(default_factory=dict)
-    enrichments: dict[str, EnrichmentData] = field(default_factory=dict)
-    lifestyle: dict[tuple[str, str], LifestyleData] = field(default_factory=dict)
+    features: dict[tuple[str, Feature], FeatureData] = field(default_factory=dict)
     model_info: dict[str, ModelInfoData] = field(default_factory=dict)
     active_enrichments: set[str] | None = None
 
@@ -47,8 +46,8 @@ class NjordCoordinatorData:
 # Called for every (location, domain) pair that appears for the first time; returns the new entities.
 EntityFactory = Callable[[str, Domain], list]
 
-# Called for every (location, lifestyle type) pair that appears for the first time; returns the new entities.
-LifestyleEntityFactory = Callable[[str, str], list]
+# Called for every (location, feature) pair that appears for the first time; returns the new entities.
+FeatureEntityFactory = Callable[[str, Feature], list]
 
 
 class NjordDataCoordinator(DataUpdateCoordinator[NjordCoordinatorData]):
@@ -64,7 +63,7 @@ class NjordDataCoordinator(DataUpdateCoordinator[NjordCoordinatorData]):
         self.client = client
         self._stream_tasks: list[asyncio.Task] = []
         self._entity_factories: dict[str, tuple[AddEntitiesCallback, EntityFactory]] = {}
-        self._lifestyle_factories: dict[str, tuple[AddEntitiesCallback, LifestyleEntityFactory]] = {}
+        self._feature_factories: dict[str, tuple[AddEntitiesCallback, FeatureEntityFactory]] = {}
         self.stream_states: dict[StreamName, bool] = {name: False for name in StreamName}
         self._stream_disconnect_times: dict[StreamName, float] = {}
         self._stream_issue_created: dict[StreamName, bool] = {}
@@ -90,10 +89,8 @@ class NjordDataCoordinator(DataUpdateCoordinator[NjordCoordinatorData]):
                     result.domains[(location.name, domain)] = data
 
             try:
-                enrichment = await self.client.get_enrichments(location.name)
-                result.enrichments[location.name] = enrichment
-                for item in enrichment.lifestyle:
-                    result.lifestyle[(item.location, item.type)] = item
+                for item in await self.client.get_enrichments(location.name):
+                    result.features[(item.location, item.feature)] = item
             except Exception as err:
                 _LOGGER.warning("Failed to get enrichments for %s: %s", location.name, err)
 
@@ -107,13 +104,13 @@ class NjordDataCoordinator(DataUpdateCoordinator[NjordCoordinatorData]):
     ) -> None:
         self._entity_factories[platform] = (add_entities, factory)
 
-    def register_lifestyle_factory(
+    def register_feature_factory(
         self,
         platform: str,
         add_entities: AddEntitiesCallback,
-        factory: LifestyleEntityFactory,
+        factory: FeatureEntityFactory,
     ) -> None:
-        self._lifestyle_factories[platform] = (add_entities, factory)
+        self._feature_factories[platform] = (add_entities, factory)
 
     def start_streams(self) -> None:
         self._stream_tasks = [
@@ -180,10 +177,7 @@ class NjordDataCoordinator(DataUpdateCoordinator[NjordCoordinatorData]):
                 on_reconnect=lambda: self._on_stream_connect(StreamName.ENRICHMENT),
                 on_disconnect=lambda: self._on_stream_disconnect(StreamName.ENRICHMENT),
             ):
-                if isinstance(event, LifestyleData):
-                    self._apply_lifestyle(event)
-                else:
-                    self.data.enrichments[event.location] = event
+                self._apply_feature(event)
                 self.async_set_updated_data(self.data)
         except asyncio.CancelledError:
             return
@@ -191,21 +185,23 @@ class NjordDataCoordinator(DataUpdateCoordinator[NjordCoordinatorData]):
             _LOGGER.exception("Enrichment stream task failed")
             self._on_stream_disconnect(StreamName.ENRICHMENT)
 
-    def _apply_lifestyle(self, item: LifestyleData) -> None:
-        key = (item.location, item.type)
-        is_new = key not in self.data.lifestyle
-        self.data.lifestyle[key] = item
+    def _apply_feature(self, item: FeatureData) -> None:
+        key = (item.location, item.feature)
+        is_new = key not in self.data.features
+        self.data.features[key] = item
         if is_new:
-            self._create_lifestyle_entities_for(item.location, item.type)
+            self._create_feature_entities_for(item.location, item.feature)
 
-    def _create_lifestyle_entities_for(self, location: str, lifestyle_type: str) -> None:
-        for platform, (add_entities, factory) in self._lifestyle_factories.items():
+    def _create_feature_entities_for(self, location: str, feature: Feature) -> None:
+        if not feature_enabled(feature, self.data.active_enrichments):
+            return
+        for platform, (add_entities, factory) in self._feature_factories.items():
             try:
-                entities = factory(location, lifestyle_type)
+                entities = factory(location, feature)
                 if entities:
                     add_entities(entities)
             except Exception as err:
-                _LOGGER.error("Failed to create %s entities for %s/%s: %s", platform, location, lifestyle_type, err)
+                _LOGGER.error("Failed to create %s entities for %s/%s: %s", platform, location, feature, err)
 
     def _create_entities_for(self, location: str, domain: Domain) -> None:
         for platform, (add_entities, factory) in self._entity_factories.items():
