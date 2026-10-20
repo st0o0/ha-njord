@@ -6,18 +6,20 @@ binary sensor, event, and button entities with real-time updates.
 
 ## Architecture
 
-ha-njord is a **pure consumer** — it reads forecasts, enrichments, and config
+ha-njord is a **pure consumer** — it reads domain data and alert enrichments
 from njord via gRPC streaming and presents them as Home Assistant entities.
 There is no polling on the HA side; updates arrive in real time.
 
 ```
 njord (gRPC server)  ──►  ha-njord (HA integration)
-  StreamForecasts()           NjordCoordinator (streaming)
+  StreamDomainData()          NjordDataCoordinator (streaming)
   StreamEnrichments()         weather, sensor, binary_sensor,
-  StreamConfig()              event, button entities
+  GetDomainData()             event, button entities
   GetStatus()                 NjordStatusCoordinator (polling)
-  Push() (sensors)            Sensor push (state listener)
 ```
+
+Domains: weather, air quality, flood, marine (solar is served but has no entities).
+Enrichments on the wire are alerts only (19 alert types).
 
 ## Tech Stack
 
@@ -66,28 +68,27 @@ docker run --rm -v "$PWD:/work" -w /work python:3.12-slim \
 
 ```
 custom_components/njord/
-├── __init__.py          # Setup: client, coordinators, platforms, sensor push, options listener
-├── config_flow.py       # Config flow (host+port) + options flow (enrichments, sensor push, poll interval)
-├── coordinator.py       # NjordCoordinator (streaming) + NjordStatusCoordinator (polling)
-├── weather.py           # Weather entities (per-model + consensus with horizon advance)
-├── sensor.py            # Sensors: alerts, indices, VPD, frost, trend, derived, model perf, server diag
-├── binary_sensor.py     # Binary sensors: inversion, stream connectivity
+├── __init__.py          # Setup: client, coordinators, platforms, v1->v2 migration, trigger_poll service
+├── config_flow.py       # Config flow (host+port, enrichment toggles) + options flow (poll interval, toggles)
+├── coordinator.py       # NjordDataCoordinator (domain + enrichment streams) + NjordStatusCoordinator (polling)
+├── weather.py           # One weather entity per location (weather domain, hourly forecast)
+├── sensor.py            # Domain sensors (air quality, flood, marine) + server diagnostics
+├── binary_sensor.py     # Alert binary sensors (one per enabled alert type), stream connectivity
 ├── event.py             # Alert event entity (started, escalated, deescalated, cleared)
 ├── button.py            # Trigger poll button
-├── grpc_client.py       # NjordClient — async gRPC wrapper (unary + streaming)
-├── models.py            # Frozen dataclasses (ForecastData, EnrichmentData, ...)
-├── condition_mapper.py  # WMO weather_code + is_day → HA condition string
-├── horizon.py           # Horizon offset helper
-├── helpers.py           # Device info helper
+├── grpc_client.py       # NjordClient: async gRPC wrapper (unary + reconnecting streams)
+├── models.py            # Frozen dataclasses (domain data, alerts, status, catalog)
+├── condition_mapper.py  # WMO weather_code + is_day -> HA condition string
+├── helpers.py           # Device info, enabled enrichments, current sample picker
 ├── diagnostics.py       # HA diagnostics download
-├── const.py             # DOMAIN, DEFAULT_PORT
+├── const.py             # DOMAIN, Domain, AlertType (19), Enrichment toggles, ALERT_META
 ├── manifest.json        # HA integration metadata
 ├── strings.json         # English UI strings
 ├── translations/de.json # German UI strings
-└── proto/               # Generated protobuf/gRPC stubs (njord v2)
+└── proto/               # Generated protobuf/gRPC stubs (njord v2: common, weather, ops)
 
 protos/njord/v2/         # Source .proto files (synced from njord repo)
-tests/                   # pytest tests (223 total, 18 skipped without gRPC server)
+tests/                   # pytest tests
 brand/                   # HACS brand assets (icon.png, logo.svg)
 ```
 
