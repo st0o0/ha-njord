@@ -146,6 +146,7 @@ class NjordConfigFlow(ConfigFlow, domain=DOMAIN):
 
                 return self.async_update_reload_and_abort(
                     entry,
+                    unique_id=new_unique_id,
                     title=f"njord ({host})",
                     data={CONF_HOST: host, CONF_PORT: port},
                 )
