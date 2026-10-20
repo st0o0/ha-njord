@@ -8,6 +8,7 @@ from enum import StrEnum
 
 from homeassistant.components.sensor import SensorDeviceClass
 from homeassistant.const import (
+    CONCENTRATION_MICROGRAMS_PER_CUBIC_METER,
     CONF_HOST,
     CONF_PORT,
     PERCENTAGE,
@@ -15,6 +16,7 @@ from homeassistant.const import (
     UnitOfPressure,
     UnitOfSpeed,
     UnitOfTemperature,
+    UnitOfVolumeFlowRate,
 )
 
 DOMAIN = "njord"
@@ -25,40 +27,59 @@ DEFAULT_STATUS_POLL_INTERVAL = 30
 # Config entry data keys (HA's own constants where they exist) and option keys.
 __all__ = ["CONF_HOST", "CONF_PORT"]
 CONF_STATUS_POLL_INTERVAL = "status_poll_interval"
-CONF_DISABLED_ENRICHMENT_GROUPS = "disabled_enrichment_groups"
-CONF_ENABLED_ENRICHMENT_GROUPS = "enabled_enrichment_groups"
-CONF_SENSOR_PUSH = "sensor_push"
+CONF_ENABLED_ENRICHMENTS = "enabled_enrichments"
+CONF_ENABLED_DOMAINS = "enabled_domains"
 
 
-class EnrichmentGroup(StrEnum):
-    """Enrichment groups njord reports as active and the user can disable."""
+class Domain(StrEnum):
+    """Data domains njord serves through GetDomainData / StreamDomainData."""
 
-    ALERTS = "alerts"
-    INDICES = "indices"
-    TRENDS = "trends"
-    DERIVED = "derived"
-    CONSENSUS = "consensus"
+    UNSPECIFIED = "unspecified"
+    WEATHER = "weather"
+    AIR_QUALITY = "air_quality"
+    FLOOD = "flood"
+    SOLAR = "solar"
+    MARINE = "marine"
+
+    @classmethod
+    def _missing_(cls, value: object) -> Domain:
+        return cls.UNSPECIFIED
 
 
-def parse_enrichment_groups(values: Iterable[str] | None) -> frozenset[EnrichmentGroup]:
-    """Convert stored or reported group names, ignoring unknown (legacy) names."""
-    known = {group.value: group for group in EnrichmentGroup}
+class Enrichment(StrEnum):
+    """Alert-producing enrichment toggles, named like njord's EnrichmentOptions keys in snake_case."""
+
+    WEATHER_ALERTS = "weather_alerts"
+    POLLEN_ALERT = "pollen_alert"
+    PM25_ALERT = "pm25_alert"
+    FLOOD_RISK = "flood_risk"
+    FLOOD_RAIN = "flood_rain"
+    SWIMMING_CONDITIONS = "swimming_conditions"
+
+
+# Enrichments njord enables by default (EnrichmentOptions property initializers).
+DEFAULT_ENABLED_ENRICHMENTS: frozenset[Enrichment] = frozenset(
+    {Enrichment.WEATHER_ALERTS, Enrichment.POLLEN_ALERT, Enrichment.PM25_ALERT}
+)
+
+
+def parse_enrichments(values: Iterable[str] | None) -> frozenset[Enrichment]:
+    """Convert stored enrichment names, ignoring unknown names."""
+    known = {item.value: item for item in Enrichment}
+    return frozenset(known[value] for value in values or () if value in known)
+
+
+def parse_domains(values: Iterable[str] | None) -> frozenset[Domain]:
+    """Convert stored domain names, ignoring unknown and unspecified names."""
+    known = {item.value: item for item in Domain if item is not Domain.UNSPECIFIED}
     return frozenset(known[value] for value in values or () if value in known)
 
 
 class StreamName(StrEnum):
     """Streaming connections tracked by the coordinator."""
 
-    FORECAST = "forecast"
+    DOMAIN = "domain"
     ENRICHMENT = "enrichment"
-    CONFIG = "config"
-
-
-class SensorKind(StrEnum):
-    """External sensor kinds that can be pushed to njord."""
-
-    INDOOR_TEMPERATURE = "indoor_temperature"
-    INDOOR_HUMIDITY = "indoor_humidity"
 
 
 class AlertEvent(StrEnum):
@@ -113,6 +134,11 @@ class AlertType(StrEnum):
     VISIBILITY = "visibility"
     TROPICAL_NIGHT = "tropical_night"
     HUMIDITY = "humidity"
+    POLLEN = "pollen"
+    PM25 = "pm25"
+    FLOOD_RISK = "flood_risk"
+    FLOOD_RAIN = "flood_rain"
+    SWIMMING_CONDITIONS = "swimming_conditions"
 
     @classmethod
     def _missing_(cls, value: object) -> AlertType:
@@ -137,45 +163,6 @@ class PollPhase(_WireEnum):
     UNSPECIFIED = "unspecified"
     DISCOVERY = "discovery"
     STEADY = "steady"
-
-
-class TrendDirection(_WireEnum):
-    """Direction of a parameter trend."""
-
-    UNSPECIFIED = "unspecified"
-    RISING = "rising"
-    FALLING = "falling"
-    STABLE = "stable"
-
-
-class Stability(_WireEnum):
-    """Forecast stability label."""
-
-    UNSPECIFIED = "unspecified"
-    CONVERGING = "converging"
-    DIVERGING = "diverging"
-    STABLE = "stable"
-
-
-class DewPointComfort(_WireEnum):
-    """Dew point comfort category."""
-
-    UNSPECIFIED = "unspecified"
-    DRY = "dry"
-    COMFORTABLE = "comfortable"
-    STICKY = "sticky"
-    OPPRESSIVE = "oppressive"
-    DANGEROUS = "dangerous"
-
-
-class VpdCategory(_WireEnum):
-    """Vapour pressure deficit category."""
-
-    UNSPECIFIED = "unspecified"
-    LOW = "low"
-    OPTIMAL = "optimal"
-    HIGH = "high"
-    CRITICAL = "critical"
 
 
 @dataclass(frozen=True)
@@ -221,4 +208,49 @@ ALERT_META: dict[AlertType, AlertMeta] = {
         "Tropical Night Alert", UnitOfTemperature.CELSIUS, "mdi:weather-night", 1, SensorDeviceClass.TEMPERATURE
     ),
     AlertType.HUMIDITY: AlertMeta("Humidity Alert", PERCENTAGE, "mdi:water-percent", 0, SensorDeviceClass.HUMIDITY),
+    AlertType.POLLEN: AlertMeta("Pollen Alert", "grains/m³", "mdi:flower-pollen", 1),
+    AlertType.PM25: AlertMeta(
+        "PM2.5 Alert", CONCENTRATION_MICROGRAMS_PER_CUBIC_METER, "mdi:blur", 1, SensorDeviceClass.PM25
+    ),
+    AlertType.FLOOD_RISK: AlertMeta(
+        "Flood Risk Alert", UnitOfVolumeFlowRate.CUBIC_METERS_PER_SECOND, "mdi:home-flood", 1
+    ),
+    AlertType.FLOOD_RAIN: AlertMeta("Flood Rain Alert", "mm", "mdi:weather-pouring", 1),
+    AlertType.SWIMMING_CONDITIONS: AlertMeta("Swimming Conditions Alert", UnitOfLength.METERS, "mdi:swim", 1),
 }
+
+
+# Alert types each enrichment toggle gates. Insertion order of ALERT_META is the entity creation order.
+ENRICHMENT_ALERT_TYPES: dict[Enrichment, frozenset[AlertType]] = {
+    Enrichment.WEATHER_ALERTS: frozenset(
+        {
+            AlertType.FROST,
+            AlertType.HEAT,
+            AlertType.STORM,
+            AlertType.HEAVY_RAIN,
+            AlertType.UV,
+            AlertType.FOG,
+            AlertType.SNOW,
+            AlertType.PRESSURE_DROP,
+            AlertType.THUNDERSTORM,
+            AlertType.ICE,
+            AlertType.WIND_CHILL,
+            AlertType.VISIBILITY,
+            AlertType.TROPICAL_NIGHT,
+            AlertType.HUMIDITY,
+        }
+    ),
+    Enrichment.POLLEN_ALERT: frozenset({AlertType.POLLEN}),
+    Enrichment.PM25_ALERT: frozenset({AlertType.PM25}),
+    Enrichment.FLOOD_RISK: frozenset({AlertType.FLOOD_RISK}),
+    Enrichment.FLOOD_RAIN: frozenset({AlertType.FLOOD_RAIN}),
+    Enrichment.SWIMMING_CONDITIONS: frozenset({AlertType.SWIMMING_CONDITIONS}),
+}
+
+
+def enabled_alert_types(enabled: Iterable[Enrichment]) -> list[AlertType]:
+    """Alert types gated on by the enabled enrichments, in entity creation order."""
+    allowed: set[AlertType] = set()
+    for enrichment in enabled:
+        allowed |= ENRICHMENT_ALERT_TYPES[enrichment]
+    return [alert_type for alert_type in ALERT_META if alert_type in allowed]

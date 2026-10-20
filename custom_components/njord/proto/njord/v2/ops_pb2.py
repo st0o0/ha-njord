@@ -25,7 +25,7 @@ _sym_db = _symbol_database.Default()
 from google.protobuf import timestamp_pb2 as google_dot_protobuf_dot_timestamp__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x12njord/v2/ops.proto\x12\x08njord.v2\x1a\x1fgoogle/protobuf/timestamp.proto\"\x12\n\x10GetStatusRequest\"\x87\x02\n\x0eStatusResponse\x12\x0f\n\x07version\x18\x01 \x01(\t\x12\x16\n\x0euptime_seconds\x18\x02 \x01(\x03\x12\x31\n\rprocess_start\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12&\n\x06\x62udget\x18\x04 \x01(\x0b\x32\x16.njord.v2.BudgetStatus\x12%\n\x06models\x18\x05 \x03(\x0b\x32\x15.njord.v2.ModelStatus\x12\x1a\n\x12\x61\x63tive_enrichments\x18\x06 \x03(\t\x12\x16\n\x0e\x62udget_partial\x18\x07 \x01(\x08\x12\x16\n\x0emodels_partial\x18\x08 \x01(\x08\"{\n\x0c\x42udgetStatus\x12\x15\n\rmonthly_limit\x18\x01 \x01(\x03\x12\x14\n\x0cmonthly_used\x18\x02 \x01(\x03\x12\x13\n\x0b\x64\x61ily_limit\x18\x03 \x01(\x03\x12\x12\n\ndaily_used\x18\x04 \x01(\x03\x12\x15\n\rusage_percent\x18\x05 \x01(\x01\"\x8f\x02\n\x0bModelStatus\x12\x10\n\x08location\x18\x01 \x01(\t\x12\r\n\x05model\x18\x02 \x01(\t\x12-\n\tnext_poll\x18\x04 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x34\n\x0blast_change\x18\x05 \x01(\x0b\x32\x1a.google.protobuf.TimestampH\x00\x88\x01\x01\x12\x12\n\nmiss_count\x18\x06 \x01(\x05\x12\x1a\n\rcycle_seconds\x18\x07 \x01(\x03H\x01\x88\x01\x01\x12\"\n\x05phase\x18\x08 \x01(\x0e\x32\x13.njord.v2.PollPhaseB\x0e\n\x0c_last_changeB\x10\n\x0e_cycle_secondsJ\x04\x08\x03\x10\x04\"\x13\n\x11GetTargetsRequest\">\n\x12GetTargetsResponse\x12(\n\x07targets\x18\x01 \x03(\x0b\x32\x17.njord.v2.TriggerTarget\"\x91\x02\n\rTriggerTarget\x12\x10\n\x08location\x18\x01 \x01(\t\x12\r\n\x05model\x18\x02 \x01(\t\x12-\n\tnext_poll\x18\x04 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x34\n\x0blast_change\x18\x05 \x01(\x0b\x32\x1a.google.protobuf.TimestampH\x00\x88\x01\x01\x12\x12\n\nmiss_count\x18\x06 \x01(\x05\x12\x1a\n\rcycle_seconds\x18\x07 \x01(\x03H\x01\x88\x01\x01\x12\"\n\x05phase\x18\x08 \x01(\x0e\x32\x13.njord.v2.PollPhaseB\x0e\n\x0c_last_changeB\x10\n\x0e_cycle_secondsJ\x04\x08\x03\x10\x04\"5\n\x12TriggerPollRequest\x12\x10\n\x08location\x18\x01 \x01(\t\x12\r\n\x05model\x18\x02 \x01(\t\"?\n\x13TriggerPollResponse\x12\x17\n\x0ftriggered_count\x18\x01 \x01(\x05\x12\x0f\n\x07targets\x18\x02 \x03(\t*X\n\tPollPhase\x12\x1a\n\x16POLL_PHASE_UNSPECIFIED\x10\x00\x12\x18\n\x14POLL_PHASE_DISCOVERY\x10\x01\x12\x15\n\x11POLL_PHASE_STEADY\x10\x02\x32\xe4\x01\n\nOpsService\x12\x41\n\tGetStatus\x12\x1a.njord.v2.GetStatusRequest\x1a\x18.njord.v2.StatusResponse\x12G\n\nGetTargets\x12\x1b.njord.v2.GetTargetsRequest\x1a\x1c.njord.v2.GetTargetsResponse\x12J\n\x0bTriggerPoll\x12\x1c.njord.v2.TriggerPollRequest\x1a\x1d.njord.v2.TriggerPollResponseB\x10\xaa\x02\rNjord.Grpc.V2b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x12njord/v2/ops.proto\x12\x08njord.v2\x1a\x1fgoogle/protobuf/timestamp.proto\"\x12\n\x10GetStatusRequest\"\x87\x02\n\x0eStatusResponse\x12\x0f\n\x07version\x18\x01 \x01(\t\x12\x16\n\x0euptime_seconds\x18\x02 \x01(\x03\x12\x31\n\rprocess_start\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12&\n\x06\x62udget\x18\x04 \x01(\x0b\x32\x16.njord.v2.BudgetStatus\x12%\n\x06models\x18\x05 \x03(\x0b\x32\x15.njord.v2.ModelStatus\x12\x1a\n\x12\x61\x63tive_enrichments\x18\x06 \x03(\t\x12\x16\n\x0e\x62udget_partial\x18\x07 \x01(\x08\x12\x16\n\x0emodels_partial\x18\x08 \x01(\x08\"{\n\x0c\x42udgetStatus\x12\x15\n\rmonthly_limit\x18\x01 \x01(\x03\x12\x14\n\x0cmonthly_used\x18\x02 \x01(\x03\x12\x13\n\x0b\x64\x61ily_limit\x18\x03 \x01(\x03\x12\x12\n\ndaily_used\x18\x04 \x01(\x03\x12\x15\n\rusage_percent\x18\x05 \x01(\x01\"\x86\x02\n\x0bModelStatus\x12\x10\n\x08location\x18\x01 \x01(\t\x12-\n\tnext_poll\x18\x04 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x34\n\x0blast_change\x18\x05 \x01(\x0b\x32\x1a.google.protobuf.TimestampH\x00\x88\x01\x01\x12\x12\n\nmiss_count\x18\x06 \x01(\x05\x12\x1a\n\rcycle_seconds\x18\x07 \x01(\x03H\x01\x88\x01\x01\x12\"\n\x05phase\x18\x08 \x01(\x0e\x32\x13.njord.v2.PollPhaseB\x0e\n\x0c_last_changeB\x10\n\x0e_cycle_secondsJ\x04\x08\x02\x10\x03J\x04\x08\x03\x10\x04\"\x13\n\x11GetTargetsRequest\">\n\x12GetTargetsResponse\x12(\n\x07targets\x18\x01 \x03(\x0b\x32\x17.njord.v2.TriggerTarget\"\x88\x02\n\rTriggerTarget\x12\x10\n\x08location\x18\x01 \x01(\t\x12-\n\tnext_poll\x18\x04 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x34\n\x0blast_change\x18\x05 \x01(\x0b\x32\x1a.google.protobuf.TimestampH\x00\x88\x01\x01\x12\x12\n\nmiss_count\x18\x06 \x01(\x05\x12\x1a\n\rcycle_seconds\x18\x07 \x01(\x03H\x01\x88\x01\x01\x12\"\n\x05phase\x18\x08 \x01(\x0e\x32\x13.njord.v2.PollPhaseB\x0e\n\x0c_last_changeB\x10\n\x0e_cycle_secondsJ\x04\x08\x02\x10\x03J\x04\x08\x03\x10\x04\",\n\x12TriggerPollRequest\x12\x10\n\x08location\x18\x01 \x01(\tJ\x04\x08\x02\x10\x03\"?\n\x13TriggerPollResponse\x12\x17\n\x0ftriggered_count\x18\x01 \x01(\x05\x12\x0f\n\x07targets\x18\x02 \x03(\t*X\n\tPollPhase\x12\x1a\n\x16POLL_PHASE_UNSPECIFIED\x10\x00\x12\x18\n\x14POLL_PHASE_DISCOVERY\x10\x01\x12\x15\n\x11POLL_PHASE_STEADY\x10\x02\x32\xe4\x01\n\nOpsService\x12\x41\n\tGetStatus\x12\x1a.njord.v2.GetStatusRequest\x1a\x18.njord.v2.StatusResponse\x12G\n\nGetTargets\x12\x1b.njord.v2.GetTargetsRequest\x1a\x1c.njord.v2.GetTargetsResponse\x12J\n\x0bTriggerPoll\x12\x1c.njord.v2.TriggerPollRequest\x1a\x1d.njord.v2.TriggerPollResponseB\x10\xaa\x02\rNjord.Grpc.V2b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -33,8 +33,8 @@ _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'njord.v2.ops_pb2', _globals
 if not _descriptor._USE_C_DESCRIPTORS:
   _globals['DESCRIPTOR']._loaded_options = None
   _globals['DESCRIPTOR']._serialized_options = b'\252\002\rNjord.Grpc.V2'
-  _globals['_POLLPHASE']._serialized_start=1231
-  _globals['_POLLPHASE']._serialized_end=1319
+  _globals['_POLLPHASE']._serialized_start=1204
+  _globals['_POLLPHASE']._serialized_end=1292
   _globals['_GETSTATUSREQUEST']._serialized_start=65
   _globals['_GETSTATUSREQUEST']._serialized_end=83
   _globals['_STATUSRESPONSE']._serialized_start=86
@@ -42,17 +42,17 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_BUDGETSTATUS']._serialized_start=351
   _globals['_BUDGETSTATUS']._serialized_end=474
   _globals['_MODELSTATUS']._serialized_start=477
-  _globals['_MODELSTATUS']._serialized_end=748
-  _globals['_GETTARGETSREQUEST']._serialized_start=750
-  _globals['_GETTARGETSREQUEST']._serialized_end=769
-  _globals['_GETTARGETSRESPONSE']._serialized_start=771
-  _globals['_GETTARGETSRESPONSE']._serialized_end=833
-  _globals['_TRIGGERTARGET']._serialized_start=836
-  _globals['_TRIGGERTARGET']._serialized_end=1109
-  _globals['_TRIGGERPOLLREQUEST']._serialized_start=1111
-  _globals['_TRIGGERPOLLREQUEST']._serialized_end=1164
-  _globals['_TRIGGERPOLLRESPONSE']._serialized_start=1166
-  _globals['_TRIGGERPOLLRESPONSE']._serialized_end=1229
-  _globals['_OPSSERVICE']._serialized_start=1322
-  _globals['_OPSSERVICE']._serialized_end=1550
+  _globals['_MODELSTATUS']._serialized_end=739
+  _globals['_GETTARGETSREQUEST']._serialized_start=741
+  _globals['_GETTARGETSREQUEST']._serialized_end=760
+  _globals['_GETTARGETSRESPONSE']._serialized_start=762
+  _globals['_GETTARGETSRESPONSE']._serialized_end=824
+  _globals['_TRIGGERTARGET']._serialized_start=827
+  _globals['_TRIGGERTARGET']._serialized_end=1091
+  _globals['_TRIGGERPOLLREQUEST']._serialized_start=1093
+  _globals['_TRIGGERPOLLREQUEST']._serialized_end=1137
+  _globals['_TRIGGERPOLLRESPONSE']._serialized_start=1139
+  _globals['_TRIGGERPOLLRESPONSE']._serialized_end=1202
+  _globals['_OPSSERVICE']._serialized_start=1295
+  _globals['_OPSSERVICE']._serialized_end=1523
 # @@protoc_insertion_point(module_scope)

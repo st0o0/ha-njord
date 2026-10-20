@@ -26,7 +26,7 @@ from google.protobuf import timestamp_pb2 as google_dot_protobuf_dot_timestamp__
 from njord.v2 import common_pb2 as njord_dot_v2_dot_common__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x16njord/v2/weather.proto\x12\x08njord.v2\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x15njord/v2/common.proto\"\x13\n\x11GetCatalogRequest\"d\n\x12GetCatalogResponse\x12)\n\tlocations\x18\x01 \x03(\x0b\x32\x16.njord.v2.LocationInfo\x12#\n\x06models\x18\x02 \x03(\x0b\x32\x13.njord.v2.ModelInfo\"5\n\x12GetForecastRequest\x12\x10\n\x08location\x18\x01 \x01(\t\x12\r\n\x05model\x18\x02 \x01(\t\"\xb8\x01\n\x13GetForecastResponse\x12\x10\n\x08location\x18\x01 \x01(\t\x12\r\n\x05model\x18\x02 \x01(\t\x12.\n\nupdated_at\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12(\n\x06hourly\x18\x04 \x03(\x0b\x32\x18.njord.v2.HourlyForecast\x12&\n\x05\x64\x61ily\x18\x05 \x03(\x0b\x32\x17.njord.v2.DailyForecast\")\n\x15GetEnrichmentsRequest\x12\x10\n\x08location\x18\x01 \x01(\t\"\xb8\x02\n\x16GetEnrichmentsResponse\x12\x10\n\x08location\x18\x01 \x01(\t\x12%\n\x06\x61lerts\x18\x02 \x01(\x0b\x32\x15.njord.v2.AlertUpdate\x12&\n\x07indices\x18\x03 \x01(\x0b\x32\x15.njord.v2.IndexUpdate\x12%\n\x06trends\x18\x04 \x01(\x0b\x32\x15.njord.v2.TrendUpdate\x12(\n\x07\x64\x65rived\x18\x05 \x01(\x0b\x32\x17.njord.v2.DerivedUpdate\x12,\n\tconsensus\x18\x07 \x01(\x0b\x32\x19.njord.v2.ConsensusUpdate\x12\x38\n\x14\x63onsensus_updated_at\x18\x08 \x01(\x0b\x32\x1a.google.protobuf.TimestampJ\x04\x08\x06\x10\x07\"*\n\x16StreamForecastsRequest\x12\x10\n\x08location\x18\x01 \x01(\t\"\xb3\x01\n\x0e\x46orecastUpdate\x12\x10\n\x08location\x18\x01 \x01(\t\x12\r\n\x05model\x18\x02 \x01(\t\x12.\n\nupdated_at\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12(\n\x06hourly\x18\x04 \x03(\x0b\x32\x18.njord.v2.HourlyForecast\x12&\n\x05\x64\x61ily\x18\x05 \x03(\x0b\x32\x17.njord.v2.DailyForecast\",\n\x18StreamEnrichmentsRequest\x12\x10\n\x08location\x18\x01 \x01(\t\"\xc9\x02\n\x0f\x45nrichmentEvent\x12\x10\n\x08location\x18\x01 \x01(\t\x12\x11\n\ttype_name\x18\x02 \x01(\t\x12.\n\nupdated_at\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\'\n\x06\x61lerts\x18\n \x01(\x0b\x32\x15.njord.v2.AlertUpdateH\x00\x12(\n\x07indices\x18\x0b \x01(\x0b\x32\x15.njord.v2.IndexUpdateH\x00\x12\'\n\x06trends\x18\x0c \x01(\x0b\x32\x15.njord.v2.TrendUpdateH\x00\x12*\n\x07\x64\x65rived\x18\r \x01(\x0b\x32\x17.njord.v2.DerivedUpdateH\x00\x12.\n\tconsensus\x18\x0f \x01(\x0b\x32\x19.njord.v2.ConsensusUpdateH\x00\x42\t\n\x07payload2\xa1\x03\n\x0eWeatherService\x12G\n\nGetCatalog\x12\x1b.njord.v2.GetCatalogRequest\x1a\x1c.njord.v2.GetCatalogResponse\x12J\n\x0bGetForecast\x12\x1c.njord.v2.GetForecastRequest\x1a\x1d.njord.v2.GetForecastResponse\x12S\n\x0eGetEnrichments\x12\x1f.njord.v2.GetEnrichmentsRequest\x1a .njord.v2.GetEnrichmentsResponse\x12O\n\x0fStreamForecasts\x12 .njord.v2.StreamForecastsRequest\x1a\x18.njord.v2.ForecastUpdate0\x01\x12T\n\x11StreamEnrichments\x12\".njord.v2.StreamEnrichmentsRequest\x1a\x19.njord.v2.EnrichmentEvent0\x01\x42\x10\xaa\x02\rNjord.Grpc.V2b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x16njord/v2/weather.proto\x12\x08njord.v2\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x15njord/v2/common.proto\"\x13\n\x11GetCatalogRequest\"d\n\x12GetCatalogResponse\x12)\n\tlocations\x18\x01 \x03(\x0b\x32\x16.njord.v2.LocationInfo\x12#\n\x06models\x18\x02 \x03(\x0b\x32\x13.njord.v2.ModelInfo\"J\n\x14GetDomainDataRequest\x12\x10\n\x08location\x18\x01 \x01(\t\x12 \n\x06\x64omain\x18\x02 \x01(\x0e\x32\x10.njord.v2.Domain\"N\n\x17StreamDomainDataRequest\x12\x10\n\x08location\x18\x01 \x01(\t\x12!\n\x07\x64omains\x18\x02 \x03(\x0e\x32\x10.njord.v2.Domain\"\xcc\x02\n\x10\x44omainDataUpdate\x12\x10\n\x08location\x18\x01 \x01(\t\x12 \n\x06\x64omain\x18\x02 \x01(\x0e\x32\x10.njord.v2.Domain\x12-\n\tmodel_run\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12(\n\x07weather\x18\n \x01(\x0b\x32\x15.njord.v2.WeatherDataH\x00\x12/\n\x0b\x61ir_quality\x18\x0b \x01(\x0b\x32\x18.njord.v2.AirQualityDataH\x00\x12$\n\x05\x66lood\x18\x0c \x01(\x0b\x32\x13.njord.v2.FloodDataH\x00\x12$\n\x05solar\x18\r \x01(\x0b\x32\x13.njord.v2.SolarDataH\x00\x12&\n\x06marine\x18\x0e \x01(\x0b\x32\x14.njord.v2.MarineDataH\x00\x42\x06\n\x04\x64\x61ta\"6\n\x0bWeatherData\x12\'\n\x06points\x18\x01 \x03(\x0b\x32\x17.njord.v2.WeatherSample\"\xa4\x05\n\rWeatherSample\x12,\n\x08valid_at\x18\x01 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x13\n\x0btemperature\x18\x02 \x01(\x01\x12\x1c\n\x14\x61pparent_temperature\x18\x03 \x01(\x01\x12\x12\n\nwind_speed\x18\x04 \x01(\x01\x12\x15\n\rprecipitation\x18\x05 \x01(\x01\x12!\n\x19precipitation_probability\x18\x06 \x01(\x01\x12\x13\n\x0b\x63loud_cover\x18\x07 \x01(\x01\x12\x10\n\x08pressure\x18\x08 \x01(\x01\x12\x14\n\x0cweather_code\x18\t \x01(\x05\x12\x10\n\x08humidity\x18\n \x01(\x01\x12\x11\n\tdew_point\x18\x0b \x01(\x01\x12\x10\n\x08uv_index\x18\x0c \x01(\x01\x12\x1d\n\x10\x65nsemble_std_dev\x18\r \x01(\x01H\x00\x88\x01\x01\x12\x17\n\nwind_gusts\x18\x0e \x01(\x01H\x01\x88\x01\x01\x12\x17\n\nvisibility\x18\x0f \x01(\x01H\x02\x88\x01\x01\x12\x11\n\x04\x63\x61pe\x18\x10 \x01(\x01H\x03\x88\x01\x01\x12\x11\n\x04rain\x18\x11 \x01(\x01H\x04\x88\x01\x01\x12\x15\n\x08snowfall\x18\x12 \x01(\x01H\x05\x88\x01\x01\x12\x1d\n\x10soil_temperature\x18\x13 \x01(\x01H\x06\x88\x01\x01\x12\"\n\x15\x66reezing_level_height\x18\x14 \x01(\x01H\x07\x88\x01\x01\x12\x13\n\x06is_day\x18\x15 \x01(\x08H\x08\x88\x01\x01\x42\x13\n\x11_ensemble_std_devB\r\n\x0b_wind_gustsB\r\n\x0b_visibilityB\x07\n\x05_capeB\x07\n\x05_rainB\x0b\n\t_snowfallB\x13\n\x11_soil_temperatureB\x18\n\x16_freezing_level_heightB\t\n\x07_is_day\"<\n\x0e\x41irQualityData\x12*\n\x06points\x18\x01 \x03(\x0b\x32\x1a.njord.v2.AirQualitySample\"\x83\x02\n\x10\x41irQualitySample\x12,\n\x08valid_at\x18\x01 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x0c\n\x04pm25\x18\x02 \x01(\x01\x12\x0c\n\x04pm10\x18\x03 \x01(\x01\x12\r\n\x05ozone\x18\x04 \x01(\x01\x12\x19\n\x0c\x62irch_pollen\x18\x05 \x01(\x01H\x00\x88\x01\x01\x12\x19\n\x0cgrass_pollen\x18\x06 \x01(\x01H\x01\x88\x01\x01\x12\x12\n\x05\x61lder\x18\x07 \x01(\x01H\x02\x88\x01\x01\x12\x14\n\x07mugwort\x18\x08 \x01(\x01H\x03\x88\x01\x01\x42\x0f\n\r_birch_pollenB\x0f\n\r_grass_pollenB\x08\n\x06_alderB\n\n\x08_mugwort\"2\n\tFloodData\x12%\n\x06points\x18\x01 \x03(\x0b\x32\x15.njord.v2.FloodSample\"\xfc\x02\n\x0b\x46loodSample\x12,\n\x08valid_at\x18\x01 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x11\n\tdischarge\x18\x02 \x01(\x01\x12\x1b\n\x0e\x64ischarge_mean\x18\x06 \x01(\x01H\x00\x88\x01\x01\x12\x1d\n\x10\x64ischarge_median\x18\x07 \x01(\x01H\x01\x88\x01\x01\x12\x1a\n\rdischarge_max\x18\x08 \x01(\x01H\x02\x88\x01\x01\x12\x1a\n\rdischarge_min\x18\t \x01(\x01H\x03\x88\x01\x01\x12\x1a\n\rdischarge_p25\x18\n \x01(\x01H\x04\x88\x01\x01\x12\x1a\n\rdischarge_p75\x18\x0b \x01(\x01H\x05\x88\x01\x01\x42\x11\n\x0f_discharge_meanB\x13\n\x11_discharge_medianB\x10\n\x0e_discharge_maxB\x10\n\x0e_discharge_minB\x10\n\x0e_discharge_p25B\x10\n\x0e_discharge_p75J\x04\x08\x03\x10\x04J\x04\x08\x04\x10\x05J\x04\x08\x05\x10\x06\"2\n\tSolarData\x12%\n\x06points\x18\x01 \x03(\x0b\x32\x15.njord.v2.SolarSample\"\xa8\x01\n\x0bSolarSample\x12,\n\x08valid_at\x18\x01 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x18\n\x10\x64irect_radiation\x18\x02 \x01(\x01\x12\x19\n\x11\x64iffuse_radiation\x18\x03 \x01(\x01\x12\x1b\n\x13shortwave_radiation\x18\x04 \x01(\x01\x12\x19\n\x11sunshine_duration\x18\x05 \x01(\x01\"4\n\nMarineData\x12&\n\x06points\x18\x01 \x03(\x0b\x32\x16.njord.v2.MarineSample\"\xb4\x01\n\x0cMarineSample\x12,\n\x08valid_at\x18\x01 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x13\n\x0bwave_height\x18\x02 \x01(\x01\x12\x13\n\x0bwave_period\x18\x03 \x01(\x01\x12\x16\n\x0ewave_direction\x18\x04 \x01(\x01\x12\x1e\n\x11water_temperature\x18\x05 \x01(\x01H\x00\x88\x01\x01\x42\x14\n\x12_water_temperature\")\n\x15GetEnrichmentsRequest\x12\x10\n\x08location\x18\x01 \x01(\t\"W\n\x16GetEnrichmentsResponse\x12\x10\n\x08location\x18\x01 \x01(\t\x12%\n\x06\x61lerts\x18\x02 \x01(\x0b\x32\x15.njord.v2.AlertUpdateJ\x04\x08\x03\x10\t\",\n\x18StreamEnrichmentsRequest\x12\x10\n\x08location\x18\x01 \x01(\t\"\xb2\x01\n\x0f\x45nrichmentEvent\x12\x10\n\x08location\x18\x01 \x01(\t\x12\x11\n\ttype_name\x18\x02 \x01(\t\x12.\n\nupdated_at\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\'\n\x06\x61lerts\x18\n \x01(\x0b\x32\x15.njord.v2.AlertUpdateH\x00\x42\t\n\x07payloadJ\x04\x08\x0b\x10\x0cJ\x04\x08\x0c\x10\rJ\x04\x08\r\x10\x0eJ\x04\x08\x0f\x10\x10*\x83\x01\n\x06\x44omain\x12\x16\n\x12\x44OMAIN_UNSPECIFIED\x10\x00\x12\x12\n\x0e\x44OMAIN_WEATHER\x10\x01\x12\x16\n\x12\x44OMAIN_AIR_QUALITY\x10\x02\x12\x10\n\x0c\x44OMAIN_FLOOD\x10\x03\x12\x10\n\x0c\x44OMAIN_SOLAR\x10\x04\x12\x11\n\rDOMAIN_MARINE\x10\x05\x32\xa6\x03\n\x0eWeatherService\x12G\n\nGetCatalog\x12\x1b.njord.v2.GetCatalogRequest\x1a\x1c.njord.v2.GetCatalogResponse\x12K\n\rGetDomainData\x12\x1e.njord.v2.GetDomainDataRequest\x1a\x1a.njord.v2.DomainDataUpdate\x12S\n\x0eGetEnrichments\x12\x1f.njord.v2.GetEnrichmentsRequest\x1a .njord.v2.GetEnrichmentsResponse\x12S\n\x10StreamDomainData\x12!.njord.v2.StreamDomainDataRequest\x1a\x1a.njord.v2.DomainDataUpdate0\x01\x12T\n\x11StreamEnrichments\x12\".njord.v2.StreamEnrichmentsRequest\x1a\x19.njord.v2.EnrichmentEvent0\x01\x42\x10\xaa\x02\rNjord.Grpc.V2b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -34,26 +34,46 @@ _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'njord.v2.weather_pb2', _glo
 if not _descriptor._USE_C_DESCRIPTORS:
   _globals['DESCRIPTOR']._loaded_options = None
   _globals['DESCRIPTOR']._serialized_options = b'\252\002\rNjord.Grpc.V2'
+  _globals['_DOMAIN']._serialized_start=3020
+  _globals['_DOMAIN']._serialized_end=3151
   _globals['_GETCATALOGREQUEST']._serialized_start=92
   _globals['_GETCATALOGREQUEST']._serialized_end=111
   _globals['_GETCATALOGRESPONSE']._serialized_start=113
   _globals['_GETCATALOGRESPONSE']._serialized_end=213
-  _globals['_GETFORECASTREQUEST']._serialized_start=215
-  _globals['_GETFORECASTREQUEST']._serialized_end=268
-  _globals['_GETFORECASTRESPONSE']._serialized_start=271
-  _globals['_GETFORECASTRESPONSE']._serialized_end=455
-  _globals['_GETENRICHMENTSREQUEST']._serialized_start=457
-  _globals['_GETENRICHMENTSREQUEST']._serialized_end=498
-  _globals['_GETENRICHMENTSRESPONSE']._serialized_start=501
-  _globals['_GETENRICHMENTSRESPONSE']._serialized_end=813
-  _globals['_STREAMFORECASTSREQUEST']._serialized_start=815
-  _globals['_STREAMFORECASTSREQUEST']._serialized_end=857
-  _globals['_FORECASTUPDATE']._serialized_start=860
-  _globals['_FORECASTUPDATE']._serialized_end=1039
-  _globals['_STREAMENRICHMENTSREQUEST']._serialized_start=1041
-  _globals['_STREAMENRICHMENTSREQUEST']._serialized_end=1085
-  _globals['_ENRICHMENTEVENT']._serialized_start=1088
-  _globals['_ENRICHMENTEVENT']._serialized_end=1417
-  _globals['_WEATHERSERVICE']._serialized_start=1420
-  _globals['_WEATHERSERVICE']._serialized_end=1837
+  _globals['_GETDOMAINDATAREQUEST']._serialized_start=215
+  _globals['_GETDOMAINDATAREQUEST']._serialized_end=289
+  _globals['_STREAMDOMAINDATAREQUEST']._serialized_start=291
+  _globals['_STREAMDOMAINDATAREQUEST']._serialized_end=369
+  _globals['_DOMAINDATAUPDATE']._serialized_start=372
+  _globals['_DOMAINDATAUPDATE']._serialized_end=704
+  _globals['_WEATHERDATA']._serialized_start=706
+  _globals['_WEATHERDATA']._serialized_end=760
+  _globals['_WEATHERSAMPLE']._serialized_start=763
+  _globals['_WEATHERSAMPLE']._serialized_end=1439
+  _globals['_AIRQUALITYDATA']._serialized_start=1441
+  _globals['_AIRQUALITYDATA']._serialized_end=1501
+  _globals['_AIRQUALITYSAMPLE']._serialized_start=1504
+  _globals['_AIRQUALITYSAMPLE']._serialized_end=1763
+  _globals['_FLOODDATA']._serialized_start=1765
+  _globals['_FLOODDATA']._serialized_end=1815
+  _globals['_FLOODSAMPLE']._serialized_start=1818
+  _globals['_FLOODSAMPLE']._serialized_end=2198
+  _globals['_SOLARDATA']._serialized_start=2200
+  _globals['_SOLARDATA']._serialized_end=2250
+  _globals['_SOLARSAMPLE']._serialized_start=2253
+  _globals['_SOLARSAMPLE']._serialized_end=2421
+  _globals['_MARINEDATA']._serialized_start=2423
+  _globals['_MARINEDATA']._serialized_end=2475
+  _globals['_MARINESAMPLE']._serialized_start=2478
+  _globals['_MARINESAMPLE']._serialized_end=2658
+  _globals['_GETENRICHMENTSREQUEST']._serialized_start=2660
+  _globals['_GETENRICHMENTSREQUEST']._serialized_end=2701
+  _globals['_GETENRICHMENTSRESPONSE']._serialized_start=2703
+  _globals['_GETENRICHMENTSRESPONSE']._serialized_end=2790
+  _globals['_STREAMENRICHMENTSREQUEST']._serialized_start=2792
+  _globals['_STREAMENRICHMENTSREQUEST']._serialized_end=2836
+  _globals['_ENRICHMENTEVENT']._serialized_start=2839
+  _globals['_ENRICHMENTEVENT']._serialized_end=3017
+  _globals['_WEATHERSERVICE']._serialized_start=3154
+  _globals['_WEATHERSERVICE']._serialized_end=3576
 # @@protoc_insertion_point(module_scope)

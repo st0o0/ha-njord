@@ -39,20 +39,20 @@ class WeatherServiceStub(object):
                 request_serializer=njord_dot_v2_dot_weather__pb2.GetCatalogRequest.SerializeToString,
                 response_deserializer=njord_dot_v2_dot_weather__pb2.GetCatalogResponse.FromString,
                 _registered_method=True)
-        self.GetForecast = channel.unary_unary(
-                '/njord.v2.WeatherService/GetForecast',
-                request_serializer=njord_dot_v2_dot_weather__pb2.GetForecastRequest.SerializeToString,
-                response_deserializer=njord_dot_v2_dot_weather__pb2.GetForecastResponse.FromString,
+        self.GetDomainData = channel.unary_unary(
+                '/njord.v2.WeatherService/GetDomainData',
+                request_serializer=njord_dot_v2_dot_weather__pb2.GetDomainDataRequest.SerializeToString,
+                response_deserializer=njord_dot_v2_dot_weather__pb2.DomainDataUpdate.FromString,
                 _registered_method=True)
         self.GetEnrichments = channel.unary_unary(
                 '/njord.v2.WeatherService/GetEnrichments',
                 request_serializer=njord_dot_v2_dot_weather__pb2.GetEnrichmentsRequest.SerializeToString,
                 response_deserializer=njord_dot_v2_dot_weather__pb2.GetEnrichmentsResponse.FromString,
                 _registered_method=True)
-        self.StreamForecasts = channel.unary_stream(
-                '/njord.v2.WeatherService/StreamForecasts',
-                request_serializer=njord_dot_v2_dot_weather__pb2.StreamForecastsRequest.SerializeToString,
-                response_deserializer=njord_dot_v2_dot_weather__pb2.ForecastUpdate.FromString,
+        self.StreamDomainData = channel.unary_stream(
+                '/njord.v2.WeatherService/StreamDomainData',
+                request_serializer=njord_dot_v2_dot_weather__pb2.StreamDomainDataRequest.SerializeToString,
+                response_deserializer=njord_dot_v2_dot_weather__pb2.DomainDataUpdate.FromString,
                 _registered_method=True)
         self.StreamEnrichments = channel.unary_stream(
                 '/njord.v2.WeatherService/StreamEnrichments',
@@ -70,7 +70,7 @@ class WeatherServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def GetForecast(self, request, context):
+    def GetDomainData(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -82,7 +82,7 @@ class WeatherServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def StreamForecasts(self, request, context):
+    def StreamDomainData(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -102,20 +102,20 @@ def add_WeatherServiceServicer_to_server(servicer, server):
                     request_deserializer=njord_dot_v2_dot_weather__pb2.GetCatalogRequest.FromString,
                     response_serializer=njord_dot_v2_dot_weather__pb2.GetCatalogResponse.SerializeToString,
             ),
-            'GetForecast': grpc.unary_unary_rpc_method_handler(
-                    servicer.GetForecast,
-                    request_deserializer=njord_dot_v2_dot_weather__pb2.GetForecastRequest.FromString,
-                    response_serializer=njord_dot_v2_dot_weather__pb2.GetForecastResponse.SerializeToString,
+            'GetDomainData': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetDomainData,
+                    request_deserializer=njord_dot_v2_dot_weather__pb2.GetDomainDataRequest.FromString,
+                    response_serializer=njord_dot_v2_dot_weather__pb2.DomainDataUpdate.SerializeToString,
             ),
             'GetEnrichments': grpc.unary_unary_rpc_method_handler(
                     servicer.GetEnrichments,
                     request_deserializer=njord_dot_v2_dot_weather__pb2.GetEnrichmentsRequest.FromString,
                     response_serializer=njord_dot_v2_dot_weather__pb2.GetEnrichmentsResponse.SerializeToString,
             ),
-            'StreamForecasts': grpc.unary_stream_rpc_method_handler(
-                    servicer.StreamForecasts,
-                    request_deserializer=njord_dot_v2_dot_weather__pb2.StreamForecastsRequest.FromString,
-                    response_serializer=njord_dot_v2_dot_weather__pb2.ForecastUpdate.SerializeToString,
+            'StreamDomainData': grpc.unary_stream_rpc_method_handler(
+                    servicer.StreamDomainData,
+                    request_deserializer=njord_dot_v2_dot_weather__pb2.StreamDomainDataRequest.FromString,
+                    response_serializer=njord_dot_v2_dot_weather__pb2.DomainDataUpdate.SerializeToString,
             ),
             'StreamEnrichments': grpc.unary_stream_rpc_method_handler(
                     servicer.StreamEnrichments,
@@ -161,7 +161,7 @@ class WeatherService(object):
             _registered_method=True)
 
     @staticmethod
-    def GetForecast(request,
+    def GetDomainData(request,
             target,
             options=(),
             channel_credentials=None,
@@ -174,9 +174,9 @@ class WeatherService(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/njord.v2.WeatherService/GetForecast',
-            njord_dot_v2_dot_weather__pb2.GetForecastRequest.SerializeToString,
-            njord_dot_v2_dot_weather__pb2.GetForecastResponse.FromString,
+            '/njord.v2.WeatherService/GetDomainData',
+            njord_dot_v2_dot_weather__pb2.GetDomainDataRequest.SerializeToString,
+            njord_dot_v2_dot_weather__pb2.DomainDataUpdate.FromString,
             options,
             channel_credentials,
             insecure,
@@ -215,7 +215,7 @@ class WeatherService(object):
             _registered_method=True)
 
     @staticmethod
-    def StreamForecasts(request,
+    def StreamDomainData(request,
             target,
             options=(),
             channel_credentials=None,
@@ -228,9 +228,9 @@ class WeatherService(object):
         return grpc.experimental.unary_stream(
             request,
             target,
-            '/njord.v2.WeatherService/StreamForecasts',
-            njord_dot_v2_dot_weather__pb2.StreamForecastsRequest.SerializeToString,
-            njord_dot_v2_dot_weather__pb2.ForecastUpdate.FromString,
+            '/njord.v2.WeatherService/StreamDomainData',
+            njord_dot_v2_dot_weather__pb2.StreamDomainDataRequest.SerializeToString,
+            njord_dot_v2_dot_weather__pb2.DomainDataUpdate.FromString,
             options,
             channel_credentials,
             insecure,

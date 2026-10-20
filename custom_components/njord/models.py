@@ -5,48 +5,122 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
 
-from .const import AlertSeverity, AlertType, DewPointComfort, PollPhase, Stability, TrendDirection, VpdCategory
+from .const import AlertSeverity, AlertType, Domain, PollPhase
+
+# --- Domain data ---
 
 
 @dataclass(frozen=True)
-class HourlyForecastData:
+class WeatherSampleData:
     valid_at: datetime
-    temperature: float | None = None
-    apparent_temperature: float | None = None
-    precipitation: float | None = None
-    humidity: float | None = None
-    wind_speed: float | None = None
-    wind_bearing: float | None = None
-    cloud_cover: float | None = None
-    weather_code: int | None = None
-    is_day: bool | None = None
-    rain: float | None = None
+    temperature: float
+    apparent_temperature: float
+    wind_speed: float
+    precipitation: float
+    precipitation_probability: float
+    cloud_cover: float
+    pressure: float
+    weather_code: int
+    humidity: float
+    dew_point: float
+    uv_index: float
+    ensemble_std_dev: float | None = None
     wind_gusts: float | None = None
-    pressure_msl: float | None = None
-    extra: dict[str, float | str | bool] = field(default_factory=dict)
+    visibility: float | None = None
+    cape: float | None = None
+    rain: float | None = None
+    snowfall: float | None = None
+    soil_temperature: float | None = None
+    freezing_level_height: float | None = None
+    is_day: bool | None = None
 
 
 @dataclass(frozen=True)
-class DailyForecastData:
-    date: str
-    temperature_max: float | None = None
-    temperature_min: float | None = None
-    precipitation_sum: float | None = None
-    wind_speed_max: float | None = None
-    wind_gusts_max: float | None = None
-    sunrise: str | None = None
-    sunset: str | None = None
-    weather_code: int | None = None
-    extra: dict[str, float | str | bool] = field(default_factory=dict)
+class AirQualitySampleData:
+    valid_at: datetime
+    pm25: float
+    pm10: float
+    ozone: float
+    birch_pollen: float | None = None
+    grass_pollen: float | None = None
+    alder: float | None = None
+    mugwort: float | None = None
 
 
 @dataclass(frozen=True)
-class ForecastData:
+class FloodSampleData:
+    valid_at: datetime
+    discharge: float
+    discharge_mean: float | None = None
+    discharge_median: float | None = None
+    discharge_max: float | None = None
+    discharge_min: float | None = None
+    discharge_p25: float | None = None
+    discharge_p75: float | None = None
+
+
+@dataclass(frozen=True)
+class SolarSampleData:
+    valid_at: datetime
+    direct_radiation: float
+    diffuse_radiation: float
+    shortwave_radiation: float
+    sunshine_duration: float
+
+
+@dataclass(frozen=True)
+class MarineSampleData:
+    valid_at: datetime
+    wave_height: float
+    wave_period: float
+    wave_direction: float
+    water_temperature: float | None = None
+
+
+@dataclass(frozen=True)
+class WeatherDomainData:
     location: str
-    model: str
-    updated_at: datetime
-    hourly: list[HourlyForecastData] = field(default_factory=list)
-    daily: list[DailyForecastData] = field(default_factory=list)
+    model_run: datetime | None = None
+    points: list[WeatherSampleData] = field(default_factory=list)
+    domain: Domain = Domain.WEATHER
+
+
+@dataclass(frozen=True)
+class AirQualityDomainData:
+    location: str
+    model_run: datetime | None = None
+    points: list[AirQualitySampleData] = field(default_factory=list)
+    domain: Domain = Domain.AIR_QUALITY
+
+
+@dataclass(frozen=True)
+class FloodDomainData:
+    location: str
+    model_run: datetime | None = None
+    points: list[FloodSampleData] = field(default_factory=list)
+    domain: Domain = Domain.FLOOD
+
+
+@dataclass(frozen=True)
+class SolarDomainData:
+    location: str
+    model_run: datetime | None = None
+    points: list[SolarSampleData] = field(default_factory=list)
+    domain: Domain = Domain.SOLAR
+
+
+@dataclass(frozen=True)
+class MarineDomainData:
+    location: str
+    model_run: datetime | None = None
+    points: list[MarineSampleData] = field(default_factory=list)
+    domain: Domain = Domain.MARINE
+
+
+DomainData = WeatherDomainData | AirQualityDomainData | FloodDomainData | SolarDomainData | MarineDomainData
+
+
+# --- Catalog ---
 
 
 @dataclass(frozen=True)
@@ -75,13 +149,7 @@ class CatalogData:
     model_info: dict[str, ModelInfoData] = field(default_factory=dict)
 
 
-@dataclass(frozen=True)
-class NjordConfigData:
-    locations: list[NjordLocation] = field(default_factory=list)
-    default_models: list[str] = field(default_factory=list)
-    horizons: list[int] = field(default_factory=list)
-    forecast_days: int = 0
-    poll_interval_seconds: int = 0
+# --- Status ---
 
 
 @dataclass(frozen=True)
@@ -94,9 +162,8 @@ class BudgetStatusData:
 
 
 @dataclass(frozen=True)
-class ModelStatusData:
+class LocationStatusData:
     location: str
-    model: str
     phase: PollPhase = PollPhase.UNSPECIFIED
     next_poll: datetime | None = None
     last_change: datetime | None = None
@@ -107,7 +174,6 @@ class ModelStatusData:
 @dataclass(frozen=True)
 class TargetData:
     location: str
-    model: str
     phase: PollPhase = PollPhase.UNSPECIFIED
     next_poll: datetime | None = None
     last_change: datetime | None = None
@@ -121,14 +187,14 @@ class ServerStatusData:
     uptime_seconds: int = 0
     budget: BudgetStatusData | None = None
     process_start: datetime | None = None
-    model_statuses: list[ModelStatusData] = field(default_factory=list)
+    location_statuses: list[LocationStatusData] = field(default_factory=list)
     active_enrichments: list[str] = field(default_factory=list)
     budget_partial: bool = False
     models_partial: bool = False
     targets: list[TargetData] = field(default_factory=list)
 
 
-# --- Enrichment data models ---
+# --- Enrichments ---
 
 
 @dataclass(frozen=True)
@@ -148,121 +214,9 @@ class AlertData:
 
 
 @dataclass(frozen=True)
-class DayScoreData:
-    day_offset: int = 0
-    laundry: int = 0
-    outdoor: int = 0
-    running: int = 0
-    cycling: int = 0
-    bbq: int = 0
-    irrigation: int = 0
-    solar: int = 0
-    night_ventilation: int = 0
-    hours_included: int = 0
-
-
-@dataclass(frozen=True)
-class FrostData:
-    hours_until: int = 0
-    confidence: float = 0.0
-
-
-@dataclass(frozen=True)
-class VpdData:
-    kpa: float = 0.0
-    category: VpdCategory = VpdCategory.UNSPECIFIED
-
-
-@dataclass(frozen=True)
-class IndexData:
-    laundry: int = 0
-    outdoor: int = 0
-    running: int = 0
-    cycling: int = 0
-    bbq: int = 0
-    irrigation: int = 0
-    solar: int = 0
-    night_ventilation: int = 0
-    frost: FrostData | None = None
-    vpd: VpdData | None = None
-    forecast: list[DayScoreData] = field(default_factory=list)
-
-
-@dataclass(frozen=True)
-class ParameterTrendData:
-    parameter: str
-    direction: TrendDirection = TrendDirection.STABLE
-    delta: float = 0.0
-
-
-@dataclass(frozen=True)
-class TrendData:
-    parameter_trends: list[ParameterTrendData] = field(default_factory=list)
-    weather_change_description: str | None = None
-    precip_starts_in_hours: int | None = None
-    precip_ends_in_hours: int | None = None
-    temp_max_in_hours: int | None = None
-    temp_min_in_hours: int | None = None
-    stability_label: Stability | None = None
-    stability_ratio: float | None = None
-    decay_rate: float | None = None
-    reliable_hours: int | None = None
-
-
-@dataclass(frozen=True)
-class HorizonDerivedData:
-    horizon: str
-    beaufort: int | None = None
-    wind_chill: float | None = None
-    dewpoint_comfort: DewPointComfort | None = None
-    wmo_description: str | None = None
-
-
-@dataclass(frozen=True)
-class DerivedData:
-    by_horizon: list[HorizonDerivedData] = field(default_factory=list)
-    diurnal_amplitude: float | None = None
-    sunshine_pct: float | None = None
-    inversion: bool | None = None
-
-
-@dataclass(frozen=True)
-class HorizonConsensusData:
-    horizon: str
-    median: float | None = None
-    trimmed_mean: float | None = None
-    spread: float | None = None
-    iqr: float | None = None
-    agreement: float | None = None
-    available_models: int = 0
-
-
-@dataclass(frozen=True)
-class ParameterConsensusData:
-    parameter: str
-    unit: str = ""
-    by_horizon: list[HorizonConsensusData] = field(default_factory=list)
-
-
-@dataclass(frozen=True)
-class ConsensusData:
-    hourly_parameters: list[ParameterConsensusData] = field(default_factory=list)
-    daily_parameters: list[ParameterConsensusData] = field(default_factory=list)
-
-
-@dataclass(frozen=True)
-class SensorPushResult:
-    accepted: bool
-    rejection_reason: str = ""
-
-
-@dataclass(frozen=True)
 class EnrichmentData:
+    """Alerts of a location, the only enrichment payload on the wire."""
+
     location: str
     alerts: list[AlertData] = field(default_factory=list)
-    indices: IndexData | None = None
-    trends: TrendData | None = None
-    derived: DerivedData | None = None
-    consensus: ConsensusData | None = None
-    consensus_updated_at: datetime | None = None
-    derived_updated_at: datetime | None = None
+    updated_at: datetime | None = None
