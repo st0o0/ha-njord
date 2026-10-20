@@ -16,10 +16,11 @@ from homeassistant.const import (
     UnitOfPressure,
     UnitOfSpeed,
     UnitOfTemperature,
-    UnitOfVolumeFlowRate,
 )
 
 DOMAIN = "njord"
+
+DISCHARGE_UNIT = "m³/s"
 
 DEFAULT_PORT = 8081
 DEFAULT_STATUS_POLL_INTERVAL = 30
@@ -205,9 +206,7 @@ ALERT_META: dict[AlertType, AlertMeta] = {
     AlertType.PM25: AlertMeta(
         "PM2.5 Alert", CONCENTRATION_MICROGRAMS_PER_CUBIC_METER, "mdi:blur", 1, SensorDeviceClass.PM25
     ),
-    AlertType.FLOOD_RISK: AlertMeta(
-        "Flood Risk Alert", UnitOfVolumeFlowRate.CUBIC_METERS_PER_SECOND, "mdi:home-flood", 1
-    ),
+    AlertType.FLOOD_RISK: AlertMeta("Flood Risk Alert", DISCHARGE_UNIT, "mdi:home-flood", 1),
     AlertType.FLOOD_RAIN: AlertMeta("Flood Rain Alert", "mm", "mdi:weather-pouring", 1),
     AlertType.SWIMMING_CONDITIONS: AlertMeta("Swimming Conditions Alert", UnitOfLength.METERS, "mdi:swim", 1),
 }

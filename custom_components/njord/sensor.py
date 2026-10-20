@@ -13,14 +13,13 @@ from homeassistant.const import (
     UnitOfLength,
     UnitOfTemperature,
     UnitOfTime,
-    UnitOfVolumeFlowRate,
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN, Domain
+from .const import DISCHARGE_UNIT, DOMAIN, Domain
 from .coordinator import NjordDataCoordinator, NjordStatusCoordinator
 from .helpers import current_point, device_info, server_device_info, slugify_location
 from .models import DomainData
@@ -113,8 +112,7 @@ DOMAIN_SENSORS: tuple[DomainSensorDescription, ...] = (
         name="River Discharge",
         domain=Domain.FLOOD,
         field="discharge",
-        unit=UnitOfVolumeFlowRate.CUBIC_METERS_PER_SECOND,
-        device_class=SensorDeviceClass.VOLUME_FLOW_RATE,
+        unit=DISCHARGE_UNIT,
         icon="mdi:waves-arrow-right",
         precision=1,
         extra_fields=(

@@ -132,4 +132,3 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             hass.services.async_remove(DOMAIN, SERVICE_TRIGGER_POLL)
 
     return unload_ok
-
