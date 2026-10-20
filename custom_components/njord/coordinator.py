@@ -6,75 +6,49 @@ import asyncio
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass, field, replace
-from datetime import UTC, datetime, timedelta
+from datetime import timedelta
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.issue_registry import IssueSeverity, async_create_issue, async_delete_issue
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .const import DOMAIN, StreamName
+from .const import DOMAIN, Domain, StreamName
 from .grpc_client import NjordClient
-from .models import EnrichmentData, ForecastData, ModelInfoData, NjordLocation, ServerStatusData
+from .models import DomainData, EnrichmentData, ModelInfoData, NjordLocation, ServerStatusData
 
 _LOGGER = logging.getLogger(__name__)
 
 _STREAM_DISCONNECT_GRACE = 60.0
 
-_ENRICHMENT_MERGE_FIELDS = (
-    "alerts",
-    "indices",
-    "trends",
-    "derived",
-    "consensus",
-    "consensus_updated_at",
-    "derived_updated_at",
-)
-_ENRICHMENT_DEFAULTS: dict[str, object] = {
-    "alerts": [],
-    "indices": None,
-    "trends": None,
-    "derived": None,
-    "consensus": None,
-    "consensus_updated_at": None,
-    "derived_updated_at": None,
-}
-
-
-def merge_enrichment(existing: EnrichmentData | None, event: EnrichmentData) -> EnrichmentData:
-    """Merge a partial enrichment event into existing data.
-
-    Only fields that differ from defaults in the event are applied.
-    """
-    if existing is None:
-        existing = EnrichmentData(location=event.location)
-
-    updates: dict[str, object] = {}
-    for field_name in _ENRICHMENT_MERGE_FIELDS:
-        event_value = getattr(event, field_name)
-        default_value = _ENRICHMENT_DEFAULTS[field_name]
-        if event_value != default_value:
-            updates[field_name] = event_value
-
-    if not updates:
-        return existing
-
-    return replace(existing, **updates)
+# Domains the integration creates entities for; solar data is served but has no entities yet.
+TRACKED_DOMAINS: tuple[Domain, ...] = (Domain.WEATHER, Domain.AIR_QUALITY, Domain.FLOOD, Domain.MARINE)
 
 
 @dataclass
 class NjordCoordinatorData:
-    forecasts: dict[tuple[str, str], ForecastData] = field(default_factory=dict)
+    locations: list[NjordLocation] = field(default_factory=list)
+    domains: dict[tuple[str, Domain], DomainData] = field(default_factory=dict)
     enrichments: dict[str, EnrichmentData] = field(default_factory=dict)
     model_info: dict[str, ModelInfoData] = field(default_factory=dict)
     active_enrichments: set[str] | None = None
 
+    def locations_with(self, domain: Domain) -> list[str]:
+        return sorted({location for location, kind in self.domains if kind == domain})
 
-EntityFactory = Callable[[NjordLocation], list]
+    @property
+    def location_names(self) -> list[str]:
+        names = {location.name for location in self.locations}
+        names.update(location for location, _ in self.domains)
+        return sorted(names)
+
+
+# Called for every (location, domain) pair that appears for the first time; returns the new entities.
+EntityFactory = Callable[[str, Domain], list]
 
 
 class NjordDataCoordinator(DataUpdateCoordinator[NjordCoordinatorData]):
-    """Stream-driven coordinator for njord forecast, enrichment, and config data."""
+    """Stream-driven coordinator for njord domain data and enrichments."""
 
     def __init__(self, hass: HomeAssistant, client: NjordClient) -> None:
         super().__init__(
@@ -84,7 +58,6 @@ class NjordDataCoordinator(DataUpdateCoordinator[NjordCoordinatorData]):
             update_interval=None,
         )
         self.client = client
-        self._known_locations: set[str] = set()
         self._stream_tasks: list[asyncio.Task] = []
         self._entity_factories: dict[str, tuple[AddEntitiesCallback, EntityFactory]] = {}
         self.stream_states: dict[StreamName, bool] = {name: False for name in StreamName}
@@ -92,42 +65,29 @@ class NjordDataCoordinator(DataUpdateCoordinator[NjordCoordinatorData]):
         self._stream_issue_created: dict[StreamName, bool] = {}
 
     async def _async_update_data(self) -> NjordCoordinatorData:
-        """Unary first-refresh: fetch all data via single calls."""
+        """Unary first-refresh: fetch the catalog, every tracked domain and the alerts of each location."""
         try:
             catalog = await self.client.get_catalog()
         except Exception as err:
             raise UpdateFailed(f"Failed to get njord catalog: {err}") from err
 
-        result = NjordCoordinatorData()
+        result = NjordCoordinatorData(locations=list(catalog.locations))
         result.model_info.update(catalog.model_info)
 
         for location in catalog.locations:
-            self._known_locations.add(location.name)
-
-            for model in location.models:
+            for domain in TRACKED_DOMAINS:
                 try:
-                    forecast = await self.client.get_forecast(location.name, model)
-                    result.forecasts[(location.name, model)] = forecast
+                    data = await self.client.get_domain_data(location.name, domain)
                 except Exception as err:
-                    _LOGGER.warning(
-                        "Failed to get forecast for %s/%s: %s",
-                        location.name,
-                        model,
-                        err,
-                    )
-                    result.forecasts[(location.name, model)] = ForecastData(
-                        location=location.name, model=model, updated_at=datetime.min.replace(tzinfo=UTC)
-                    )
+                    _LOGGER.debug("No %s data for %s: %s", domain, location.name, err)
+                    continue
+                if data is not None:
+                    result.domains[(location.name, domain)] = data
 
             try:
-                enrichment = await self.client.get_enrichments(location.name)
-                result.enrichments[location.name] = enrichment
+                result.enrichments[location.name] = await self.client.get_enrichments(location.name)
             except Exception as err:
-                _LOGGER.warning(
-                    "Failed to get enrichments for %s: %s",
-                    location.name,
-                    err,
-                )
+                _LOGGER.warning("Failed to get enrichments for %s: %s", location.name, err)
 
         return result
 
@@ -141,9 +101,8 @@ class NjordDataCoordinator(DataUpdateCoordinator[NjordCoordinatorData]):
 
     def start_streams(self) -> None:
         self._stream_tasks = [
-            self.hass.async_create_background_task(self._run_forecast_stream(), "njord_forecast_stream"),
+            self.hass.async_create_background_task(self._run_domain_stream(), "njord_domain_stream"),
             self.hass.async_create_background_task(self._run_enrichment_stream(), "njord_enrichment_stream"),
-            self.hass.async_create_background_task(self._run_config_stream(), "njord_config_stream"),
         ]
 
     async def stop_streams(self) -> None:
@@ -178,20 +137,25 @@ class NjordDataCoordinator(DataUpdateCoordinator[NjordCoordinatorData]):
                 self._stream_issue_created[name] = True
         self.async_set_updated_data(self.data)
 
-    async def _run_forecast_stream(self) -> None:
+    async def _run_domain_stream(self) -> None:
         try:
-            async for update in self.client.stream_forecasts(
+            async for update in self.client.stream_domain_data(
                 location=None,
-                on_reconnect=lambda: self._on_stream_connect(StreamName.FORECAST),
-                on_disconnect=lambda: self._on_stream_disconnect(StreamName.FORECAST),
+                domains=TRACKED_DOMAINS,
+                on_reconnect=lambda: self._on_stream_connect(StreamName.DOMAIN),
+                on_disconnect=lambda: self._on_stream_disconnect(StreamName.DOMAIN),
             ):
-                self.data.forecasts[(update.location, update.model)] = update
+                key = (update.location, update.domain)
+                is_new = key not in self.data.domains
+                self.data.domains[key] = update
+                if is_new:
+                    self._create_entities_for(update.location, update.domain)
                 self.async_set_updated_data(self.data)
         except asyncio.CancelledError:
             return
         except Exception:
-            _LOGGER.exception("Forecast stream task failed")
-            self._on_stream_disconnect(StreamName.FORECAST)
+            _LOGGER.exception("Domain data stream task failed")
+            self._on_stream_disconnect(StreamName.DOMAIN)
 
     async def _run_enrichment_stream(self) -> None:
         try:
@@ -200,8 +164,7 @@ class NjordDataCoordinator(DataUpdateCoordinator[NjordCoordinatorData]):
                 on_reconnect=lambda: self._on_stream_connect(StreamName.ENRICHMENT),
                 on_disconnect=lambda: self._on_stream_disconnect(StreamName.ENRICHMENT),
             ):
-                existing = self.data.enrichments.get(event.location)
-                self.data.enrichments[event.location] = merge_enrichment(existing, event)
+                self.data.enrichments[event.location] = event
                 self.async_set_updated_data(self.data)
         except asyncio.CancelledError:
             return
@@ -209,64 +172,18 @@ class NjordDataCoordinator(DataUpdateCoordinator[NjordCoordinatorData]):
             _LOGGER.exception("Enrichment stream task failed")
             self._on_stream_disconnect(StreamName.ENRICHMENT)
 
-    async def _run_config_stream(self) -> None:
-        try:
-            async for config in self.client.stream_config(
-                on_reconnect=lambda: self._on_stream_connect(StreamName.CONFIG),
-                on_disconnect=lambda: self._on_stream_disconnect(StreamName.CONFIG),
-            ):
-                new_locations = [loc for loc in config.locations if loc.name not in self._known_locations]
-                for location in new_locations:
-                    await self._create_entities_for_location(location)
-        except asyncio.CancelledError:
-            return
-        except Exception:
-            _LOGGER.exception("Config stream task failed")
-            self._on_stream_disconnect(StreamName.CONFIG)
-
-    async def _create_entities_for_location(self, location: NjordLocation) -> None:
-        self._known_locations.add(location.name)
-
-        for model in location.models:
-            try:
-                forecast = await self.client.get_forecast(location.name, model)
-                self.data.forecasts[(location.name, model)] = forecast
-            except Exception as err:
-                _LOGGER.warning(
-                    "Failed to get initial forecast for new location %s/%s: %s",
-                    location.name,
-                    model,
-                    err,
-                )
-
-        try:
-            enrichment = await self.client.get_enrichments(location.name)
-            self.data.enrichments[location.name] = enrichment
-        except Exception as err:
-            _LOGGER.warning(
-                "Failed to get initial enrichments for new location %s: %s",
-                location.name,
-                err,
-            )
-
+    def _create_entities_for(self, location: str, domain: Domain) -> None:
         for platform, (add_entities, factory) in self._entity_factories.items():
             try:
-                entities = factory(location)
+                entities = factory(location, domain)
                 if entities:
                     add_entities(entities)
             except Exception as err:
-                _LOGGER.error(
-                    "Failed to create %s entities for %s: %s",
-                    platform,
-                    location.name,
-                    err,
-                )
-
-        self.async_set_updated_data(self.data)
+                _LOGGER.error("Failed to create %s entities for %s/%s: %s", platform, location, domain, err)
 
 
 class NjordStatusCoordinator(DataUpdateCoordinator[ServerStatusData]):
-    """Polling coordinator for njord server status (budget, uptime)."""
+    """Polling coordinator for njord server status (budget, uptime, poll targets)."""
 
     def __init__(self, hass: HomeAssistant, client: NjordClient, poll_interval: int = 30) -> None:
         super().__init__(

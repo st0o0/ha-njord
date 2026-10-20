@@ -1,34 +1,170 @@
-"""Sensor platform for njord enrichment data."""
+"""Sensor platform for njord domain data and server diagnostics."""
 
 from __future__ import annotations
+
+from collections.abc import Callable
+from dataclasses import dataclass
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
+    CONCENTRATION_MICROGRAMS_PER_CUBIC_METER,
+    DEGREE,
+    UnitOfLength,
     UnitOfTemperature,
     UnitOfTime,
+    UnitOfVolumeFlowRate,
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import ALERT_META, DOMAIN, AlertType, DewPointComfort, EnrichmentGroup
+from .const import DOMAIN, Domain
 from .coordinator import NjordDataCoordinator, NjordStatusCoordinator
-from .helpers import device_info, disabled_groups_of, group_enabled, server_device_info
-from .horizon import current_horizon_offset, find_nearest_horizon
-from .models import AlertData, EnrichmentData, HorizonDerivedData, NjordLocation
+from .helpers import current_point, device_info, server_device_info, slugify_location
+from .models import DomainData
 
-INDEX_TYPES = [
-    ("laundry", "Laundry Index", "mdi:tshirt-crew"),
-    ("outdoor", "Outdoor Index", "mdi:pine-tree"),
-    ("running", "Running Index", "mdi:run"),
-    ("cycling", "Cycling Index", "mdi:bike"),
-    ("bbq", "BBQ Index", "mdi:grill"),
-    ("irrigation", "Irrigation Index", "mdi:sprinkler"),
-    ("solar", "Solar Index", "mdi:solar-power"),
-    ("night_ventilation", "Night Ventilation Index", "mdi:air-filter"),
-]
+POLLEN_UNIT = "grains/m³"
+
+
+@dataclass(frozen=True, kw_only=True)
+class DomainSensorDescription:
+    """One sensor reading a field of the current sample of a domain."""
+
+    key: str
+    name: str
+    domain: Domain
+    field: str
+    unit: str | None = None
+    device_class: SensorDeviceClass | None = None
+    icon: str | None = None
+    precision: int | None = None
+    extra_fields: tuple[str, ...] = ()
+    value_fn: Callable[[object], float | None] | None = None
+
+
+DOMAIN_SENSORS: tuple[DomainSensorDescription, ...] = (
+    DomainSensorDescription(
+        key="pm25",
+        name="PM2.5",
+        domain=Domain.AIR_QUALITY,
+        field="pm25",
+        unit=CONCENTRATION_MICROGRAMS_PER_CUBIC_METER,
+        device_class=SensorDeviceClass.PM25,
+        precision=1,
+    ),
+    DomainSensorDescription(
+        key="pm10",
+        name="PM10",
+        domain=Domain.AIR_QUALITY,
+        field="pm10",
+        unit=CONCENTRATION_MICROGRAMS_PER_CUBIC_METER,
+        device_class=SensorDeviceClass.PM10,
+        precision=1,
+    ),
+    DomainSensorDescription(
+        key="ozone",
+        name="Ozone",
+        domain=Domain.AIR_QUALITY,
+        field="ozone",
+        unit=CONCENTRATION_MICROGRAMS_PER_CUBIC_METER,
+        device_class=SensorDeviceClass.OZONE,
+        precision=1,
+    ),
+    DomainSensorDescription(
+        key="birch_pollen",
+        name="Birch Pollen",
+        domain=Domain.AIR_QUALITY,
+        field="birch_pollen",
+        unit=POLLEN_UNIT,
+        icon="mdi:flower-pollen",
+        precision=1,
+    ),
+    DomainSensorDescription(
+        key="grass_pollen",
+        name="Grass Pollen",
+        domain=Domain.AIR_QUALITY,
+        field="grass_pollen",
+        unit=POLLEN_UNIT,
+        icon="mdi:flower-pollen",
+        precision=1,
+    ),
+    DomainSensorDescription(
+        key="alder_pollen",
+        name="Alder Pollen",
+        domain=Domain.AIR_QUALITY,
+        field="alder",
+        unit=POLLEN_UNIT,
+        icon="mdi:flower-pollen",
+        precision=1,
+    ),
+    DomainSensorDescription(
+        key="mugwort_pollen",
+        name="Mugwort Pollen",
+        domain=Domain.AIR_QUALITY,
+        field="mugwort",
+        unit=POLLEN_UNIT,
+        icon="mdi:flower-pollen",
+        precision=1,
+    ),
+    DomainSensorDescription(
+        key="river_discharge",
+        name="River Discharge",
+        domain=Domain.FLOOD,
+        field="discharge",
+        unit=UnitOfVolumeFlowRate.CUBIC_METERS_PER_SECOND,
+        device_class=SensorDeviceClass.VOLUME_FLOW_RATE,
+        icon="mdi:waves-arrow-right",
+        precision=1,
+        extra_fields=(
+            "discharge_mean",
+            "discharge_median",
+            "discharge_max",
+            "discharge_min",
+            "discharge_p25",
+            "discharge_p75",
+        ),
+    ),
+    DomainSensorDescription(
+        key="wave_height",
+        name="Wave Height",
+        domain=Domain.MARINE,
+        field="wave_height",
+        unit=UnitOfLength.METERS,
+        device_class=SensorDeviceClass.DISTANCE,
+        icon="mdi:waves",
+        precision=1,
+    ),
+    DomainSensorDescription(
+        key="wave_period",
+        name="Wave Period",
+        domain=Domain.MARINE,
+        field="wave_period",
+        unit=UnitOfTime.SECONDS,
+        device_class=SensorDeviceClass.DURATION,
+        icon="mdi:sine-wave",
+        precision=1,
+    ),
+    DomainSensorDescription(
+        key="wave_direction",
+        name="Wave Direction",
+        domain=Domain.MARINE,
+        field="wave_direction",
+        unit=DEGREE,
+        icon="mdi:compass-outline",
+        precision=0,
+    ),
+    DomainSensorDescription(
+        key="water_temperature",
+        name="Water Temperature",
+        domain=Domain.MARINE,
+        field="water_temperature",
+        unit=UnitOfTemperature.CELSIUS,
+        device_class=SensorDeviceClass.TEMPERATURE,
+        precision=1,
+    ),
+)
 
 
 def _get_sw_version(hass: HomeAssistant, entry: ConfigEntry) -> str | None:
@@ -36,6 +172,16 @@ def _get_sw_version(hass: HomeAssistant, entry: ConfigEntry) -> str | None:
     if status_coordinator is not None and status_coordinator.data is not None:
         return status_coordinator.data.version or None
     return None
+
+
+def _domain_sensors(
+    coordinator: NjordDataCoordinator, entry: ConfigEntry, location: str, domain: Domain, sw_version: str | None
+) -> list[SensorEntity]:
+    return [
+        NjordDomainSensor(coordinator, entry, location, description, sw_version)
+        for description in DOMAIN_SENSORS
+        if description.domain == domain
+    ]
 
 
 async def async_setup_entry(
@@ -46,33 +192,10 @@ async def async_setup_entry(
     """Set up njord sensor entities."""
     coordinator: NjordDataCoordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
     sw_version = _get_sw_version(hass, entry)
-    disabled_groups = disabled_groups_of(entry)
 
     entities: list[SensorEntity] = []
-    locations = {loc for loc, _ in coordinator.data.forecasts}
-    active = coordinator.data.active_enrichments
-
-    for location in sorted(locations):
-        if group_enabled(EnrichmentGroup.ALERTS, active, disabled_groups):
-            for alert_type in ALERT_META:
-                entities.append(NjordAlertSensor(coordinator, entry, location, alert_type, sw_version))
-
-        if group_enabled(EnrichmentGroup.INDICES, active, disabled_groups):
-            for key, name, icon in INDEX_TYPES:
-                entities.append(NjordIndexSensor(coordinator, entry, location, key, name, icon, sw_version))
-            entities.append(NjordVpdSensor(coordinator, entry, location, sw_version))
-            entities.append(NjordFrostHoursSensor(coordinator, entry, location, sw_version))
-            entities.append(NjordFrostConfidenceSensor(coordinator, entry, location, sw_version))
-
-        if group_enabled(EnrichmentGroup.TRENDS, active, disabled_groups):
-            entities.append(NjordTrendSensor(coordinator, entry, location, sw_version))
-
-        if group_enabled(EnrichmentGroup.DERIVED, active, disabled_groups):
-            entities.append(NjordSunshineSensor(coordinator, entry, location, sw_version))
-            entities.append(NjordDiurnalAmplitudeSensor(coordinator, entry, location, sw_version))
-            entities.append(NjordBeaufortSensor(coordinator, entry, location, sw_version))
-            entities.append(NjordWindChillSensor(coordinator, entry, location, sw_version))
-            entities.append(NjordDewpointComfortSensor(coordinator, entry, location, sw_version))
+    for location, domain in sorted(coordinator.data.domains, key=lambda key: (key[0], key[1].value)):
+        entities.extend(_domain_sensors(coordinator, entry, location, domain, sw_version))
 
     status_coordinator: NjordStatusCoordinator | None = hass.data[DOMAIN][entry.entry_id].get("status_coordinator")
     if status_coordinator is not None:
@@ -83,395 +206,77 @@ async def async_setup_entry(
 
         if status_coordinator.data is not None:
             for target in status_coordinator.data.targets:
-                entities.append(NjordTargetSensor(status_coordinator, entry, target.location, target.model, sw_version))
+                entities.append(NjordTargetSensor(status_coordinator, entry, target.location, sw_version))
 
     async_add_entities(entities)
 
-    def sensor_factory(location: NjordLocation) -> list[SensorEntity]:
-        act = coordinator.data.active_enrichments
-        new_entities: list[SensorEntity] = []
-        if group_enabled(EnrichmentGroup.ALERTS, act, disabled_groups):
-            for alert_type in ALERT_META:
-                new_entities.append(NjordAlertSensor(coordinator, entry, location.name, alert_type, sw_version))
-        if group_enabled(EnrichmentGroup.INDICES, act, disabled_groups):
-            for key, name, icon in INDEX_TYPES:
-                new_entities.append(NjordIndexSensor(coordinator, entry, location.name, key, name, icon, sw_version))
-            new_entities.append(NjordVpdSensor(coordinator, entry, location.name, sw_version))
-            new_entities.append(NjordFrostHoursSensor(coordinator, entry, location.name, sw_version))
-            new_entities.append(NjordFrostConfidenceSensor(coordinator, entry, location.name, sw_version))
-        if group_enabled(EnrichmentGroup.TRENDS, act, disabled_groups):
-            new_entities.append(NjordTrendSensor(coordinator, entry, location.name, sw_version))
-        if group_enabled(EnrichmentGroup.DERIVED, act, disabled_groups):
-            new_entities.append(NjordSunshineSensor(coordinator, entry, location.name, sw_version))
-            new_entities.append(NjordDiurnalAmplitudeSensor(coordinator, entry, location.name, sw_version))
-            new_entities.append(NjordBeaufortSensor(coordinator, entry, location.name, sw_version))
-            new_entities.append(NjordWindChillSensor(coordinator, entry, location.name, sw_version))
-            new_entities.append(NjordDewpointComfortSensor(coordinator, entry, location.name, sw_version))
-        return new_entities
+    def sensor_factory(location: str, domain: Domain) -> list[SensorEntity]:
+        return _domain_sensors(coordinator, entry, location, domain, sw_version)
 
     coordinator.register_entity_factory("sensor", async_add_entities, sensor_factory)
 
 
-class _NjordEnrichmentSensor(CoordinatorEntity[NjordDataCoordinator], SensorEntity):
-    """Base class for enrichment sensors."""
+class NjordDomainSensor(CoordinatorEntity[NjordDataCoordinator], SensorEntity):
+    """Sensor for one field of the current sample of a domain at a location."""
 
     _attr_has_entity_name = True
-    _attr_entity_registry_enabled_default = False
 
     def __init__(
         self,
         coordinator: NjordDataCoordinator,
         entry: ConfigEntry,
         location: str,
+        description: DomainSensorDescription,
         sw_version: str | None = None,
     ) -> None:
         super().__init__(coordinator)
         self._location = location
+        self._description = description
+        self._attr_unique_id = f"{entry.entry_id}_{slugify_location(location)}_{description.key}"
+        self._attr_name = description.name
+        self._attr_native_unit_of_measurement = description.unit
+        self._attr_device_class = description.device_class
+        self._attr_icon = description.icon
+        self._attr_suggested_display_precision = description.precision
+        self._attr_state_class = SensorStateClass.MEASUREMENT
         self._attr_device_info = device_info(entry, location, sw_version)
 
-    def _enrichment(self) -> EnrichmentData | None:
+    def _data(self) -> DomainData | None:
         if self.coordinator.data is None:
             return None
-        return self.coordinator.data.enrichments.get(self._location)
+        return self.coordinator.data.domains.get((self._location, self._description.domain))
 
-
-class NjordAlertSensor(_NjordEnrichmentSensor):
-    """Sensor for a weather alert showing the trigger value."""
-
-    _attr_entity_registry_enabled_default = True
-
-    def __init__(
-        self,
-        coordinator: NjordDataCoordinator,
-        entry: ConfigEntry,
-        location: str,
-        alert_type: AlertType,
-        sw_version: str | None = None,
-    ) -> None:
-        super().__init__(coordinator, entry, location, sw_version)
-        self._alert_type = alert_type
-        meta = ALERT_META.get(alert_type)
-        slug = f"{location}_{alert_type}_alert".replace("-", "_").replace(" ", "_").lower()
-        self._attr_unique_id = f"{entry.entry_id}_{slug}"
-        if meta is None:
-            self._attr_name = f"{alert_type} Alert"
-            self._attr_icon = "mdi:alert"
-            return
-        self._attr_name = meta.name
-        self._attr_icon = meta.icon
-        self._attr_native_unit_of_measurement = meta.unit
-        if meta.device_class is not None:
-            self._attr_device_class = meta.device_class
-            self._attr_state_class = SensorStateClass.MEASUREMENT
-        self._attr_suggested_display_precision = meta.precision
-
-    def _get_alert(self) -> AlertData | None:
-        enrichment = self._enrichment()
-        if enrichment is None:
+    def _sample(self):
+        data = self._data()
+        if data is None:
             return None
-        for alert in enrichment.alerts:
-            if alert.type == self._alert_type:
-                return alert
-        return None
+        return current_point(data.points)
 
     @property
     def available(self) -> bool:
-        return self._enrichment() is not None
+        return self._sample() is not None
 
     @property
     def native_value(self) -> float | None:
-        alert = self._get_alert()
-        if alert is None:
+        sample = self._sample()
+        if sample is None:
             return None
-        return alert.trigger_value
+        return getattr(sample, self._description.field, None)
 
     @property
     def extra_state_attributes(self) -> dict[str, object] | None:
-        alert = self._get_alert()
-        if alert is None:
+        sample = self._sample()
+        data = self._data()
+        if sample is None or data is None:
             return None
-        attrs: dict[str, object] = {
-            "severity": alert.severity,
-            "confidence": alert.confidence,
-            "threshold": alert.threshold,
-        }
-        if alert.peak_value is not None:
-            attrs["peak_value"] = alert.peak_value
-        if alert.hours_until is not None:
-            attrs["hours_until"] = alert.hours_until
-        if alert.duration_hours is not None:
-            attrs["duration_hours"] = alert.duration_hours
+        attrs: dict[str, object] = {"valid_at": sample.valid_at.isoformat()}
+        if data.model_run is not None:
+            attrs["model_run"] = data.model_run.isoformat()
+        for name in self._description.extra_fields:
+            value = getattr(sample, name, None)
+            if value is not None:
+                attrs[name] = value
         return attrs
-
-
-class NjordIndexSensor(_NjordEnrichmentSensor):
-    """Sensor for an activity index (0-100)."""
-
-    _attr_native_unit_of_measurement = "%"
-    _attr_suggested_display_precision = 0
-
-    def __init__(
-        self,
-        coordinator: NjordDataCoordinator,
-        entry: ConfigEntry,
-        location: str,
-        index_key: str,
-        index_name: str,
-        icon: str,
-        sw_version: str | None = None,
-    ) -> None:
-        super().__init__(coordinator, entry, location, sw_version)
-        self._index_key = index_key
-        slug = f"{location}_{index_key}_index".replace("-", "_").replace(" ", "_").lower()
-        self._attr_unique_id = f"{entry.entry_id}_{slug}"
-        self._attr_translation_key = f"{index_key}_index"
-        self._attr_name = index_name
-        self._attr_icon = icon
-
-    @property
-    def available(self) -> bool:
-        enrichment = self._enrichment()
-        return enrichment is not None and enrichment.indices is not None
-
-    @property
-    def native_value(self) -> int | None:
-        enrichment = self._enrichment()
-        if enrichment is None or enrichment.indices is None:
-            return None
-        return getattr(enrichment.indices, self._index_key, None)
-
-    @property
-    def extra_state_attributes(self) -> dict[str, object] | None:
-        enrichment = self._enrichment()
-        if enrichment is None or enrichment.indices is None:
-            return None
-        forecast = [
-            {"day_offset": d.day_offset, "score": getattr(d, self._index_key, 0)} for d in enrichment.indices.forecast
-        ]
-        return {"forecast": forecast}
-
-
-class NjordVpdSensor(_NjordEnrichmentSensor):
-    """Sensor for Vapour Pressure Deficit."""
-
-    _attr_native_unit_of_measurement = "kPa"
-    _attr_suggested_display_precision = 2
-    _attr_icon = "mdi:water-percent"
-    _attr_translation_key = "vpd"
-
-    def __init__(
-        self,
-        coordinator: NjordDataCoordinator,
-        entry: ConfigEntry,
-        location: str,
-        sw_version: str | None = None,
-    ) -> None:
-        super().__init__(coordinator, entry, location, sw_version)
-        slug = f"{location}_vpd".replace("-", "_").replace(" ", "_").lower()
-        self._attr_unique_id = f"{entry.entry_id}_{slug}"
-        self._attr_name = "VPD"
-
-    @property
-    def available(self) -> bool:
-        enrichment = self._enrichment()
-        return enrichment is not None and enrichment.indices is not None and enrichment.indices.vpd is not None
-
-    @property
-    def native_value(self) -> float | None:
-        enrichment = self._enrichment()
-        if enrichment is None or enrichment.indices is None or enrichment.indices.vpd is None:
-            return None
-        return enrichment.indices.vpd.kpa
-
-    @property
-    def extra_state_attributes(self) -> dict[str, object] | None:
-        enrichment = self._enrichment()
-        if enrichment is None or enrichment.indices is None or enrichment.indices.vpd is None:
-            return None
-        category = enrichment.indices.vpd.category
-        return {"category": category.value} if category.is_known else None
-
-
-class NjordTrendSensor(_NjordEnrichmentSensor):
-    """Sensor for weather trend stability."""
-
-    _attr_icon = "mdi:trending-up"
-    _attr_translation_key = "weather_trend"
-
-    def __init__(
-        self,
-        coordinator: NjordDataCoordinator,
-        entry: ConfigEntry,
-        location: str,
-        sw_version: str | None = None,
-    ) -> None:
-        super().__init__(coordinator, entry, location, sw_version)
-        slug = f"{location}_weather_trend".replace("-", "_").replace(" ", "_").lower()
-        self._attr_unique_id = f"{entry.entry_id}_{slug}"
-        self._attr_name = "Weather Trend"
-
-    @property
-    def available(self) -> bool:
-        enrichment = self._enrichment()
-        return enrichment is not None and enrichment.trends is not None
-
-    @property
-    def native_value(self) -> str | None:
-        enrichment = self._enrichment()
-        if enrichment is None or enrichment.trends is None:
-            return None
-        return enrichment.trends.weather_change_description
-
-    @property
-    def extra_state_attributes(self) -> dict[str, object] | None:
-        enrichment = self._enrichment()
-        if enrichment is None or enrichment.trends is None:
-            return None
-        t = enrichment.trends
-        attrs: dict[str, object] = {}
-        if t.stability_label is not None and t.stability_label.is_known:
-            attrs["stability_label"] = t.stability_label.value
-        if t.precip_starts_in_hours is not None:
-            attrs["precip_starts_in_hours"] = t.precip_starts_in_hours
-        if t.precip_ends_in_hours is not None:
-            attrs["precip_ends_in_hours"] = t.precip_ends_in_hours
-        if t.temp_max_in_hours is not None:
-            attrs["temp_max_in_hours"] = t.temp_max_in_hours
-        if t.temp_min_in_hours is not None:
-            attrs["temp_min_in_hours"] = t.temp_min_in_hours
-        if t.reliable_hours is not None:
-            attrs["reliable_hours"] = t.reliable_hours
-        if t.stability_ratio is not None:
-            attrs["stability_ratio"] = t.stability_ratio
-        if t.decay_rate is not None:
-            attrs["decay_rate"] = t.decay_rate
-        if t.parameter_trends:
-            attrs["parameter_trends"] = [
-                {"parameter": p.parameter, "direction": p.direction.value, "delta": p.delta} for p in t.parameter_trends
-            ]
-        return attrs if attrs else None
-
-
-class NjordSunshineSensor(_NjordEnrichmentSensor):
-    """Sensor for sunshine percentage."""
-
-    _attr_native_unit_of_measurement = "%"
-    _attr_suggested_display_precision = 0
-    _attr_icon = "mdi:white-balance-sunny"
-    _attr_translation_key = "sunshine"
-
-    def __init__(
-        self,
-        coordinator: NjordDataCoordinator,
-        entry: ConfigEntry,
-        location: str,
-        sw_version: str | None = None,
-    ) -> None:
-        super().__init__(coordinator, entry, location, sw_version)
-        slug = f"{location}_sunshine".replace("-", "_").replace(" ", "_").lower()
-        self._attr_unique_id = f"{entry.entry_id}_{slug}"
-        self._attr_name = "Sunshine"
-
-    @property
-    def available(self) -> bool:
-        enrichment = self._enrichment()
-        return enrichment is not None and enrichment.derived is not None
-
-    @property
-    def native_value(self) -> float | None:
-        enrichment = self._enrichment()
-        if enrichment is None or enrichment.derived is None:
-            return None
-        return enrichment.derived.sunshine_pct
-
-
-class NjordDiurnalAmplitudeSensor(_NjordEnrichmentSensor):
-    """Sensor for diurnal temperature amplitude."""
-
-    _attr_device_class = SensorDeviceClass.TEMPERATURE
-    _attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
-    _attr_suggested_display_precision = 1
-    _attr_icon = "mdi:thermometer-lines"
-    _attr_translation_key = "diurnal_amplitude"
-
-    def __init__(
-        self,
-        coordinator: NjordDataCoordinator,
-        entry: ConfigEntry,
-        location: str,
-        sw_version: str | None = None,
-    ) -> None:
-        super().__init__(coordinator, entry, location, sw_version)
-        slug = f"{location}_diurnal_amplitude".replace("-", "_").replace(" ", "_").lower()
-        self._attr_unique_id = f"{entry.entry_id}_{slug}"
-        self._attr_name = "Diurnal Amplitude"
-
-    @property
-    def available(self) -> bool:
-        enrichment = self._enrichment()
-        return enrichment is not None and enrichment.derived is not None
-
-    @property
-    def native_value(self) -> float | None:
-        enrichment = self._enrichment()
-        if enrichment is None or enrichment.derived is None:
-            return None
-        return enrichment.derived.diurnal_amplitude
-
-
-class NjordFrostHoursSensor(_NjordEnrichmentSensor):
-    """Sensor for frost hours."""
-
-    _attr_device_class = SensorDeviceClass.DURATION
-    _attr_native_unit_of_measurement = UnitOfTime.HOURS
-    _attr_suggested_display_precision = 0
-    _attr_icon = "mdi:snowflake-thermometer"
-    _attr_translation_key = "frost_hours"
-
-    def __init__(self, coordinator, entry, location, sw_version=None):
-        super().__init__(coordinator, entry, location, sw_version)
-        slug = f"{location}_frost_hours".replace("-", "_").replace(" ", "_").lower()
-        self._attr_unique_id = f"{entry.entry_id}_{slug}"
-        self._attr_name = "Frost Hours"
-
-    @property
-    def available(self) -> bool:
-        enrichment = self._enrichment()
-        return enrichment is not None and enrichment.indices is not None and enrichment.indices.frost is not None
-
-    @property
-    def native_value(self) -> int | None:
-        enrichment = self._enrichment()
-        if enrichment is None or enrichment.indices is None or enrichment.indices.frost is None:
-            return None
-        return enrichment.indices.frost.hours_until
-
-
-class NjordFrostConfidenceSensor(_NjordEnrichmentSensor):
-    """Sensor for frost confidence as percentage."""
-
-    _attr_native_unit_of_measurement = "%"
-    _attr_suggested_display_precision = 0
-    _attr_icon = "mdi:snowflake-check"
-    _attr_translation_key = "frost_confidence"
-
-    def __init__(self, coordinator, entry, location, sw_version=None):
-        super().__init__(coordinator, entry, location, sw_version)
-        slug = f"{location}_frost_confidence".replace("-", "_").replace(" ", "_").lower()
-        self._attr_unique_id = f"{entry.entry_id}_{slug}"
-        self._attr_name = "Frost Confidence"
-
-    @property
-    def available(self) -> bool:
-        enrichment = self._enrichment()
-        return enrichment is not None and enrichment.indices is not None and enrichment.indices.frost is not None
-
-    @property
-    def native_value(self) -> float | None:
-        enrichment = self._enrichment()
-        if enrichment is None or enrichment.indices is None or enrichment.indices.frost is None:
-            return None
-        return enrichment.indices.frost.confidence * 100
 
 
 class NjordMonthlyUsageSensor(CoordinatorEntity[NjordStatusCoordinator], SensorEntity):
@@ -614,86 +419,8 @@ class NjordUptimeSensor(CoordinatorEntity[NjordStatusCoordinator], SensorEntity)
         return round(status.uptime_seconds / 3600, 1)
 
 
-class _NjordDerivedHorizonSensor(_NjordEnrichmentSensor):
-    """Base class for sensors reading from DerivedData.by_horizon."""
-
-    def _current_derived_horizon(self) -> HorizonDerivedData | None:
-        enrichment = self._enrichment()
-        if enrichment is None or enrichment.derived is None:
-            return None
-        offset = current_horizon_offset(enrichment.derived_updated_at)
-        return find_nearest_horizon(enrichment.derived.by_horizon, offset)
-
-    @property
-    def available(self) -> bool:
-        enrichment = self._enrichment()
-        return enrichment is not None and enrichment.derived is not None
-
-
-class NjordBeaufortSensor(_NjordDerivedHorizonSensor):
-    """Sensor for Beaufort wind scale (0-12)."""
-
-    _attr_suggested_display_precision = 0
-    _attr_icon = "mdi:windsock"
-    _attr_translation_key = "beaufort"
-
-    def __init__(self, coordinator, entry, location, sw_version=None):
-        super().__init__(coordinator, entry, location, sw_version)
-        slug = f"{location}_beaufort".replace("-", "_").replace(" ", "_").lower()
-        self._attr_unique_id = f"{entry.entry_id}_{slug}"
-        self._attr_name = "Beaufort"
-
-    @property
-    def native_value(self) -> int | None:
-        h = self._current_derived_horizon()
-        return h.beaufort if h is not None else None
-
-
-class NjordWindChillSensor(_NjordDerivedHorizonSensor):
-    """Sensor for wind chill temperature."""
-
-    _attr_device_class = SensorDeviceClass.TEMPERATURE
-    _attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
-    _attr_suggested_display_precision = 1
-    _attr_icon = "mdi:snowflake-thermometer"
-    _attr_translation_key = "wind_chill"
-
-    def __init__(self, coordinator, entry, location, sw_version=None):
-        super().__init__(coordinator, entry, location, sw_version)
-        slug = f"{location}_wind_chill".replace("-", "_").replace(" ", "_").lower()
-        self._attr_unique_id = f"{entry.entry_id}_{slug}"
-        self._attr_name = "Wind Chill"
-
-    @property
-    def native_value(self) -> float | None:
-        h = self._current_derived_horizon()
-        return h.wind_chill if h is not None else None
-
-
-class NjordDewpointComfortSensor(_NjordDerivedHorizonSensor):
-    """Sensor for dewpoint comfort category."""
-
-    _attr_icon = "mdi:water-thermometer"
-    _attr_translation_key = "dewpoint_comfort"
-    _attr_device_class = SensorDeviceClass.ENUM
-    _attr_options = [c.value for c in DewPointComfort if c.is_known]
-
-    def __init__(self, coordinator, entry, location, sw_version=None):
-        super().__init__(coordinator, entry, location, sw_version)
-        slug = f"{location}_dewpoint_comfort".replace("-", "_").replace(" ", "_").lower()
-        self._attr_unique_id = f"{entry.entry_id}_{slug}"
-        self._attr_name = "Dewpoint Comfort"
-
-    @property
-    def native_value(self) -> str | None:
-        h = self._current_derived_horizon()
-        if h is None or h.dewpoint_comfort is None or not h.dewpoint_comfort.is_known:
-            return None
-        return h.dewpoint_comfort.value
-
-
 class NjordTargetSensor(CoordinatorEntity[NjordStatusCoordinator], SensorEntity):
-    """Diagnostic sensor showing poll state for a location/model target."""
+    """Diagnostic sensor showing the next poll of a location."""
 
     _attr_has_entity_name = True
     _attr_entity_category = EntityCategory.DIAGNOSTIC
@@ -706,15 +433,12 @@ class NjordTargetSensor(CoordinatorEntity[NjordStatusCoordinator], SensorEntity)
         coordinator: NjordStatusCoordinator,
         entry: ConfigEntry,
         location: str,
-        model: str,
         sw_version: str | None = None,
     ) -> None:
         super().__init__(coordinator)
         self._target_location = location
-        self._target_model = model
-        slug = f"{location}_{model}_target".replace("-", "_").replace(" ", "_").lower()
-        self._attr_unique_id = f"{entry.entry_id}_{slug}"
-        self._attr_name = f"{model} {location}"
+        self._attr_unique_id = f"{entry.entry_id}_{slugify_location(location)}_target"
+        self._attr_name = f"Poll {location}"
         self._attr_translation_key = "target_poll"
         self._attr_device_info = server_device_info(entry, sw_version)
 
@@ -722,7 +446,7 @@ class NjordTargetSensor(CoordinatorEntity[NjordStatusCoordinator], SensorEntity)
         if self.coordinator.data is None:
             return None
         for t in self.coordinator.data.targets:
-            if t.location == self._target_location and t.model == self._target_model:
+            if t.location == self._target_location:
                 return t
         return None
 
@@ -744,7 +468,6 @@ class NjordTargetSensor(CoordinatorEntity[NjordStatusCoordinator], SensorEntity)
             return None
         attrs: dict[str, object] = {
             "phase": t.phase.value,
-            "model": t.model,
             "miss_count": t.miss_count,
         }
         if t.last_change is not None:

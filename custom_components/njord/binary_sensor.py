@@ -1,4 +1,4 @@
-"""Binary sensor platform for njord derived metrics."""
+"""Binary sensor platform for njord alerts and stream health."""
 
 from __future__ import annotations
 
@@ -12,10 +12,10 @@ from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN, EnrichmentGroup, StreamName
+from .const import ALERT_META, DOMAIN, AlertSeverity, AlertType, Domain, StreamName, enabled_alert_types
 from .coordinator import NjordDataCoordinator, NjordStatusCoordinator
-from .helpers import device_info, disabled_groups_of, group_enabled, server_device_info
-from .models import NjordLocation
+from .helpers import alerts_active, device_info, enabled_enrichments_of, server_device_info, slugify_location
+from .models import AlertData
 
 
 def _get_sw_version(hass: HomeAssistant, entry: ConfigEntry) -> str | None:
@@ -33,73 +33,92 @@ async def async_setup_entry(
     """Set up njord binary sensor entities."""
     coordinator: NjordDataCoordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
     sw_version = _get_sw_version(hass, entry)
-    disabled_groups = disabled_groups_of(entry)
+    alert_types = enabled_alert_types(enabled_enrichments_of(entry))
+
+    def alert_entities(location: str) -> list[BinarySensorEntity]:
+        if not alerts_active(coordinator.data.active_enrichments):
+            return []
+        return [NjordAlertBinarySensor(coordinator, entry, location, t, sw_version) for t in alert_types]
 
     entities: list[BinarySensorEntity] = []
-    active = coordinator.data.active_enrichments
-
-    if group_enabled(EnrichmentGroup.DERIVED, active, disabled_groups):
-        locations = {loc for loc, _ in coordinator.data.forecasts}
-        for location in sorted(locations):
-            enrichment = coordinator.data.enrichments.get(location)
-            if enrichment and enrichment.derived is not None:
-                entities.append(NjordInversionEntity(coordinator, entry, location, sw_version))
+    for location in coordinator.data.locations_with(Domain.WEATHER):
+        entities.extend(alert_entities(location))
 
     for stream_name in StreamName:
         entities.append(NjordStreamSensor(coordinator, entry, stream_name, sw_version))
 
     async_add_entities(entities)
 
-    def binary_sensor_factory(location: NjordLocation) -> list[BinarySensorEntity]:
-        new_entities: list[BinarySensorEntity] = []
-        act = coordinator.data.active_enrichments
-        if group_enabled(EnrichmentGroup.DERIVED, act, disabled_groups):
-            enrichment = coordinator.data.enrichments.get(location.name)
-            if enrichment and enrichment.derived is not None:
-                new_entities.append(NjordInversionEntity(coordinator, entry, location.name, sw_version))
-        return new_entities
+    def binary_sensor_factory(location: str, domain: Domain) -> list[BinarySensorEntity]:
+        # Alerts are per location: they are created when the location's weather domain first appears.
+        return alert_entities(location) if domain == Domain.WEATHER else []
 
     coordinator.register_entity_factory("binary_sensor", async_add_entities, binary_sensor_factory)
 
 
-class NjordInversionEntity(CoordinatorEntity[NjordDataCoordinator], BinarySensorEntity):
-    """Binary sensor for temperature inversion detection."""
+class NjordAlertBinarySensor(CoordinatorEntity[NjordDataCoordinator], BinarySensorEntity):
+    """Binary sensor that is on while an alert of one type is active at a location."""
 
     _attr_has_entity_name = True
-    _attr_entity_registry_enabled_default = False
-    _attr_icon = "mdi:arrow-collapse-vertical"
-    _attr_translation_key = "inversion"
+    _attr_device_class = BinarySensorDeviceClass.SAFETY
 
     def __init__(
         self,
         coordinator: NjordDataCoordinator,
         entry: ConfigEntry,
         location: str,
+        alert_type: AlertType,
         sw_version: str | None = None,
     ) -> None:
         super().__init__(coordinator)
         self._location = location
-
-        slug = f"{location}_inversion".replace("-", "_").replace(" ", "_").lower()
-        self._attr_unique_id = f"{entry.entry_id}_{slug}"
-        self._attr_name = "Inversion"
+        self._alert_type = alert_type
+        meta = ALERT_META[alert_type]
+        self._unit = meta.unit
+        self._attr_unique_id = f"{entry.entry_id}_{slugify_location(location)}_{alert_type}_alert"
+        self._attr_name = meta.name
+        self._attr_icon = meta.icon
         self._attr_device_info = device_info(entry, location, sw_version)
+
+    def _get_alert(self) -> AlertData | None:
+        if self.coordinator.data is None:
+            return None
+        enrichment = self.coordinator.data.enrichments.get(self._location)
+        if enrichment is None:
+            return None
+        for alert in enrichment.alerts:
+            if alert.type == self._alert_type:
+                return alert
+        return None
 
     @property
     def available(self) -> bool:
-        if self.coordinator.data is None:
-            return False
-        enrichment = self.coordinator.data.enrichments.get(self._location)
-        return enrichment is not None and enrichment.derived is not None
+        return self.coordinator.data is not None and self._location in self.coordinator.data.enrichments
 
     @property
-    def is_on(self) -> bool | None:
-        if self.coordinator.data is None:
+    def is_on(self) -> bool:
+        alert = self._get_alert()
+        return alert is not None and alert.severity != AlertSeverity.NONE
+
+    @property
+    def extra_state_attributes(self) -> dict[str, object] | None:
+        alert = self._get_alert()
+        if alert is None or alert.severity == AlertSeverity.NONE:
             return None
-        enrichment = self.coordinator.data.enrichments.get(self._location)
-        if enrichment is None or enrichment.derived is None:
-            return None
-        return enrichment.derived.inversion
+        attrs: dict[str, object] = {
+            "severity": alert.severity,
+            "confidence": alert.confidence,
+            "trigger_value": alert.trigger_value,
+            "threshold": alert.threshold,
+            "unit": self._unit,
+        }
+        if alert.peak_value is not None:
+            attrs["peak_value"] = alert.peak_value
+        if alert.hours_until is not None:
+            attrs["hours_until"] = alert.hours_until
+        if alert.duration_hours is not None:
+            attrs["duration_hours"] = alert.duration_hours
+        return attrs
 
 
 class NjordStreamSensor(CoordinatorEntity[NjordDataCoordinator], BinarySensorEntity):
@@ -110,9 +129,8 @@ class NjordStreamSensor(CoordinatorEntity[NjordDataCoordinator], BinarySensorEnt
     _attr_entity_category = EntityCategory.DIAGNOSTIC
 
     _STREAM_NAMES = {
-        StreamName.FORECAST: "Forecast Stream",
+        StreamName.DOMAIN: "Domain Data Stream",
         StreamName.ENRICHMENT: "Enrichment Stream",
-        StreamName.CONFIG: "Config Stream",
     }
 
     def __init__(
