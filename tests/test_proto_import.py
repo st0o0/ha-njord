@@ -1,66 +1,38 @@
 """Verify generated proto modules are importable."""
 
+import importlib.util
+
+import pytest
+
 
 def test_common_pb2_importable():
     from custom_components.njord.proto.njord.v2 import common_pb2
 
-    assert hasattr(common_pb2, "HourlyForecast")
-    assert hasattr(common_pb2, "DailyForecast")
-    assert hasattr(common_pb2, "LocationInfo")
-    assert hasattr(common_pb2, "ModelInfo")
+    for name in ("LocationInfo", "ModelInfo", "Alert", "AlertUpdate"):
+        assert hasattr(common_pb2, name)
 
 
 def test_weather_pb2_importable():
     from custom_components.njord.proto.njord.v2 import weather_pb2
 
-    assert hasattr(weather_pb2, "GetCatalogRequest")
-    assert hasattr(weather_pb2, "GetCatalogResponse")
-    assert hasattr(weather_pb2, "GetForecastResponse")
-    assert hasattr(weather_pb2, "ForecastUpdate")
-
-
-def test_admin_pb2_importable():
-    from custom_components.njord.proto.njord.v2 import admin_pb2
-
-    assert hasattr(admin_pb2, "NjordConfig")
-    assert hasattr(admin_pb2, "GetConfigRequest")
+    for name in ("GetCatalogResponse", "GetDomainDataRequest", "DomainDataUpdate", "EnrichmentEvent"):
+        assert hasattr(weather_pb2, name)
 
 
 def test_ops_pb2_importable():
     from custom_components.njord.proto.njord.v2 import ops_pb2
 
-    assert hasattr(ops_pb2, "StatusResponse")
-    assert hasattr(ops_pb2, "TriggerPollRequest")
+    for name in ("StatusResponse", "TriggerPollRequest", "TriggerTarget"):
+        assert hasattr(ops_pb2, name)
 
 
-def test_weather_grpc_importable():
-    from custom_components.njord.proto.njord.v2 import weather_pb2_grpc
+def test_grpc_stubs_importable():
+    from custom_components.njord.proto.njord.v2 import ops_pb2_grpc, weather_pb2_grpc
 
     assert hasattr(weather_pb2_grpc, "WeatherServiceStub")
-
-
-def test_admin_grpc_importable():
-    from custom_components.njord.proto.njord.v2 import admin_pb2_grpc
-
-    assert hasattr(admin_pb2_grpc, "AdminServiceStub")
-
-
-def test_ops_grpc_importable():
-    from custom_components.njord.proto.njord.v2 import ops_pb2_grpc
-
     assert hasattr(ops_pb2_grpc, "OpsServiceStub")
 
 
-def test_sensor_pb2_importable():
-    from custom_components.njord.proto.njord.v2 import sensor_pb2
-
-    assert hasattr(sensor_pb2, "SensorReading")
-    assert hasattr(sensor_pb2, "PushResponse")
-    assert hasattr(sensor_pb2, "SENSOR_KIND_INDOOR_TEMPERATURE")
-    assert hasattr(sensor_pb2, "SENSOR_KIND_INDOOR_HUMIDITY")
-
-
-def test_sensor_grpc_importable():
-    from custom_components.njord.proto.njord.v2 import sensor_pb2_grpc
-
-    assert hasattr(sensor_pb2_grpc, "SensorServiceStub")
+@pytest.mark.parametrize("module", ["admin_pb2", "sensor_pb2", "admin_pb2_grpc", "sensor_pb2_grpc"])
+def test_removed_services_are_gone(module):
+    assert importlib.util.find_spec(f"custom_components.njord.proto.njord.v2.{module}") is None

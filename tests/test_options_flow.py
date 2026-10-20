@@ -1,139 +1,81 @@
-"""Tests for njord options flow."""
+"""Tests for the njord options flow."""
 
 from __future__ import annotations
 
+from datetime import timedelta
+from unittest.mock import AsyncMock
+
 from homeassistant.core import HomeAssistant
 
-from custom_components.njord.config_flow import ENRICHMENT_GROUPS
+from custom_components.njord.const import DOMAIN
 from tests.conftest import init_integration
 
 
-async def _submit_init_step(hass, entry, **init_overrides):
-    """Submit the init step and return the sensors step result."""
+async def _configure(hass: HomeAssistant, entry, **overrides):
     result = await hass.config_entries.options.async_init(entry.entry_id)
     assert result["type"] == "form"
     assert result["step_id"] == "init"
-
     user_input = {
-        "status_poll_interval": entry.options.get("status_poll_interval", 30),
-        "enabled_enrichment_groups": ENRICHMENT_GROUPS,
+        "status_poll_interval": 30,
+        "enabled_enrichments": ["weather_alerts", "pollen_alert", "pm25_alert"],
     }
-    user_input.update(init_overrides)
-
-    result = await hass.config_entries.options.async_configure(
-        result["flow_id"],
-        user_input=user_input,
-    )
-    return result
+    user_input.update(overrides)
+    return await hass.config_entries.options.async_configure(result["flow_id"], user_input=user_input)
 
 
-async def test_options_flow_defaults(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+async def test_options_form_fields_and_defaults(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
     await init_integration(hass, mock_config_entry)
 
     result = await hass.config_entries.options.async_init(mock_config_entry.entry_id)
-    assert result["type"] == "form"
-    assert result["step_id"] == "init"
 
-    schema_keys = list(result["data_schema"].schema.keys())
-    schema_key_names = [k.schema for k in schema_keys]
-    assert "status_poll_interval" in schema_key_names
-    assert "enabled_enrichment_groups" in schema_key_names
+    defaults = {key.schema: key.default() for key in result["data_schema"].schema}
+    assert defaults == {
+        "status_poll_interval": 30,
+        "enabled_enrichments": ["pm25_alert", "pollen_alert", "weather_alerts"],
+    }
 
 
-async def test_options_init_step_navigates_to_sensors(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+async def test_options_form_shows_stored_enrichments(hass: HomeAssistant, mock_client, all_alerts_entry) -> None:
+    await init_integration(hass, all_alerts_entry)
+
+    result = await hass.config_entries.options.async_init(all_alerts_entry.entry_id)
+
+    defaults = {key.schema: key.default() for key in result["data_schema"].schema}
+    assert len(defaults["enabled_enrichments"]) == 6
+
+
+async def test_poll_interval_only_change_does_not_reload(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
     await init_integration(hass, mock_config_entry)
+    reload = AsyncMock()
+    hass.config_entries.async_reload = reload
 
-    result = await _submit_init_step(hass, mock_config_entry)
-    assert result["type"] == "form"
-    assert result["step_id"] == "sensors"
+    result = await _configure(hass, mock_config_entry, status_poll_interval=120)
+    await hass.async_block_till_done()
 
-
-async def test_options_sensors_step_shows_entity_selectors(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
-    await init_integration(hass, mock_config_entry)
-
-    result = await _submit_init_step(hass, mock_config_entry)
-    assert result["step_id"] == "sensors"
-
-    schema_keys = list(result["data_schema"].schema.keys())
-    schema_key_names = [k.schema for k in schema_keys]
-    assert "home_indoor_temperature" in schema_key_names
-    assert "home_indoor_humidity" in schema_key_names
-
-
-async def test_options_flow_custom_values(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
-    await init_integration(hass, mock_config_entry)
-
-    result = await _submit_init_step(
-        hass,
-        mock_config_entry,
-        status_poll_interval=60,
-        enabled_enrichment_groups=[g for g in ENRICHMENT_GROUPS if g != "trends"],
-    )
-    assert result["step_id"] == "sensors"
-
-    result = await hass.config_entries.options.async_configure(
-        result["flow_id"],
-        user_input={
-            "home_indoor_temperature": [],
-            "home_indoor_humidity": [],
-        },
-    )
     assert result["type"] == "create_entry"
-
-    assert mock_config_entry.options["status_poll_interval"] == 60
-    assert "trends" in mock_config_entry.options["disabled_enrichment_groups"]
-    assert "alerts" not in mock_config_entry.options["disabled_enrichment_groups"]
-
-
-async def test_sensor_push_config_persisted(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
-    await init_integration(hass, mock_config_entry)
-
-    result = await _submit_init_step(hass, mock_config_entry)
-    result = await hass.config_entries.options.async_configure(
-        result["flow_id"],
-        user_input={
-            "home_indoor_temperature": ["sensor.wz_temp", "sensor.sz_temp"],
-            "home_indoor_humidity": ["sensor.bad_hum"],
-        },
-    )
-    assert result["type"] == "create_entry"
-
-    sensor_push = mock_config_entry.options["sensor_push"]
-    assert sensor_push["home"]["indoor_temperature"] == ["sensor.wz_temp", "sensor.sz_temp"]
-    assert sensor_push["home"]["indoor_humidity"] == ["sensor.bad_hum"]
-
-
-async def test_sensor_push_empty_config(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
-    await init_integration(hass, mock_config_entry)
-
-    result = await _submit_init_step(hass, mock_config_entry)
-    result = await hass.config_entries.options.async_configure(
-        result["flow_id"],
-        user_input={
-            "home_indoor_temperature": [],
-            "home_indoor_humidity": [],
-        },
-    )
-    assert result["type"] == "create_entry"
-
-    sensor_push = mock_config_entry.options["sensor_push"]
-    assert sensor_push["home"]["indoor_temperature"] == []
-    assert sensor_push["home"]["indoor_humidity"] == []
-
-
-async def test_options_poll_interval_only_no_reload(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
-    await init_integration(hass, mock_config_entry)
-
-    result = await _submit_init_step(hass, mock_config_entry, status_poll_interval=120)
-    result = await hass.config_entries.options.async_configure(
-        result["flow_id"],
-        user_input={
-            "home_indoor_temperature": [],
-            "home_indoor_humidity": [],
-        },
-    )
-    assert result["type"] == "create_entry"
-
     assert mock_config_entry.options["status_poll_interval"] == 120
-    assert mock_config_entry.options["disabled_enrichment_groups"] == []
-    assert mock_config_entry.state.name == "LOADED"
+    reload.assert_not_awaited()
+    status_coordinator = hass.data[DOMAIN][mock_config_entry.entry_id]["status_coordinator"]
+    assert status_coordinator.update_interval == timedelta(seconds=120)
+
+
+async def test_enrichment_change_reloads_entry(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+    await init_integration(hass, mock_config_entry)
+    reload = AsyncMock()
+    hass.config_entries.async_reload = reload
+
+    result = await _configure(hass, mock_config_entry, enabled_enrichments=["flood_risk", "weather_alerts"])
+    await hass.async_block_till_done()
+
+    assert result["type"] == "create_entry"
+    assert mock_config_entry.options["enabled_enrichments"] == ["flood_risk", "weather_alerts"]
+    reload.assert_awaited_once_with(mock_config_entry.entry_id)
+
+
+async def test_disabling_all_enrichments_is_stored(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+    await init_integration(hass, mock_config_entry)
+
+    result = await _configure(hass, mock_config_entry, enabled_enrichments=[])
+
+    assert result["type"] == "create_entry"
+    assert mock_config_entry.options["enabled_enrichments"] == []

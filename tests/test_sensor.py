@@ -5,202 +5,123 @@ from __future__ import annotations
 from dataclasses import replace
 
 import pytest
-from homeassistant.components.sensor import SensorDeviceClass
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 
-from custom_components.njord.const import DewPointComfort
-from tests.conftest import _default_enrichment, init_integration
+from custom_components.njord.const import DOMAIN, Domain
+from custom_components.njord.coordinator import NjordStatusCoordinator
+from custom_components.njord.models import BudgetStatusData, ServerStatusData
+from custom_components.njord.sensor import DOMAIN_SENSORS, NjordDailyUsageSensor, NjordMonthlyUsageSensor
+from tests.conftest import MODEL_RUN, entity_id_for, init_integration
 
 
-async def _setup_with_sensors_enabled(hass, mock_config_entry):
-    """Set up integration, enable all disabled sensors, and reload."""
+def _state(hass: HomeAssistant, entry, key: str, platform: str = "sensor"):
+    entity_id = entity_id_for(hass, platform, f"{entry.entry_id}_{key}")
+    assert entity_id is not None, f"no entity for {key}"
+    state = hass.states.get(entity_id)
+    assert state is not None
+    return state
+
+
+def test_domain_sensor_keys_are_unique_and_cover_domains() -> None:
+    keys = [d.key for d in DOMAIN_SENSORS]
+    assert len(keys) == len(set(keys))
+    assert {d.domain for d in DOMAIN_SENSORS} == {Domain.AIR_QUALITY, Domain.FLOOD, Domain.MARINE}
+
+
+async def test_air_quality_sensors(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
     await init_integration(hass, mock_config_entry)
-    registry = er.async_get(hass)
-    for entry in list(registry.entities.values()):
-        if entry.domain == "sensor" and entry.disabled_by is not None:
-            registry.async_update_entity(entry.entity_id, disabled_by=None)
-    await hass.config_entries.async_reload(mock_config_entry.entry_id)
+
+    pm25 = _state(hass, mock_config_entry, "home_pm25")
+    assert float(pm25.state) == pytest.approx(12.34)
+    assert pm25.attributes["unit_of_measurement"] == "µg/m³"
+    assert pm25.attributes["device_class"] == "pm25"
+    assert pm25.attributes["model_run"] == MODEL_RUN.isoformat()
+    assert float(_state(hass, mock_config_entry, "home_ozone").state) == 80.0
+    assert float(_state(hass, mock_config_entry, "home_birch_pollen").state) == 3.0
+
+
+async def test_missing_optional_value_reads_unknown(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+    await init_integration(hass, mock_config_entry)
+
+    assert _state(hass, mock_config_entry, "home_grass_pollen").state == "unknown"
+
+
+async def test_flood_sensor_has_statistics_attributes(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+    await init_integration(hass, mock_config_entry)
+
+    discharge = _state(hass, mock_config_entry, "home_river_discharge")
+    assert float(discharge.state) == 55.5
+    assert discharge.attributes["unit_of_measurement"] == "m³/s"
+    assert discharge.attributes["discharge_mean"] == 50.0
+    assert "discharge_max" not in discharge.attributes
+
+
+async def test_no_sensors_for_domain_without_data(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+    await init_integration(hass, mock_config_entry)
+
+    for key in ("wave_height", "wave_period", "wave_direction", "water_temperature"):
+        assert entity_id_for(hass, "sensor", f"{mock_config_entry.entry_id}_home_{key}") is None
+
+
+async def test_sensor_unavailable_without_samples(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+    await init_integration(hass, mock_config_entry)
+    coordinator = hass.data[DOMAIN][mock_config_entry.entry_id]["coordinator"]
+
+    key = ("home", Domain.AIR_QUALITY)
+    coordinator.data.domains[key] = replace(coordinator.data.domains[key], points=[])
+    coordinator.async_set_updated_data(coordinator.data)
     await hass.async_block_till_done()
 
-
-async def test_index_sensors_exist(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
-    await _setup_with_sensors_enabled(hass, mock_config_entry)
-
-    indices = ["laundry", "outdoor", "running", "cycling", "bbq", "irrigation", "solar", "night_ventilation"]
-    for idx in indices:
-        state = hass.states.get(f"sensor.home_{idx}_index")
-        assert state is not None, f"Missing index sensor: {idx}"
+    assert _state(hass, mock_config_entry, "home_pm25").state == "unavailable"
 
 
-async def test_bbq_index_value(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
-    await _setup_with_sensors_enabled(hass, mock_config_entry)
-
-    state = hass.states.get("sensor.home_bbq_index")
-    assert state is not None
-    assert state.state == "51"
-
-
-async def test_vpd_sensor(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
-    await _setup_with_sensors_enabled(hass, mock_config_entry)
-
-    state = hass.states.get("sensor.home_vpd")
-    assert state is not None
-    assert float(state.state) == pytest.approx(0.59)
-    assert state.attributes["category"] == "optimal"
-
-
-async def test_weather_trend(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
-    await _setup_with_sensors_enabled(hass, mock_config_entry)
-
-    state = hass.states.get("sensor.home_weather_trend")
-    assert state is not None
-    assert state.state == "Light rain expected in 2 hours"
-    assert state.attributes["stability_label"] == "stable"
-    assert state.attributes["precip_starts_in_hours"] == 2
-    assert state.attributes["reliable_hours"] == 3
-
-
-async def test_sunshine_pct(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
-    await _setup_with_sensors_enabled(hass, mock_config_entry)
-
-    state = hass.states.get("sensor.home_sunshine")
-    assert state is not None
-    assert float(state.state) == pytest.approx(66.4)
-
-
-async def test_diurnal_amplitude(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
-    await _setup_with_sensors_enabled(hass, mock_config_entry)
-
-    state = hass.states.get("sensor.home_diurnal_amplitude")
-    assert state is not None
-    assert float(state.state) == pytest.approx(7.3)
-
-
-async def test_frost_hours_sensor(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
-    await _setup_with_sensors_enabled(hass, mock_config_entry)
-
-    state = hass.states.get("sensor.home_frost_hours")
-    assert state is not None
-    assert state.state == "4"
-    assert state.attributes["unit_of_measurement"] == "h"
-    assert state.attributes["icon"] == "mdi:snowflake-thermometer"
-
-
-async def test_frost_confidence_sensor(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
-    await _setup_with_sensors_enabled(hass, mock_config_entry)
-
-    state = hass.states.get("sensor.home_frost_confidence")
-    assert state is not None
-    assert float(state.state) == pytest.approx(85.0)
-    assert state.attributes["unit_of_measurement"] == "%"
-    assert state.attributes["icon"] == "mdi:snowflake-check"
-
-
-async def test_enrichment_sensors_disabled_by_default(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+async def test_server_diagnostic_sensors(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
     await init_integration(hass, mock_config_entry)
 
-    registry = er.async_get(hass)
-    disabled_sensors = [
-        "sensor.home_bbq_index",
-        "sensor.home_weather_trend",
-        "sensor.home_beaufort",
-        "sensor.home_wind_chill",
-        "sensor.home_dewpoint_comfort",
-    ]
-    for entity_id in disabled_sensors:
-        entry = registry.async_get(entity_id)
-        assert entry is not None, f"Missing entity: {entity_id}"
-        assert entry.disabled_by == er.RegistryEntryDisabler.INTEGRATION, f"{entity_id} should be disabled by default"
-        state = hass.states.get(entity_id)
-        assert state is None, f"{entity_id} should have no state when disabled"
+    monthly = _state(hass, mock_config_entry, "monthly_usage")
+    assert float(monthly.state) == 25.0
+    assert monthly.attributes["limit"] == 20000
+    assert monthly.attributes["used"] == 5000
+    assert float(_state(hass, mock_config_entry, "daily_usage").state) == pytest.approx(14.3)
+    assert _state(hass, mock_config_entry, "version").state == "1.2.3"
+    assert float(_state(hass, mock_config_entry, "uptime").state) == 1.0
 
 
-async def test_alert_sensors_enabled_by_default(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+async def test_target_sensor_is_disabled_by_default(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
     await init_integration(hass, mock_config_entry)
 
-    registry = er.async_get(hass)
-    alert_sensors = [
-        "sensor.home_frost_alert",
-        "sensor.home_heat_alert",
-        "sensor.home_storm_alert",
-    ]
-    for entity_id in alert_sensors:
-        entry = registry.async_get(entity_id)
-        assert entry is not None, f"Missing entity: {entity_id}"
-        assert entry.disabled_by is None, f"{entity_id} should be enabled by default"
-        state = hass.states.get(entity_id)
-        assert state is not None, f"{entity_id} should have a state when enabled by default"
+    entity_id = entity_id_for(hass, "sensor", f"{mock_config_entry.entry_id}_home_target")
+    assert entity_id is not None
+    entry = er.async_get(hass).async_get(entity_id)
+    assert entry is not None
+    assert entry.disabled_by is er.RegistryEntryDisabler.INTEGRATION
 
 
-# --- Derived Sensor Tests ---
-
-
-async def test_beaufort_sensor(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
-    await _setup_with_sensors_enabled(hass, mock_config_entry)
-
-    state = hass.states.get("sensor.home_beaufort")
-    assert state is not None
-    assert state.state == "3"
-    assert state.attributes["icon"] == "mdi:windsock"
-
-
-async def test_wind_chill_sensor(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
-    await _setup_with_sensors_enabled(hass, mock_config_entry)
-
-    state = hass.states.get("sensor.home_wind_chill")
-    assert state is not None
-    assert float(state.state) == pytest.approx(18.5)
-    assert state.attributes.get("device_class") == SensorDeviceClass.TEMPERATURE.value
-
-
-async def test_dewpoint_comfort_sensor(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
-    await _setup_with_sensors_enabled(hass, mock_config_entry)
-
-    state = hass.states.get("sensor.home_dewpoint_comfort")
-    assert state is not None
-    assert state.state == "comfortable"
-    assert state.attributes["icon"] == "mdi:water-thermometer"
-
-
-# --- Device Class and Precision Tests ---
-
-
-async def test_diurnal_amplitude_device_class(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
-    await _setup_with_sensors_enabled(hass, mock_config_entry)
-
-    state = hass.states.get("sensor.home_diurnal_amplitude")
-    assert state is not None
-    assert state.attributes.get("device_class") == SensorDeviceClass.TEMPERATURE.value
-
-
-async def test_frost_hours_device_class(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
-    await _setup_with_sensors_enabled(hass, mock_config_entry)
-
-    state = hass.states.get("sensor.home_frost_hours")
-    assert state is not None
-    assert state.attributes.get("device_class") == SensorDeviceClass.DURATION.value
-
-
-async def test_dewpoint_comfort_sensor_is_enum_with_options(
+async def test_usage_sensors_unavailable_when_budget_partial(
     hass: HomeAssistant, mock_client, mock_config_entry
 ) -> None:
-    await _setup_with_sensors_enabled(hass, mock_config_entry)
+    status_coordinator = NjordStatusCoordinator(hass, mock_client)
+    status_coordinator.data = ServerStatusData(
+        budget=BudgetStatusData(monthly_limit=100, monthly_used=10, daily_limit=10, daily_used=5),
+        budget_partial=True,
+    )
 
-    state = hass.states.get("sensor.home_dewpoint_comfort")
-    assert state is not None
-    assert state.attributes["device_class"] == SensorDeviceClass.ENUM.value
-    assert state.attributes["options"] == ["dry", "comfortable", "sticky", "oppressive", "dangerous"]
+    monthly = NjordMonthlyUsageSensor(status_coordinator, mock_config_entry)
+    daily = NjordDailyUsageSensor(status_coordinator, mock_config_entry)
+    assert monthly.available is False
+    assert daily.available is False
+
+    status_coordinator.data = replace(status_coordinator.data, budget_partial=False)
+    assert monthly.native_value == 10.0
+    assert daily.native_value == 50.0
 
 
-async def test_dewpoint_comfort_unspecified_is_unknown(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
-    enrichment = _default_enrichment()
-    derived = enrichment.derived
-    horizons = [replace(h, dewpoint_comfort=DewPointComfort.UNSPECIFIED) for h in derived.by_horizon]
-    enrichment_unspec = replace(enrichment, derived=replace(derived, by_horizon=horizons))
-    mock_client.get_enrichments.side_effect = lambda loc: enrichment_unspec
-    await _setup_with_sensors_enabled(hass, mock_config_entry)
+async def test_usage_sensors_without_limits(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+    status_coordinator = NjordStatusCoordinator(hass, mock_client)
+    status_coordinator.data = ServerStatusData(budget=BudgetStatusData())
 
-    state = hass.states.get("sensor.home_dewpoint_comfort")
-    assert state is not None
-    assert state.state == "unknown"
+    monthly = NjordMonthlyUsageSensor(status_coordinator, mock_config_entry)
+
+    assert monthly.available is False
+    assert monthly.native_value is None

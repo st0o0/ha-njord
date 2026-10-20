@@ -1,148 +1,86 @@
-"""Tests for dynamic entity creation via config stream."""
+"""Tests for dynamic entity creation when a new (location, domain) appears on the domain stream."""
 
 from __future__ import annotations
 
-import asyncio
-from datetime import UTC, datetime
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import MagicMock
 
 from homeassistant.core import HomeAssistant
 
+from custom_components.njord.const import Domain
 from custom_components.njord.coordinator import NjordCoordinatorData, NjordDataCoordinator
-from custom_components.njord.models import (
-    EnrichmentData,
-    ForecastData,
-    NjordConfigData,
-    NjordLocation,
-)
+from custom_components.njord.models import AirQualityDomainData, AirQualitySampleData, WeatherDomainData
+from tests.conftest import PAST, entity_id_for, init_integration, weather_sample
 
 
-def _make_client() -> AsyncMock:
-    client = AsyncMock()
-    client.get_config = AsyncMock(
-        return_value=NjordConfigData(
-            locations=[NjordLocation(name="home", latitude=47.0, longitude=8.0, models=["icon_d2"])],
-        )
-    )
-    client.get_forecast = AsyncMock(
-        return_value=ForecastData(location="bern", model="gfs", updated_at=datetime(2024, 1, 1, tzinfo=UTC))
-    )
-    client.get_enrichments = AsyncMock(return_value=EnrichmentData(location="bern"))
-    return client
+def _stream_of(*items):
+    async def gen(**kwargs):
+        for item in items:
+            yield item
+
+    return MagicMock(side_effect=lambda **kwargs: gen(**kwargs))
 
 
-async def _make_coordinator(hass: HomeAssistant, client: AsyncMock) -> NjordDataCoordinator:
+async def _run(hass: HomeAssistant, client, *updates, known=()) -> list:
     coordinator = NjordDataCoordinator(hass, client)
-    coordinator.data = NjordCoordinatorData(
-        forecasts={
-            ("home", "icon_d2"): ForecastData(
-                location="home", model="icon_d2", updated_at=datetime(2024, 1, 1, tzinfo=UTC)
-            )
-        },
-        enrichments={"home": EnrichmentData(location="home")},
-    )
-    coordinator._known_locations = {"home"}
-    return coordinator
+    coordinator.data = NjordCoordinatorData(domains={key: WeatherDomainData(key[0]) for key in known})
+    calls: list[tuple[str, Domain]] = []
+    coordinator.register_entity_factory("weather", MagicMock(), lambda loc, dom: calls.append((loc, dom)) or [])
+    client.stream_domain_data = _stream_of(*updates)
+    await coordinator._run_domain_stream()
+    return calls
 
 
-async def test_new_location_triggers_factory(hass: HomeAssistant) -> None:
-    client = _make_client()
-    coordinator = await _make_coordinator(hass, client)
+async def test_new_location_domain_triggers_factory(hass: HomeAssistant, mock_client) -> None:
+    update = WeatherDomainData("bern", None, [weather_sample()])
 
-    add_entities = MagicMock()
-    entities_created: list[NjordLocation] = []
+    calls = await _run(hass, mock_client, update, known=[("home", Domain.WEATHER)])
 
-    def factory(location: NjordLocation) -> list:
-        entities_created.append(location)
-        return [MagicMock()]
-
-    coordinator.register_entity_factory("weather", add_entities, factory)
-
-    new_config = NjordConfigData(
-        locations=[
-            NjordLocation(name="home", latitude=47.0, longitude=8.0, models=["icon_d2"]),
-            NjordLocation(name="bern", latitude=46.9, longitude=7.4, models=["gfs"]),
-        ],
-    )
-
-    async def fake_stream_config():
-        yield new_config
-
-    client.stream_config = MagicMock(return_value=fake_stream_config())
-
-    task = hass.async_create_task(coordinator._run_config_stream())
-    await asyncio.sleep(0.05)
-    task.cancel()
-    try:
-        await task
-    except asyncio.CancelledError:
-        pass
-
-    assert len(entities_created) == 1
-    assert entities_created[0].name == "bern"
-    add_entities.assert_called_once()
+    assert calls == [("bern", Domain.WEATHER)]
 
 
-async def test_multiple_factories_called(hass: HomeAssistant) -> None:
-    client = _make_client()
-    coordinator = await _make_coordinator(hass, client)
+async def test_known_pair_does_not_retrigger(hass: HomeAssistant, mock_client) -> None:
+    update = WeatherDomainData("home", None, [weather_sample()])
 
-    weather_add = MagicMock()
-    sensor_add = MagicMock()
+    calls = await _run(hass, mock_client, update, known=[("home", Domain.WEATHER)])
 
-    coordinator.register_entity_factory("weather", weather_add, lambda loc: [MagicMock()])
-    coordinator.register_entity_factory("sensor", sensor_add, lambda loc: [MagicMock()])
+    assert calls == []
 
-    new_config = NjordConfigData(
-        locations=[
-            NjordLocation(name="home", latitude=47.0, longitude=8.0, models=["icon_d2"]),
-            NjordLocation(name="bern", latitude=46.9, longitude=7.4, models=["gfs"]),
-        ],
-    )
 
-    async def fake_stream_config():
-        yield new_config
+async def test_new_domain_on_known_location_triggers_factory(hass: HomeAssistant, mock_client) -> None:
+    update = AirQualityDomainData("home", None, [])
 
-    client.stream_config = MagicMock(return_value=fake_stream_config())
+    calls = await _run(hass, mock_client, update, known=[("home", Domain.WEATHER)])
 
-    task = hass.async_create_task(coordinator._run_config_stream())
-    await asyncio.sleep(0.05)
-    task.cancel()
-    try:
-        await task
-    except asyncio.CancelledError:
-        pass
+    assert calls == [("home", Domain.AIR_QUALITY)]
+
+
+async def test_multiple_factories_all_called(hass: HomeAssistant, mock_client) -> None:
+    coordinator = NjordDataCoordinator(hass, mock_client)
+    coordinator.data = NjordCoordinatorData()
+    weather_add, sensor_add = MagicMock(), MagicMock()
+    coordinator.register_entity_factory("weather", weather_add, lambda loc, dom: [MagicMock()])
+    coordinator.register_entity_factory("sensor", sensor_add, lambda loc, dom: [MagicMock()])
+
+    coordinator._create_entities_for("bern", Domain.WEATHER)
 
     weather_add.assert_called_once()
     sensor_add.assert_called_once()
 
 
-async def test_duplicate_location_no_double_creation(hass: HomeAssistant) -> None:
-    client = _make_client()
-    coordinator = await _make_coordinator(hass, client)
+async def test_streamed_location_gets_real_entities(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+    weather = WeatherDomainData("bern", None, [weather_sample()])
+    air = AirQualityDomainData("bern", None, [AirQualitySampleData(valid_at=PAST, pm25=7.0, pm10=9.0, ozone=50.0)])
+    mock_client.stream_domain_data = _stream_of(weather, air)
 
-    factory_calls: list[str] = []
-    coordinator.register_entity_factory("weather", MagicMock(), lambda loc: factory_calls.append(loc.name) or [])
+    await init_integration(hass, mock_config_entry)
+    await hass.async_block_till_done()
 
-    config_with_bern = NjordConfigData(
-        locations=[
-            NjordLocation(name="home", latitude=47.0, longitude=8.0, models=["icon_d2"]),
-            NjordLocation(name="bern", latitude=46.9, longitude=7.4, models=["gfs"]),
-        ],
-    )
-
-    async def fake_stream_config():
-        yield config_with_bern
-        yield config_with_bern
-
-    client.stream_config = MagicMock(return_value=fake_stream_config())
-
-    task = hass.async_create_task(coordinator._run_config_stream())
-    await asyncio.sleep(0.05)
-    task.cancel()
-    try:
-        await task
-    except asyncio.CancelledError:
-        pass
-
-    assert factory_calls.count("bern") == 1
+    entry_id = mock_config_entry.entry_id
+    assert entity_id_for(hass, "weather", f"{entry_id}_bern_weather") is not None
+    assert entity_id_for(hass, "event", f"{entry_id}_bern_weather_alert") is not None
+    assert entity_id_for(hass, "binary_sensor", f"{entry_id}_bern_frost_alert") is not None
+    pm25 = entity_id_for(hass, "sensor", f"{entry_id}_bern_pm25")
+    assert pm25 is not None
+    state = hass.states.get(pm25)
+    assert state is not None
+    assert float(state.state) == 7.0

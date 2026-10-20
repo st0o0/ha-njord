@@ -1,95 +1,114 @@
-"""Tests for njord data models."""
+"""Tests for typed models and wire-enum helpers."""
 
-from datetime import UTC, datetime
+from __future__ import annotations
 
 import pytest
 
-from custom_components.njord.models import (
-    BudgetStatusData,
-    DailyForecastData,
-    ForecastData,
-    HourlyForecastData,
-    NjordConfigData,
-    NjordLocation,
-    SensorPushResult,
-    ServerStatusData,
+from custom_components.njord.const import (
+    ALERT_META,
+    DEFAULT_ENABLED_ENRICHMENTS,
+    ENRICHMENT_ALERT_TYPES,
+    AlertSeverity,
+    AlertType,
+    Domain,
+    Enrichment,
+    PollPhase,
+    StreamName,
+    enabled_alert_types,
+    parse_enrichments,
 )
+from custom_components.njord.coordinator import NjordCoordinatorData
+from custom_components.njord.models import AlertData, TargetData, WeatherDomainData
 
 
-def test_hourly_forecast_defaults_to_none():
-    h = HourlyForecastData(valid_at=datetime(2026, 7, 15, tzinfo=UTC))
-    assert h.temperature is None
-    assert h.weather_code is None
-    assert h.is_day is None
+def test_alert_data_coerces_strings_to_enums():
+    alert = AlertData(type="frost", severity="red")
+    assert alert.type is AlertType.FROST
+    assert alert.severity is AlertSeverity.RED
 
 
-def test_hourly_forecast_with_values():
-    h = HourlyForecastData(
-        valid_at=datetime(2026, 7, 15, 12, 0, tzinfo=UTC),
-        temperature=22.5,
-        weather_code=3,
-        is_day=True,
+def test_alert_data_unknown_values_fall_back():
+    alert = AlertData(type="meteor", severity="purple")
+    assert alert.type is AlertType.UNSPECIFIED
+    assert alert.severity is AlertSeverity.NONE
+
+
+def test_severity_rank_is_ordered():
+    ranks = [s.rank for s in (AlertSeverity.NONE, AlertSeverity.YELLOW, AlertSeverity.ORANGE, AlertSeverity.RED)]
+    assert ranks == [0, 1, 2, 3]
+
+
+def test_unknown_domain_and_phase_read_as_unspecified():
+    assert Domain("bogus") is Domain.UNSPECIFIED
+    assert PollPhase("bogus") is PollPhase.UNSPECIFIED
+    assert not PollPhase.UNSPECIFIED.is_known
+    assert PollPhase.STEADY.is_known
+
+
+def test_stream_names_are_domain_and_enrichment_only():
+    assert {s.value for s in StreamName} == {"domain", "enrichment"}
+
+
+def test_alert_meta_covers_all_alert_types_but_unspecified():
+    assert set(ALERT_META) == set(AlertType) - {AlertType.UNSPECIFIED}
+    assert len(ALERT_META) == 19
+
+
+def test_enrichment_toggles_partition_the_alert_types():
+    gated = [t for types in ENRICHMENT_ALERT_TYPES.values() for t in types]
+    assert sorted(gated) == sorted(ALERT_META)
+
+
+def test_enabled_alert_types_defaults():
+    types = enabled_alert_types(DEFAULT_ENABLED_ENRICHMENTS)
+    assert AlertType.FROST in types
+    assert AlertType.POLLEN in types
+    assert AlertType.PM25 in types
+    assert AlertType.FLOOD_RISK not in types
+    assert len(types) == 16
+
+
+def test_enabled_alert_types_keeps_creation_order():
+    types = enabled_alert_types([Enrichment.SWIMMING_CONDITIONS, Enrichment.FLOOD_RISK, Enrichment.POLLEN_ALERT])
+    assert types == [AlertType.POLLEN, AlertType.FLOOD_RISK, AlertType.SWIMMING_CONDITIONS]
+
+
+def test_enabled_alert_types_empty():
+    assert enabled_alert_types([]) == []
+
+
+@pytest.mark.parametrize(
+    ("stored", "expected"),
+    [
+        (None, frozenset()),
+        ([], frozenset()),
+        (["pollen_alert", "nonsense"], frozenset({Enrichment.POLLEN_ALERT})),
+    ],
+)
+def test_parse_enrichments_ignores_unknown(stored, expected):
+    assert parse_enrichments(stored) == expected
+
+
+def test_coordinator_data_location_helpers():
+    from custom_components.njord.models import NjordLocation
+
+    data = NjordCoordinatorData(
+        locations=[NjordLocation("home", 1.0, 2.0)],
+        domains={
+            ("bern", Domain.WEATHER): WeatherDomainData("bern"),
+            ("home", Domain.WEATHER): WeatherDomainData("home"),
+            ("home", Domain.FLOOD): WeatherDomainData("home"),
+        },
     )
-    assert h.temperature == 22.5
-    assert h.weather_code == 3
-    assert h.is_day is True
+    assert data.locations_with(Domain.WEATHER) == ["bern", "home"]
+    assert data.locations_with(Domain.FLOOD) == ["home"]
+    assert data.locations_with(Domain.MARINE) == []
+    assert data.location_names == ["bern", "home"]
 
 
-def test_hourly_forecast_frozen():
-    h = HourlyForecastData(valid_at=datetime(2026, 7, 15, tzinfo=UTC))
-    with pytest.raises(AttributeError):
-        h.temperature = 10.0
-
-
-def test_daily_forecast_defaults():
-    d = DailyForecastData(date="2026-07-15")
-    assert d.temperature_max is None
-    assert d.sunrise is None
-
-
-def test_forecast_data():
-    f = ForecastData(location="lucerne", model="icon_d2", updated_at=datetime(2024, 1, 1, tzinfo=UTC))
-    assert f.location == "lucerne"
-    assert f.hourly == []
-    assert f.daily == []
-
-
-def test_forecast_data_frozen():
-    f = ForecastData(location="lucerne", model="icon_d2", updated_at=datetime(2024, 1, 1, tzinfo=UTC))
-    with pytest.raises(AttributeError):
-        f.location = "zurich"
-
-
-def test_njord_location():
-    loc = NjordLocation(name="lucerne", latitude=47.05, longitude=8.31, models=["icon_d2"])
-    assert loc.name == "lucerne"
-    assert loc.models == ["icon_d2"]
-
-
-def test_njord_config_data_defaults():
-    cfg = NjordConfigData()
-    assert cfg.locations == []
-    assert cfg.forecast_days == 0
-
-
-def test_server_status_data():
-    s = ServerStatusData(version="1.0.0", uptime_seconds=3600)
-    assert s.version == "1.0.0"
-    assert s.budget is None
-
-
-def test_budget_status_data():
-    b = BudgetStatusData(monthly_limit=20000, monthly_used=5000, usage_percent=25.0)
-    assert b.monthly_limit == 20000
-
-
-def test_sensor_push_result_accepted():
-    r = SensorPushResult(accepted=True)
-    assert r.accepted is True
-    assert r.rejection_reason == ""
-
-
-def test_sensor_push_result_rejected():
-    r = SensorPushResult(accepted=False, rejection_reason="invalid kind")
-    assert r.accepted is False
-    assert r.rejection_reason == "invalid kind"
+def test_target_data_defaults():
+    target = TargetData(location="home", phase=PollPhase.STEADY)
+    assert target.next_poll is None
+    assert target.last_change is None
+    assert target.miss_count == 0
+    assert target.cycle_seconds is None

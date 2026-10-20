@@ -1,47 +1,92 @@
-"""Tests for NjordDataCoordinator."""
+"""Tests for the njord coordinators (unary refresh)."""
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
 from unittest.mock import AsyncMock
 
+from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
 
-from custom_components.njord.const import DOMAIN
-from custom_components.njord.coordinator import NjordCoordinatorData
-from tests.conftest import init_integration
+from custom_components.njord.const import DOMAIN, Domain, PollPhase
+from custom_components.njord.coordinator import NjordCoordinatorData, NjordDataCoordinator, NjordStatusCoordinator
+from tests.conftest import default_domain_data, init_integration
 
 
-async def test_coordinator_fetches_data(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+async def test_coordinator_fetches_catalog_domains_and_enrichments(
+    hass: HomeAssistant, mock_client, mock_config_entry
+) -> None:
     await init_integration(hass, mock_config_entry)
 
     coordinator = hass.data[DOMAIN][mock_config_entry.entry_id]["coordinator"]
     assert isinstance(coordinator.data, NjordCoordinatorData)
-    assert ("home", "icon_d2") in coordinator.data.forecasts
-    assert ("home", "ecmwf_ifs025") in coordinator.data.forecasts
+    assert [loc.name for loc in coordinator.data.locations] == ["home"]
+    assert set(coordinator.data.domains) == {
+        ("home", Domain.WEATHER),
+        ("home", Domain.AIR_QUALITY),
+        ("home", Domain.FLOOD),
+    }
+    assert "icon_d2" in coordinator.data.model_info
     assert "home" in coordinator.data.enrichments
+    assert coordinator.data.active_enrichments == {"alerts"}
 
 
-async def test_enrichment_failure_does_not_block_forecasts(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+async def test_solar_is_not_requested(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+    await init_integration(hass, mock_config_entry)
+
+    requested = {call.args[1] for call in mock_client.get_domain_data.await_args_list}
+    assert requested == {Domain.WEATHER, Domain.AIR_QUALITY, Domain.FLOOD, Domain.MARINE}
+
+
+async def test_domain_failure_skips_only_that_domain(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+    async def fail_flood(location, domain):
+        if domain == Domain.FLOOD:
+            raise RuntimeError("no flood data")
+        return default_domain_data(location, domain)
+
+    mock_client.get_domain_data.side_effect = fail_flood
+
+    await init_integration(hass, mock_config_entry)
+
+    coordinator = hass.data[DOMAIN][mock_config_entry.entry_id]["coordinator"]
+    assert ("home", Domain.WEATHER) in coordinator.data.domains
+    assert ("home", Domain.FLOOD) not in coordinator.data.domains
+
+
+async def test_enrichment_failure_does_not_block_domains(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
     mock_client.get_enrichments = AsyncMock(side_effect=Exception("enrichment error"))
 
     await init_integration(hass, mock_config_entry)
 
     coordinator = hass.data[DOMAIN][mock_config_entry.entry_id]["coordinator"]
-    assert ("home", "icon_d2") in coordinator.data.forecasts
-    assert "home" not in coordinator.data.enrichments
+    assert ("home", Domain.WEATHER) in coordinator.data.domains
+    assert coordinator.data.enrichments == {}
 
 
-async def test_forecast_failure_inserts_stub(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
-    mock_client.get_forecast = AsyncMock(side_effect=Exception("forecast error"))
+async def test_catalog_failure_retries_setup(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+    mock_client.get_catalog = AsyncMock(side_effect=Exception("down"))
 
     await init_integration(hass, mock_config_entry)
 
-    coordinator = hass.data[DOMAIN][mock_config_entry.entry_id]["coordinator"]
-    assert ("home", "icon_d2") in coordinator.data.forecasts
-    assert ("home", "ecmwf_ifs025") in coordinator.data.forecasts
-    stub = coordinator.data.forecasts[("home", "icon_d2")]
-    assert stub.updated_at == datetime.min.replace(tzinfo=UTC)
-    assert stub.hourly == []
-    assert stub.daily == []
-    assert "home" in coordinator.data.enrichments
+    assert mock_config_entry.state is ConfigEntryState.SETUP_RETRY
+
+
+async def test_status_coordinator_merges_targets(hass: HomeAssistant, mock_client) -> None:
+    coordinator = NjordStatusCoordinator(hass, mock_client)
+
+    status = await coordinator._async_update_data()
+
+    assert status.version == "1.2.3"
+    assert [(t.location, t.phase) for t in status.targets] == [("home", PollPhase.STEADY)]
+
+
+async def test_status_coordinator_survives_target_failure(hass: HomeAssistant, mock_client) -> None:
+    mock_client.get_targets = AsyncMock(side_effect=Exception("no targets"))
+    coordinator = NjordStatusCoordinator(hass, mock_client)
+
+    status = await coordinator._async_update_data()
+
+    assert status.targets == []
+
+
+async def test_coordinator_has_no_update_interval(hass: HomeAssistant, mock_client) -> None:
+    assert NjordDataCoordinator(hass, mock_client).update_interval is None
