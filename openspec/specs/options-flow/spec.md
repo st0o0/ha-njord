@@ -1,6 +1,6 @@
 ## Purpose
 
-Provides post-setup configuration via HA's OptionsFlow, allowing users to tune status polling interval and toggle enrichment entity groups.
+Provides post-setup configuration via HA's OptionsFlow, allowing users to tune the status polling interval.
 ## Requirements
 ### Requirement: OptionsFlow is available after setup
 The integration SHALL provide an `OptionsFlow` accessible from the integration's configuration page in HA. It SHALL present settings across two steps: general settings (init) and sensor push configuration (sensors).
@@ -22,35 +22,19 @@ The OptionsFlow SHALL include a `status_poll_interval` integer field with defaul
 - **WHEN** the integration is set up and no options have been changed
 - **THEN** the status coordinator uses 30 seconds
 
-### Requirement: Enrichment group toggles
-The OptionsFlow SHALL include a multi-select field for enrichment groups. Available groups: `alerts`, `indices`, `trends`, `derived`, `consensus`. All groups SHALL be enabled by default. Disabled groups are stored as a list in `entry.options["disabled_enrichment_groups"]`. Unknown stored groups (such as a legacy `history`) SHALL be ignored when the form is shown.
-
-#### Scenario: User re-enables a group
-- **WHEN** the user re-selects a previously disabled group and submits
-- **THEN** the config entry reloads
-- **AND** entities for that group are created
-
-#### Scenario: Legacy history group stored
-- **WHEN** `disabled_enrichment_groups` contains `history` and the options form is opened
-- **THEN** the form renders without error and does not offer `history`
-
 ### Requirement: Enrichment toggle triggers reload
-Changing the enrichment group selection or the sensor push configuration SHALL trigger a config entry reload. Changing only the poll interval SHALL NOT trigger a reload.
+Changing the sensor push configuration SHALL trigger a config entry reload. Changing only the poll interval SHALL NOT trigger a reload.
 
 #### Scenario: Only poll interval changed
 - **WHEN** the user changes only the poll interval
 - **THEN** the status coordinator's `update_interval` is updated in-place without reload
-
-#### Scenario: Enrichment groups changed
-- **WHEN** the user changes the enrichment group selection
-- **THEN** `async_reload` is called on the config entry
 
 #### Scenario: Sensor push mapping changed
 - **WHEN** the user changes the sensor push entity mapping
 - **THEN** `async_reload` is called on the config entry
 
 ### Requirement: Options flow UI strings
-`strings.json` and `translations/de.json` SHALL include option step labels, field descriptions, and enrichment group names.
+`strings.json` and `translations/de.json` SHALL include option step labels and field descriptions.
 
 #### Scenario: English strings present
 - **WHEN** the options flow is rendered in English
@@ -59,4 +43,3 @@ Changing the enrichment group selection or the sensor push configuration SHALL t
 #### Scenario: German strings present
 - **WHEN** the options flow is rendered in German
 - **THEN** all field labels and descriptions are present from `translations/de.json`
-
