@@ -15,7 +15,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 
 from .const import DOMAIN, Domain, StreamName
 from .grpc_client import NjordClient
-from .models import DomainData, EnrichmentData, ModelInfoData, NjordLocation, ServerStatusData
+from .models import DomainData, EnrichmentData, LifestyleData, ModelInfoData, NjordLocation, ServerStatusData
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -30,6 +30,7 @@ class NjordCoordinatorData:
     locations: list[NjordLocation] = field(default_factory=list)
     domains: dict[tuple[str, Domain], DomainData] = field(default_factory=dict)
     enrichments: dict[str, EnrichmentData] = field(default_factory=dict)
+    lifestyle: dict[tuple[str, str], LifestyleData] = field(default_factory=dict)
     model_info: dict[str, ModelInfoData] = field(default_factory=dict)
     active_enrichments: set[str] | None = None
 
@@ -46,6 +47,9 @@ class NjordCoordinatorData:
 # Called for every (location, domain) pair that appears for the first time; returns the new entities.
 EntityFactory = Callable[[str, Domain], list]
 
+# Called for every (location, lifestyle type) pair that appears for the first time; returns the new entities.
+LifestyleEntityFactory = Callable[[str, str], list]
+
 
 class NjordDataCoordinator(DataUpdateCoordinator[NjordCoordinatorData]):
     """Stream-driven coordinator for njord domain data and enrichments."""
@@ -60,6 +64,7 @@ class NjordDataCoordinator(DataUpdateCoordinator[NjordCoordinatorData]):
         self.client = client
         self._stream_tasks: list[asyncio.Task] = []
         self._entity_factories: dict[str, tuple[AddEntitiesCallback, EntityFactory]] = {}
+        self._lifestyle_factories: dict[str, tuple[AddEntitiesCallback, LifestyleEntityFactory]] = {}
         self.stream_states: dict[StreamName, bool] = {name: False for name in StreamName}
         self._stream_disconnect_times: dict[StreamName, float] = {}
         self._stream_issue_created: dict[StreamName, bool] = {}
@@ -85,7 +90,10 @@ class NjordDataCoordinator(DataUpdateCoordinator[NjordCoordinatorData]):
                     result.domains[(location.name, domain)] = data
 
             try:
-                result.enrichments[location.name] = await self.client.get_enrichments(location.name)
+                enrichment = await self.client.get_enrichments(location.name)
+                result.enrichments[location.name] = enrichment
+                for item in enrichment.lifestyle:
+                    result.lifestyle[(item.location, item.type)] = item
             except Exception as err:
                 _LOGGER.warning("Failed to get enrichments for %s: %s", location.name, err)
 
@@ -98,6 +106,14 @@ class NjordDataCoordinator(DataUpdateCoordinator[NjordCoordinatorData]):
         factory: EntityFactory,
     ) -> None:
         self._entity_factories[platform] = (add_entities, factory)
+
+    def register_lifestyle_factory(
+        self,
+        platform: str,
+        add_entities: AddEntitiesCallback,
+        factory: LifestyleEntityFactory,
+    ) -> None:
+        self._lifestyle_factories[platform] = (add_entities, factory)
 
     def start_streams(self) -> None:
         self._stream_tasks = [
@@ -164,13 +180,32 @@ class NjordDataCoordinator(DataUpdateCoordinator[NjordCoordinatorData]):
                 on_reconnect=lambda: self._on_stream_connect(StreamName.ENRICHMENT),
                 on_disconnect=lambda: self._on_stream_disconnect(StreamName.ENRICHMENT),
             ):
-                self.data.enrichments[event.location] = event
+                if isinstance(event, LifestyleData):
+                    self._apply_lifestyle(event)
+                else:
+                    self.data.enrichments[event.location] = event
                 self.async_set_updated_data(self.data)
         except asyncio.CancelledError:
             return
         except Exception:
             _LOGGER.exception("Enrichment stream task failed")
             self._on_stream_disconnect(StreamName.ENRICHMENT)
+
+    def _apply_lifestyle(self, item: LifestyleData) -> None:
+        key = (item.location, item.type)
+        is_new = key not in self.data.lifestyle
+        self.data.lifestyle[key] = item
+        if is_new:
+            self._create_lifestyle_entities_for(item.location, item.type)
+
+    def _create_lifestyle_entities_for(self, location: str, lifestyle_type: str) -> None:
+        for platform, (add_entities, factory) in self._lifestyle_factories.items():
+            try:
+                entities = factory(location, lifestyle_type)
+                if entities:
+                    add_entities(entities)
+            except Exception as err:
+                _LOGGER.error("Failed to create %s entities for %s/%s: %s", platform, location, lifestyle_type, err)
 
     def _create_entities_for(self, location: str, domain: Domain) -> None:
         for platform, (add_entities, factory) in self._entity_factories.items():

@@ -23,6 +23,7 @@ from .models import (
     EnrichmentData,
     FloodDomainData,
     FloodSampleData,
+    LifestyleData,
     LocationStatusData,
     MarineDomainData,
     MarineSampleData,
@@ -292,23 +293,32 @@ def _to_alert(pb: common_pb2.Alert) -> AlertData:
     )
 
 
+def _to_lifestyle(pb: weather_pb2.LifestyleUpdate, location: str, updated_at: datetime | None) -> LifestyleData:
+    return LifestyleData(type=pb.type, location=location, data=dict(pb.data), updated_at=updated_at)
+
+
 def _to_enrichment_data(pb: weather_pb2.GetEnrichmentsResponse) -> EnrichmentData:
+    now = datetime.now(UTC)
     return EnrichmentData(
         location=pb.location,
         alerts=[_to_alert(a) for a in pb.alerts.alerts],
-        updated_at=datetime.now(UTC),
+        updated_at=now,
+        lifestyle=[_to_lifestyle(item, pb.location, now) for item in pb.lifestyle],
     )
 
 
-def _to_enrichment_event(pb: weather_pb2.EnrichmentEvent) -> EnrichmentData | None:
+def _to_enrichment_event(pb: weather_pb2.EnrichmentEvent) -> EnrichmentData | LifestyleData | None:
     """Convert an EnrichmentEvent; None for payload kinds this client does not know."""
-    if pb.WhichOneof("payload") != "alerts":
-        return None
-    return EnrichmentData(
-        location=pb.location,
-        alerts=[_to_alert(a) for a in pb.alerts.alerts],
-        updated_at=_optional_ts(pb.updated_at),
-    )
+    match pb.WhichOneof("payload"):
+        case "alerts":
+            return EnrichmentData(
+                location=pb.location,
+                alerts=[_to_alert(a) for a in pb.alerts.alerts],
+                updated_at=_optional_ts(pb.updated_at),
+            )
+        case "lifestyle":
+            return _to_lifestyle(pb.lifestyle, pb.location, _optional_ts(pb.updated_at))
+    return None
 
 
 # --- Client ---
@@ -379,7 +389,7 @@ class NjordClient:
         return _to_server_status(resp)
 
     async def get_enrichments(self, location: str) -> EnrichmentData:
-        """Retrieve enrichment data (alerts) for a location."""
+        """Retrieve enrichment data (alerts and lifestyle advisories) for a location."""
         self._ensure_connected()
         assert self._weather_stub is not None
         resp = await self._weather_stub.GetEnrichments(weather_pb2.GetEnrichmentsRequest(location=location))
@@ -431,8 +441,8 @@ class NjordClient:
         *,
         on_disconnect: Callable[[], None] | None = None,
         on_reconnect: Callable[[], None] | None = None,
-    ) -> AsyncIterator[EnrichmentData]:
-        """Stream real-time enrichment updates with auto-reconnect."""
+    ) -> AsyncIterator[EnrichmentData | LifestyleData]:
+        """Stream real-time enrichment updates (alerts of a location or one lifestyle advisory) with auto-reconnect."""
         self._ensure_connected()
         assert self._weather_stub is not None
         req = weather_pb2.StreamEnrichmentsRequest(location=location or "")

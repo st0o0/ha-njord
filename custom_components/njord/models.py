@@ -214,9 +214,20 @@ class AlertData:
 
 
 @dataclass(frozen=True)
+class LifestyleData:
+    """One lifestyle advisory; the keys of data depend on type (all values are strings)."""
+
+    type: str
+    location: str
+    data: dict[str, str] = field(default_factory=dict)
+    updated_at: datetime | None = None
+
+
+@dataclass(frozen=True)
 class EnrichmentData:
-    """Alerts of a location, the only enrichment payload on the wire."""
+    """Alerts of a location, plus the lifestyle advisories a unary GetEnrichments returned."""
 
     location: str
     alerts: list[AlertData] = field(default_factory=list)
     updated_at: datetime | None = None
+    lifestyle: list[LifestyleData] = field(default_factory=list)

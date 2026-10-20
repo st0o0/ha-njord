@@ -41,7 +41,9 @@ async def test_config_flow_creates_entry_with_default_enrichments(hass: HomeAssi
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert result["title"] == "njord (localhost)"
     assert result["data"] == {"host": "localhost", "port": 8081}
-    assert result["options"] == {"enabled_enrichments": ["pm25_alert", "pollen_alert", "weather_alerts"]}
+    assert result["options"] == {
+        "enabled_enrichments": ["commute_safety", "pm25_alert", "pollen_alert", "weather_alerts"]
+    }
 
 
 async def test_config_flow_custom_enrichments(hass: HomeAssistant, mock_client) -> None:

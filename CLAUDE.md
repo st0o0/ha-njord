@@ -19,7 +19,7 @@ njord (gRPC server)  ──►  ha-njord (HA integration)
 ```
 
 Domains: weather, air quality, flood, marine (solar is served but has no entities).
-Enrichments on the wire are alerts only (19 alert types).
+Enrichments on the wire are alerts (19 alert types) and lifestyle advisories (14 types, `lifestyle.py`), each gated by an enrichment toggle.
 
 ## Tech Stack
 
@@ -73,7 +73,8 @@ custom_components/njord/
 ├── coordinator.py       # NjordDataCoordinator (domain + enrichment streams) + NjordStatusCoordinator (polling)
 ├── weather.py           # One weather entity per location (weather domain, hourly forecast)
 ├── sensor.py            # Domain sensors (air quality, flood, marine) + server diagnostics
-├── binary_sensor.py     # Alert binary sensors (one per enabled alert type), stream connectivity
+├── lifestyle.py         # Lifestyle sensor and binary sensor descriptions
+├── binary_sensor.py     # Lifestyle binary sensors, alert binary sensors (one per enabled alert type), stream connectivity
 ├── event.py             # Alert event entity (started, escalated, deescalated, cleared)
 ├── button.py            # Trigger poll button
 ├── grpc_client.py       # NjordClient: async gRPC wrapper (unary + reconnecting streams)

@@ -18,13 +18,13 @@
         }
       },
       "enrichments": {
-        "title": "Alert enrichments",
-        "description": "Choose which alert groups create entities. Found {locations} location(s).",
+        "title": "Enrichments",
+        "description": "Choose which enrichments create entities. Found {locations} location(s).",
         "data": {
           "enabled_enrichments": "Enabled enrichments"
         },
         "data_description": {
-          "enabled_enrichments": "Alert groups to enable. Disabled groups will not create entities."
+          "enabled_enrichments": "Enrichments to enable (alerts and lifestyle advisories). Disabled ones will not create entities."
         }
       }
     },
@@ -39,14 +39,14 @@
     "step": {
       "init": {
         "title": "njord Options",
-        "description": "Configure status polling and alert enrichments.",
+        "description": "Configure status polling and enrichments.",
         "data": {
           "status_poll_interval": "Status poll interval (seconds)",
           "enabled_enrichments": "Enabled enrichments"
         },
         "data_description": {
           "status_poll_interval": "How often to poll server status (10–300 seconds, default 30).",
-          "enabled_enrichments": "Alert groups to enable. Disabled groups will not create entities."
+          "enabled_enrichments": "Enrichments to enable (alerts and lifestyle advisories). Disabled ones will not create entities."
         }
       }
     }
@@ -110,7 +110,21 @@
         "pm25_alert": "PM2.5 alert",
         "flood_risk": "Flood risk",
         "flood_rain": "Flood rain",
-        "swimming_conditions": "Swimming conditions"
+        "swimming_conditions": "Swimming conditions",
+        "commute_safety": "Commute safety",
+        "ventilation_window": "Ventilation window",
+        "exercise_advisory": "Exercise advisory",
+        "laundry_score": "Laundry score",
+        "pollen_trend": "Pollen trend",
+        "night_ventilation": "Night ventilation",
+        "confidence_trend": "Forecast confidence trend",
+        "solar_yield": "Solar yield",
+        "gardening_advisory": "Gardening advisory",
+        "outdoor_score": "Outdoor score",
+        "bbq_score": "BBQ score",
+        "flood_timeline": "Flood timeline",
+        "approaching_front": "Approaching front",
+        "climate_anomaly": "Climate anomaly"
       }
     }
   }

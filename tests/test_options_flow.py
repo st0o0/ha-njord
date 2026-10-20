@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock
 
 from homeassistant.core import HomeAssistant
 
-from custom_components.njord.const import DOMAIN
+from custom_components.njord.const import DOMAIN, Enrichment
 from tests.conftest import init_integration
 
 
@@ -17,7 +17,7 @@ async def _configure(hass: HomeAssistant, entry, **overrides):
     assert result["step_id"] == "init"
     user_input = {
         "status_poll_interval": 30,
-        "enabled_enrichments": ["weather_alerts", "pollen_alert", "pm25_alert"],
+        "enabled_enrichments": ["weather_alerts", "commute_safety", "pollen_alert", "pm25_alert"],
     }
     user_input.update(overrides)
     return await hass.config_entries.options.async_configure(result["flow_id"], user_input=user_input)
@@ -31,7 +31,7 @@ async def test_options_form_fields_and_defaults(hass: HomeAssistant, mock_client
     defaults = {key.schema: key.default() for key in result["data_schema"].schema}
     assert defaults == {
         "status_poll_interval": 30,
-        "enabled_enrichments": ["pm25_alert", "pollen_alert", "weather_alerts"],
+        "enabled_enrichments": ["commute_safety", "pm25_alert", "pollen_alert", "weather_alerts"],
     }
 
 
@@ -41,7 +41,7 @@ async def test_options_form_shows_stored_enrichments(hass: HomeAssistant, mock_c
     result = await hass.config_entries.options.async_init(all_alerts_entry.entry_id)
 
     defaults = {key.schema: key.default() for key in result["data_schema"].schema}
-    assert len(defaults["enabled_enrichments"]) == 6
+    assert len(defaults["enabled_enrichments"]) == len(Enrichment)
 
 
 async def test_poll_interval_only_change_does_not_reload(hass: HomeAssistant, mock_client, mock_config_entry) -> None:

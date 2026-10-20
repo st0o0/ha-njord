@@ -47,7 +47,7 @@ class Domain(StrEnum):
 
 
 class Enrichment(StrEnum):
-    """Alert-producing enrichment toggles, named like njord's EnrichmentOptions keys in snake_case."""
+    """Enrichment toggles (alerts and lifestyle advisories), named like njord's EnrichmentOptions keys in snake_case."""
 
     WEATHER_ALERTS = "weather_alerts"
     POLLEN_ALERT = "pollen_alert"
@@ -55,11 +55,25 @@ class Enrichment(StrEnum):
     FLOOD_RISK = "flood_risk"
     FLOOD_RAIN = "flood_rain"
     SWIMMING_CONDITIONS = "swimming_conditions"
+    COMMUTE_SAFETY = "commute_safety"
+    VENTILATION_WINDOW = "ventilation_window"
+    EXERCISE_ADVISORY = "exercise_advisory"
+    LAUNDRY_SCORE = "laundry_score"
+    POLLEN_TREND = "pollen_trend"
+    NIGHT_VENTILATION = "night_ventilation"
+    CONFIDENCE_TREND = "confidence_trend"
+    SOLAR_YIELD = "solar_yield"
+    GARDENING_ADVISORY = "gardening_advisory"
+    OUTDOOR_SCORE = "outdoor_score"
+    BBQ_SCORE = "bbq_score"
+    FLOOD_TIMELINE = "flood_timeline"
+    APPROACHING_FRONT = "approaching_front"
+    CLIMATE_ANOMALY = "climate_anomaly"
 
 
 # Enrichments njord enables by default (EnrichmentOptions property initializers).
 DEFAULT_ENABLED_ENRICHMENTS: frozenset[Enrichment] = frozenset(
-    {Enrichment.WEATHER_ALERTS, Enrichment.POLLEN_ALERT, Enrichment.PM25_ALERT}
+    {Enrichment.WEATHER_ALERTS, Enrichment.COMMUTE_SAFETY, Enrichment.POLLEN_ALERT, Enrichment.PM25_ALERT}
 )
 
 
@@ -244,5 +258,49 @@ def enabled_alert_types(enabled: Iterable[Enrichment]) -> list[AlertType]:
     """Alert types gated on by the enabled enrichments, in entity creation order."""
     allowed: set[AlertType] = set()
     for enrichment in enabled:
-        allowed |= ENRICHMENT_ALERT_TYPES[enrichment]
+        allowed |= ENRICHMENT_ALERT_TYPES.get(enrichment, frozenset())
     return [alert_type for alert_type in ALERT_META if alert_type in allowed]
+
+
+class LifestyleType(StrEnum):
+    """Lifestyle advisory types as sent by njord (LifestyleUpdate.type)."""
+
+    VENTILATION = "ventilation"
+    EXERCISE = "exercise"
+    LAUNDRY_SCORE = "laundry_score"
+    COMMUTE_SAFETY = "commute_safety"
+    POLLEN_TREND = "pollen_trend"
+    NIGHT_VENTILATION = "night_ventilation"
+    CONFIDENCE_TREND = "confidence_trend"
+    SOLAR_YIELD = "solar_yield"
+    GARDENING = "gardening"
+    OUTDOOR_SCORE = "outdoor_score"
+    BBQ_SCORE = "bbq_score"
+    FLOOD_TIMELINE = "flood_timeline"
+    FRONT_APPROACHING = "front_approaching"
+    CLIMATE_ANOMALY = "climate_anomaly"
+
+
+# The enrichment toggle that gates each lifestyle type.
+LIFESTYLE_ENRICHMENT: dict[LifestyleType, Enrichment] = {
+    LifestyleType.VENTILATION: Enrichment.VENTILATION_WINDOW,
+    LifestyleType.EXERCISE: Enrichment.EXERCISE_ADVISORY,
+    LifestyleType.LAUNDRY_SCORE: Enrichment.LAUNDRY_SCORE,
+    LifestyleType.COMMUTE_SAFETY: Enrichment.COMMUTE_SAFETY,
+    LifestyleType.POLLEN_TREND: Enrichment.POLLEN_TREND,
+    LifestyleType.NIGHT_VENTILATION: Enrichment.NIGHT_VENTILATION,
+    LifestyleType.CONFIDENCE_TREND: Enrichment.CONFIDENCE_TREND,
+    LifestyleType.SOLAR_YIELD: Enrichment.SOLAR_YIELD,
+    LifestyleType.GARDENING: Enrichment.GARDENING_ADVISORY,
+    LifestyleType.OUTDOOR_SCORE: Enrichment.OUTDOOR_SCORE,
+    LifestyleType.BBQ_SCORE: Enrichment.BBQ_SCORE,
+    LifestyleType.FLOOD_TIMELINE: Enrichment.FLOOD_TIMELINE,
+    LifestyleType.FRONT_APPROACHING: Enrichment.APPROACHING_FRONT,
+    LifestyleType.CLIMATE_ANOMALY: Enrichment.CLIMATE_ANOMALY,
+}
+
+
+def enabled_lifestyle_types(enabled: Iterable[Enrichment]) -> frozenset[LifestyleType]:
+    """Lifestyle types whose enrichment toggle is enabled."""
+    enabled_set = set(enabled)
+    return frozenset(kind for kind, toggle in LIFESTYLE_ENRICHMENT.items() if toggle in enabled_set)

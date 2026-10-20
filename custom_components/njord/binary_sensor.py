@@ -12,10 +12,20 @@ from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import ALERT_META, DOMAIN, AlertSeverity, AlertType, Domain, StreamName, enabled_alert_types
+from .const import (
+    ALERT_META,
+    DOMAIN,
+    AlertSeverity,
+    AlertType,
+    Domain,
+    StreamName,
+    enabled_alert_types,
+    enabled_lifestyle_types,
+)
 from .coordinator import NjordDataCoordinator, NjordStatusCoordinator
 from .helpers import alerts_active, device_info, enabled_enrichments_of, server_device_info, slugify_location
-from .models import AlertData
+from .lifestyle import LIFESTYLE_BINARY_SENSORS, LifestyleBinarySensorDescription
+from .models import AlertData, LifestyleData
 
 
 def _get_sw_version(hass: HomeAssistant, entry: ConfigEntry) -> str | None:
@@ -40,7 +50,20 @@ async def async_setup_entry(
             return []
         return [NjordAlertBinarySensor(coordinator, entry, location, t, sw_version) for t in alert_types]
 
+    lifestyle_types = enabled_lifestyle_types(enabled_enrichments_of(entry))
+
+    def lifestyle_entities(location: str, lifestyle_type: str) -> list[BinarySensorEntity]:
+        if lifestyle_type not in lifestyle_types:
+            return []
+        return [
+            NjordLifestyleBinarySensor(coordinator, entry, location, description, sw_version)
+            for description in LIFESTYLE_BINARY_SENSORS
+            if description.type == lifestyle_type
+        ]
+
     entities: list[BinarySensorEntity] = []
+    for location, lifestyle_type in sorted(coordinator.data.lifestyle):
+        entities.extend(lifestyle_entities(location, lifestyle_type))
     for location in coordinator.data.locations_with(Domain.WEATHER):
         entities.extend(alert_entities(location))
 
@@ -54,6 +77,7 @@ async def async_setup_entry(
         return alert_entities(location) if domain == Domain.WEATHER else []
 
     coordinator.register_entity_factory("binary_sensor", async_add_entities, binary_sensor_factory)
+    coordinator.register_lifestyle_factory("binary_sensor", async_add_entities, lifestyle_entities)
 
 
 class NjordAlertBinarySensor(CoordinatorEntity[NjordDataCoordinator], BinarySensorEntity):
@@ -118,6 +142,56 @@ class NjordAlertBinarySensor(CoordinatorEntity[NjordDataCoordinator], BinarySens
             attrs["hours_until"] = alert.hours_until
         if alert.duration_hours is not None:
             attrs["duration_hours"] = alert.duration_hours
+        return attrs
+
+
+class NjordLifestyleBinarySensor(CoordinatorEntity[NjordDataCoordinator], BinarySensorEntity):
+    """Binary sensor for one lifestyle advisory of a location."""
+
+    _attr_has_entity_name = True
+
+    def __init__(
+        self,
+        coordinator: NjordDataCoordinator,
+        entry: ConfigEntry,
+        location: str,
+        description: LifestyleBinarySensorDescription,
+        sw_version: str | None = None,
+    ) -> None:
+        super().__init__(coordinator)
+        self._location = location
+        self._description = description
+        self._attr_unique_id = f"{entry.entry_id}_{slugify_location(location)}_{description.key}"
+        self._attr_name = description.name
+        self._attr_icon = description.icon
+        if description.device_class is not None:
+            self._attr_device_class = BinarySensorDeviceClass(description.device_class)
+        self._attr_device_info = device_info(entry, location, sw_version)
+
+    def _item(self) -> LifestyleData | None:
+        if self.coordinator.data is None:
+            return None
+        return self.coordinator.data.lifestyle.get((self._location, self._description.type))
+
+    @property
+    def available(self) -> bool:
+        return self._item() is not None
+
+    @property
+    def is_on(self) -> bool | None:
+        item = self._item()
+        if item is None:
+            return None
+        return self._description.is_on_fn(item)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, object] | None:
+        item = self._item()
+        if item is None:
+            return None
+        attrs: dict[str, object] = dict(item.data)
+        if item.updated_at is not None:
+            attrs["updated_at"] = item.updated_at.isoformat()
         return attrs
 
 

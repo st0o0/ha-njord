@@ -110,7 +110,21 @@
         "pm25_alert": "PM2.5-Warnung",
         "flood_risk": "Hochwasserrisiko",
         "flood_rain": "Starkregen-Hochwasser",
-        "swimming_conditions": "Badebedingungen"
+        "swimming_conditions": "Badebedingungen",
+        "commute_safety": "Pendlersicherheit",
+        "ventilation_window": "Lüftungsfenster",
+        "exercise_advisory": "Sportempfehlung",
+        "laundry_score": "Wäsche-Trockenwert",
+        "pollen_trend": "Pollentrend",
+        "night_ventilation": "Nachtlüftung",
+        "confidence_trend": "Trend der Vorhersagesicherheit",
+        "solar_yield": "Solarertrag",
+        "gardening_advisory": "Gartenempfehlung",
+        "outdoor_score": "Outdoor-Wert",
+        "bbq_score": "Grillwert",
+        "flood_timeline": "Hochwasserverlauf",
+        "approaching_front": "Nahende Front",
+        "climate_anomaly": "Klimaanomalie"
       }
     }
   }
