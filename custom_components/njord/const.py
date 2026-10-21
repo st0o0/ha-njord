@@ -230,6 +230,7 @@ class Feature(StrEnum):
     CONFIDENCE_TREND = "confidence_trend"
     POLLEN_TREND = "pollen_trend"
     SEASONAL_OUTLOOK = "seasonal_outlook"
+    MODEL_COMPARISON = "model_comparison"
 
 
 # njord's `<Category>:<Name>` toggle key per feature, as listed in StatusResponse.active_enrichments.
@@ -270,6 +271,7 @@ FEATURE_KEYS: dict[Feature, str] = {
     Feature.SEASONAL_OUTLOOK: "Insight:SeasonalOutlook",
     Feature.SOLAR_YIELD: "Energy:SolarYield",
     Feature.SATELLITE_RADIATION: "Energy:SatelliteRadiation",
+    Feature.MODEL_COMPARISON: "Weather:ModelComparison",
 }
 
 

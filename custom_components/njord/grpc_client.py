@@ -107,6 +107,7 @@ def _to_model_info(pb: common_pb2.ModelInfo) -> ModelInfoData:
         max_forecast_hours=_opt(pb, "max_forecast_hours"),
         resolution_km=_opt(pb, "resolution_km"),
         description=_opt(pb, "description"),
+        enabled=pb.enabled,
     )
 
 
@@ -188,7 +189,9 @@ def _to_domain_data(pb: weather_pb2.DomainDataUpdate) -> DomainData | None:
     model_run = _optional_ts(pb.model_run)
     match pb.WhichOneof("data"):
         case "weather":
-            return WeatherDomainData(pb.location, model_run, [_to_weather_sample(p) for p in pb.weather.points])
+            return WeatherDomainData(
+                pb.location, model_run, [_to_weather_sample(p) for p in pb.weather.points], model=pb.model
+            )
         case "air_quality":
             return AirQualityDomainData(
                 pb.location, model_run, [_to_air_quality_sample(p) for p in pb.air_quality.points]
@@ -376,15 +379,18 @@ class NjordClient:
         resp = await self._weather_stub.GetCatalog(weather_pb2.GetCatalogRequest())
         return _to_catalog_data(resp)
 
-    async def get_domain_data(self, location: str, domain: Domain) -> DomainData | None:
-        """Retrieve the current data of one domain for a location; None when the payload is empty."""
+    async def get_domain_data(self, location: str, domain: Domain, model: str = "") -> DomainData | None:
+        """Retrieve the current data of one domain for a location; None when the payload is empty.
+
+        An empty model selects the primary weather model.
+        """
         self._ensure_connected()
         assert self._weather_stub is not None
         pb_domain = _DOMAIN_TO_PB.get(domain)
         if pb_domain is None:
             raise ValueError(f"Domain {domain!r} cannot be requested")
         resp = await self._weather_stub.GetDomainData(
-            weather_pb2.GetDomainDataRequest(location=location, domain=pb_domain)
+            weather_pb2.GetDomainDataRequest(location=location, domain=pb_domain, model=model)
         )
         return _to_domain_data(resp)
 

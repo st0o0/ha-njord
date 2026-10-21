@@ -50,6 +50,8 @@ async def async_setup_entry(
         NjordWeatherEntity(coordinator, entry, location, sw_version)
         for location in coordinator.data.locations_with(Domain.WEATHER)
     ]
+    for location, model in sorted(coordinator.data.model_domains):
+        entities.append(NjordWeatherEntity(coordinator, entry, location, sw_version, model=model))
     async_add_entities(entities)
 
     def weather_factory(location: str, domain: Domain) -> list[WeatherEntity]:
@@ -59,13 +61,18 @@ async def async_setup_entry(
 
     coordinator.register_entity_factory("weather", async_add_entities, weather_factory)
 
+    def model_factory(location: str, model: str) -> list[WeatherEntity]:
+        return [NjordWeatherEntity(coordinator, entry, location, sw_version, model=model)]
+
+    coordinator.register_model_factory("weather", async_add_entities, model_factory)
+
 
 def _condition(sample: WeatherSampleData) -> str:
     return map_condition(sample.weather_code, sample.is_day if sample.is_day is not None else True)
 
 
 class NjordWeatherEntity(SingleCoordinatorWeatherEntity[NjordDataCoordinator]):
-    """Weather entity for the weather domain of one njord location."""
+    """Weather entity for one model of one njord location; no model means the primary model."""
 
     _attr_has_entity_name = True
     _attr_name = None
@@ -82,10 +89,18 @@ class NjordWeatherEntity(SingleCoordinatorWeatherEntity[NjordDataCoordinator]):
         entry: ConfigEntry,
         location: str,
         sw_version: str | None = None,
+        model: str | None = None,
     ) -> None:
         super().__init__(coordinator)
         self._location = location
-        self._attr_unique_id = f"{entry.entry_id}_{slugify_location(location)}_weather"
+        self._model = model
+        slug = slugify_location(location)
+        if model is None:
+            self._attr_unique_id = f"{entry.entry_id}_{slug}_weather"
+        else:
+            info = coordinator.data.model_info.get(model) if coordinator.data is not None else None
+            self._attr_unique_id = f"{entry.entry_id}_{slug}_{model}_weather"
+            self._attr_name = (info.display_name if info is not None else "") or model
         self._attr_device_info = device_info(entry, location, sw_version)
 
     async def async_added_to_hass(self) -> None:
@@ -100,6 +115,8 @@ class NjordWeatherEntity(SingleCoordinatorWeatherEntity[NjordDataCoordinator]):
     def _weather(self) -> WeatherDomainData | None:
         if self.coordinator.data is None:
             return None
+        if self._model is not None:
+            return self.coordinator.data.model_domains.get((self._location, self._model))
         data = self.coordinator.data.domains.get((self._location, Domain.WEATHER))
         return data if isinstance(data, WeatherDomainData) else None
 
@@ -178,6 +195,26 @@ class NjordWeatherEntity(SingleCoordinatorWeatherEntity[NjordDataCoordinator]):
         for name in ("ensemble_std_dev", "cape", "rain", "snowfall", "soil_temperature", "freezing_level_height"):
             value = getattr(sample, name)
             if value is not None:
+                attrs[name] = value
+        attrs.update(self._model_attributes())
+        return attrs
+
+    def _model_attributes(self) -> dict[str, object]:
+        model = self._model or self.coordinator.data.primary_model(self._location)
+        if not model:
+            return {}
+        attrs: dict[str, object] = {"model": model}
+        info = self.coordinator.data.model_info.get(model)
+        if info is None:
+            return attrs
+        for name, value in (
+            ("model_name", info.display_name),
+            ("provider", info.provider),
+            ("region", info.region),
+            ("resolution_km", info.resolution_km),
+            ("forecast_hours", info.max_forecast_hours),
+        ):
+            if value not in (None, ""):
                 attrs[name] = value
         return attrs
 

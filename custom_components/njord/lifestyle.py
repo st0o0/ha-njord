@@ -39,6 +39,14 @@ def _first_anomaly(item: FeatureData) -> float | None:
     return months[0].get("temperature_anomaly") if months else None
 
 
+def _model_spread(item: FeatureData) -> float | None:
+    days = item.values.get("days") or []
+    if not days:
+        return None
+    highs = [m["max_temperature"] for m in days[0].get("models", []) if m.get("max_temperature") is not None]
+    return max(highs) - min(highs) if len(highs) >= 2 else None
+
+
 @dataclass(frozen=True, kw_only=True)
 class LifestyleSensorDescription:
     """A sensor fed by one feature; value_fn extracts the state from the feature's typed values."""
@@ -163,6 +171,16 @@ LIFESTYLE_SENSORS: tuple[LifestyleSensorDescription, ...] = (
         name="Seasonal Temperature Anomaly",
         icon="mdi:thermometer-alert",
         value_fn=_first_anomaly,
+        unit=UnitOfTemperature.CELSIUS,
+        device_class=SensorDeviceClass.TEMPERATURE,
+        precision=1,
+    ),
+    LifestyleSensorDescription(
+        feature=Feature.MODEL_COMPARISON,
+        key="model_comparison",
+        name="Model Temperature Spread",
+        icon="mdi:chart-bell-curve",
+        value_fn=_model_spread,
         unit=UnitOfTemperature.CELSIUS,
         device_class=SensorDeviceClass.TEMPERATURE,
         precision=1,

@@ -25,7 +25,7 @@ _sym_db = _symbol_database.Default()
 from google.protobuf import timestamp_pb2 as google_dot_protobuf_dot_timestamp__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x15njord/v2/common.proto\x12\x08njord.v2\x1a\x1fgoogle/protobuf/timestamp.proto\"Q\n\x0cLocationInfo\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x10\n\x08latitude\x18\x02 \x01(\x01\x12\x11\n\tlongitude\x18\x03 \x01(\x01\x12\x0e\n\x06models\x18\x04 \x03(\t\"\x8e\x02\n\tModelInfo\x12\n\n\x02id\x18\x01 \x01(\t\x12\x14\n\x0c\x64isplay_name\x18\x02 \x01(\t\x12\x10\n\x08provider\x18\x03 \x01(\t\x12\x0e\n\x06region\x18\x04 \x01(\t\x12-\n\rcoverage_tier\x18\x05 \x01(\x0e\x32\x16.njord.v2.CoverageTier\x12\x1f\n\x12max_forecast_hours\x18\x06 \x01(\x05H\x00\x88\x01\x01\x12\x1a\n\rresolution_km\x18\x07 \x01(\x01H\x01\x88\x01\x01\x12\x18\n\x0b\x64\x65scription\x18\x08 \x01(\tH\x02\x88\x01\x01\x42\x15\n\x13_max_forecast_hoursB\x10\n\x0e_resolution_kmB\x0e\n\x0c_description*\x82\x01\n\x0c\x43overageTier\x12\x1d\n\x19\x43OVERAGE_TIER_UNSPECIFIED\x10\x00\x12\x18\n\x14\x43OVERAGE_TIER_GLOBAL\x10\x01\x12\x1d\n\x19\x43OVERAGE_TIER_CONTINENTAL\x10\x02\x12\x1a\n\x16\x43OVERAGE_TIER_REGIONAL\x10\x03*v\n\rAlertSeverity\x12\x17\n\x13\x41LERT_SEVERITY_NONE\x10\x00\x12\x19\n\x15\x41LERT_SEVERITY_YELLOW\x10\x01\x12\x19\n\x15\x41LERT_SEVERITY_ORANGE\x10\x02\x12\x16\n\x12\x41LERT_SEVERITY_RED\x10\x03*\x85\x01\n\x0f\x43onfidenceLevel\x12 \n\x1c\x43ONFIDENCE_LEVEL_UNSPECIFIED\x10\x00\x12\x18\n\x14\x43ONFIDENCE_LEVEL_LOW\x10\x01\x12\x1b\n\x17\x43ONFIDENCE_LEVEL_MEDIUM\x10\x02\x12\x19\n\x15\x43ONFIDENCE_LEVEL_HIGH\x10\x03\x42\x10\xaa\x02\rNjord.Grpc.V2b\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x15njord/v2/common.proto\x12\x08njord.v2\x1a\x1fgoogle/protobuf/timestamp.proto\"Q\n\x0cLocationInfo\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x10\n\x08latitude\x18\x02 \x01(\x01\x12\x11\n\tlongitude\x18\x03 \x01(\x01\x12\x0e\n\x06models\x18\x04 \x03(\t\"\x9f\x02\n\tModelInfo\x12\n\n\x02id\x18\x01 \x01(\t\x12\x14\n\x0c\x64isplay_name\x18\x02 \x01(\t\x12\x10\n\x08provider\x18\x03 \x01(\t\x12\x0e\n\x06region\x18\x04 \x01(\t\x12-\n\rcoverage_tier\x18\x05 \x01(\x0e\x32\x16.njord.v2.CoverageTier\x12\x1f\n\x12max_forecast_hours\x18\x06 \x01(\x05H\x00\x88\x01\x01\x12\x1a\n\rresolution_km\x18\x07 \x01(\x01H\x01\x88\x01\x01\x12\x18\n\x0b\x64\x65scription\x18\x08 \x01(\tH\x02\x88\x01\x01\x12\x0f\n\x07\x65nabled\x18\t \x01(\x08\x42\x15\n\x13_max_forecast_hoursB\x10\n\x0e_resolution_kmB\x0e\n\x0c_description*\x82\x01\n\x0c\x43overageTier\x12\x1d\n\x19\x43OVERAGE_TIER_UNSPECIFIED\x10\x00\x12\x18\n\x14\x43OVERAGE_TIER_GLOBAL\x10\x01\x12\x1d\n\x19\x43OVERAGE_TIER_CONTINENTAL\x10\x02\x12\x1a\n\x16\x43OVERAGE_TIER_REGIONAL\x10\x03*v\n\rAlertSeverity\x12\x17\n\x13\x41LERT_SEVERITY_NONE\x10\x00\x12\x19\n\x15\x41LERT_SEVERITY_YELLOW\x10\x01\x12\x19\n\x15\x41LERT_SEVERITY_ORANGE\x10\x02\x12\x16\n\x12\x41LERT_SEVERITY_RED\x10\x03*\x85\x01\n\x0f\x43onfidenceLevel\x12 \n\x1c\x43ONFIDENCE_LEVEL_UNSPECIFIED\x10\x00\x12\x18\n\x14\x43ONFIDENCE_LEVEL_LOW\x10\x01\x12\x1b\n\x17\x43ONFIDENCE_LEVEL_MEDIUM\x10\x02\x12\x19\n\x15\x43ONFIDENCE_LEVEL_HIGH\x10\x03\x42\x10\xaa\x02\rNjord.Grpc.V2b\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -33,14 +33,14 @@ _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'njord.v2.common_pb2', _glob
 if not _descriptor._USE_C_DESCRIPTORS:
   _globals['DESCRIPTOR']._loaded_options = None
   _globals['DESCRIPTOR']._serialized_options = b'\252\002\rNjord.Grpc.V2'
-  _globals['_COVERAGETIER']._serialized_start=425
-  _globals['_COVERAGETIER']._serialized_end=555
-  _globals['_ALERTSEVERITY']._serialized_start=557
-  _globals['_ALERTSEVERITY']._serialized_end=675
-  _globals['_CONFIDENCELEVEL']._serialized_start=678
-  _globals['_CONFIDENCELEVEL']._serialized_end=811
+  _globals['_COVERAGETIER']._serialized_start=442
+  _globals['_COVERAGETIER']._serialized_end=572
+  _globals['_ALERTSEVERITY']._serialized_start=574
+  _globals['_ALERTSEVERITY']._serialized_end=692
+  _globals['_CONFIDENCELEVEL']._serialized_start=695
+  _globals['_CONFIDENCELEVEL']._serialized_end=828
   _globals['_LOCATIONINFO']._serialized_start=68
   _globals['_LOCATIONINFO']._serialized_end=149
   _globals['_MODELINFO']._serialized_start=152
-  _globals['_MODELINFO']._serialized_end=422
+  _globals['_MODELINFO']._serialized_end=439
 # @@protoc_insertion_point(module_scope)

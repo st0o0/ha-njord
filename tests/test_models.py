@@ -53,7 +53,7 @@ def test_alert_meta_covers_all_alert_types_but_unspecified():
 
 def test_every_feature_has_a_njord_key():
     assert set(FEATURE_KEYS) == set(Feature)
-    assert len(FEATURE_KEYS) == 36
+    assert len(FEATURE_KEYS) == 37
 
 
 def test_feature_enabled_matches_case_insensitively():
@@ -98,3 +98,25 @@ def test_target_data_defaults():
     assert target.last_change is None
     assert target.miss_count == 0
     assert target.cycle_seconds is None
+
+
+def test_multi_model_defaults():
+    from custom_components.njord.models import ModelInfoData, WeatherDomainData
+
+    assert ModelInfoData(id="x").enabled is True
+    assert WeatherDomainData("home").model == ""
+
+
+def test_primary_and_secondary_models():
+    from custom_components.njord.coordinator import NjordCoordinatorData
+    from custom_components.njord.models import ModelInfoData, NjordLocation
+
+    data = NjordCoordinatorData(
+        locations=[NjordLocation(name="home", latitude=1.0, longitude=2.0, models=["a", "b", "c", "d"])],
+        model_info={"b": ModelInfoData(id="b", enabled=False), "c": ModelInfoData(id="c", enabled=True)},
+    )
+
+    assert data.primary_model("home") == "a"
+    assert data.secondary_models("home") == ["c", "d"]
+    assert data.primary_model("nowhere") is None
+    assert data.secondary_models("nowhere") == []

@@ -14,6 +14,7 @@ from custom_components.njord.grpc_client import (
     NjordClient,
     _to_domain_data,
     _to_feature,
+    _to_model_info,
     _to_server_status,
     _to_target_data,
 )
@@ -463,3 +464,66 @@ async def test_stream_ends_on_cancelled():
 
     assert items == []
     assert client._weather_stub.StreamEnrichments.call_count == 1
+
+
+def test_model_info_enabled_is_mapped():
+    off = _to_model_info(common_pb2.ModelInfo(id="a", enabled=False))
+    on = _to_model_info(common_pb2.ModelInfo(id="b", enabled=True))
+
+    assert (off.enabled, on.enabled) == (False, True)
+
+
+def test_weather_update_carries_model():
+    pb = weather_pb2.DomainDataUpdate(
+        location="home", domain=weather_pb2.DOMAIN_WEATHER, model="ecmwf_ifs025", weather=weather_pb2.WeatherData()
+    )
+
+    data = _to_domain_data(pb)
+
+    assert isinstance(data, WeatherDomainData)
+    assert data.model == "ecmwf_ifs025"
+
+
+async def test_get_domain_data_sends_model():
+    client = _connected_client()
+    client._weather_stub.GetDomainData = AsyncMock(
+        return_value=weather_pb2.DomainDataUpdate(location="home", weather=weather_pb2.WeatherData())
+    )
+
+    await client.get_domain_data("home", Domain.WEATHER, model="icon_d2")
+    await client.get_domain_data("home", Domain.WEATHER)
+
+    first, second = (c.args[0] for c in client._weather_stub.GetDomainData.await_args_list)
+    assert first.model == "icon_d2"
+    assert second.model == ""
+
+
+def test_model_comparison_feature_converted():
+    pb = weather_pb2.EnrichmentEvent(
+        location="home",
+        model_comparison=weather_pb2.ModelComparison(
+            days=[
+                weather_pb2.ModelComparisonDay(
+                    year=2026,
+                    month=7,
+                    day=1,
+                    models=[
+                        weather_pb2.ModelDayValues(model="icon_d2", max_temperature=21.4, precipitation=0.5),
+                        weather_pb2.ModelDayValues(model="ecmwf_ifs025", max_temperature=19.0),
+                    ],
+                )
+            ]
+        ),
+    )
+
+    item = _to_feature(pb)
+
+    assert item is not None
+    assert item.feature is Feature.MODEL_COMPARISON
+    assert "forecast" not in item.values
+    days = item.values["days"]
+    assert len(days) == 1
+    assert days[0]["day"] == 1
+    assert [m["model"] for m in days[0]["models"]] == ["icon_d2", "ecmwf_ifs025"]
+    assert days[0]["models"][0]["max_temperature"] == 21.4
+    assert days[0]["models"][1]["max_temperature"] == 19.0

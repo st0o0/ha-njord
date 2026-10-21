@@ -48,7 +48,7 @@ async def test_solar_is_not_requested(hass: HomeAssistant, mock_client, mock_con
 
 
 async def test_domain_failure_skips_only_that_domain(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
-    async def fail_flood(location, domain):
+    async def fail_flood(location, domain, model=""):
         if domain == Domain.FLOOD:
             raise RuntimeError("no flood data")
         return default_domain_data(location, domain)
@@ -100,3 +100,34 @@ async def test_status_coordinator_survives_target_failure(hass: HomeAssistant, m
 
 async def test_coordinator_has_no_update_interval(hass: HomeAssistant, mock_client) -> None:
     assert NjordDataCoordinator(hass, mock_client).update_interval is None
+
+
+async def test_secondary_models_are_fetched_per_model(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+    await init_integration(hass, mock_config_entry)
+
+    coordinator = hass.data[DOMAIN][mock_config_entry.entry_id]["coordinator"]
+    weather_models = [
+        call.kwargs.get("model", "")
+        for call in mock_client.get_domain_data.await_args_list
+        if call.args[1] == Domain.WEATHER
+    ]
+    assert sorted(weather_models) == ["", "ecmwf_ifs025"]
+    assert set(coordinator.data.model_domains) == {("home", "ecmwf_ifs025")}
+    assert coordinator.data.model_domains[("home", "ecmwf_ifs025")].model == "ecmwf_ifs025"
+
+
+async def test_failed_secondary_model_fetch_keeps_refresh_alive(
+    hass: HomeAssistant, mock_client, mock_config_entry
+) -> None:
+    async def fail_secondary(location, domain, model=""):
+        if model:
+            raise RuntimeError("model down")
+        return default_domain_data(location, domain)
+
+    mock_client.get_domain_data.side_effect = fail_secondary
+
+    await init_integration(hass, mock_config_entry)
+
+    coordinator = hass.data[DOMAIN][mock_config_entry.entry_id]["coordinator"]
+    assert coordinator.data.model_domains == {}
+    assert ("home", Domain.WEATHER) in coordinator.data.domains

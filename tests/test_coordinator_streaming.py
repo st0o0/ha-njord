@@ -10,7 +10,7 @@ from homeassistant.helpers import issue_registry as ir
 
 from custom_components.njord.const import DOMAIN, Domain, Feature, StreamName
 from custom_components.njord.coordinator import NjordCoordinatorData, NjordDataCoordinator
-from custom_components.njord.models import AlertData, FeatureData, WeatherDomainData
+from custom_components.njord.models import AlertData, FeatureData, NjordLocation, WeatherDomainData
 from tests.conftest import weather_sample
 
 
@@ -141,3 +141,21 @@ async def test_stop_streams_cancels_tasks(hass: HomeAssistant, mock_client) -> N
 
     await coordinator.stop_streams()
     assert coordinator._stream_tasks == []
+
+
+async def test_secondary_model_update_goes_to_model_domains(hass: HomeAssistant, mock_client) -> None:
+    coordinator = _coordinator(hass, mock_client)
+    coordinator.data.locations = [NjordLocation(name="home", latitude=1.0, longitude=2.0, models=["icon_d2", "other"])]
+    created: list[tuple[str, str]] = []
+    coordinator.register_model_factory("weather", MagicMock(), lambda loc, model: created.append((loc, model)) or [])
+    primary = WeatherDomainData("home", None, [weather_sample()], model="icon_d2")
+    unlabeled = WeatherDomainData("home", None, [weather_sample(temperature=2.0)])
+    secondary = WeatherDomainData("home", None, [weather_sample(temperature=3.0)], model="other")
+    again = WeatherDomainData("home", None, [weather_sample(temperature=4.0)], model="other")
+    mock_client.stream_domain_data = _stream_of(primary, secondary, unlabeled, again)
+
+    await coordinator._run_domain_stream()
+
+    assert coordinator.data.domains[("home", Domain.WEATHER)] is unlabeled
+    assert coordinator.data.model_domains == {("home", "other"): again}
+    assert created == [("home", "other")]

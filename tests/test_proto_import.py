@@ -36,3 +36,14 @@ def test_grpc_stubs_importable():
 @pytest.mark.parametrize("module", ["admin_pb2", "sensor_pb2", "admin_pb2_grpc", "sensor_pb2_grpc"])
 def test_removed_services_are_gone(module):
     assert importlib.util.find_spec(f"custom_components.njord.proto.njord.v2.{module}") is None
+
+
+def test_multi_model_proto_fields_exist():
+    from custom_components.njord.proto.njord.v2 import common_pb2, weather_pb2
+
+    assert "enabled" in common_pb2.ModelInfo.DESCRIPTOR.fields_by_name
+    assert "model" in weather_pb2.GetDomainDataRequest.DESCRIPTOR.fields_by_name
+    assert "model" in weather_pb2.DomainDataUpdate.DESCRIPTOR.fields_by_name
+    for name in ("ModelComparison", "ModelComparisonDay", "ModelDayValues"):
+        assert hasattr(weather_pb2, name)
+    assert "model_comparison" in weather_pb2.EnrichmentEvent.DESCRIPTOR.fields_by_name

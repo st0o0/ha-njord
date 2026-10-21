@@ -75,15 +75,26 @@ def default_catalog() -> CatalogData:
                 resolution_km=2.2,
                 max_forecast_hours=60,
             ),
+            "ecmwf_ifs025": ModelInfoData(
+                id="ecmwf_ifs025",
+                display_name="ECMWF IFS",
+                provider="ECMWF",
+                region="Global",
+                coverage_tier="global",
+                resolution_km=25.0,
+                max_forecast_hours=360,
+            ),
         },
     )
 
 
-def default_domain_data(location: str, domain: Domain):
+def default_domain_data(location: str, domain: Domain, model: str = ""):
     """Canned data per domain; marine has none."""
     match domain:
         case Domain.WEATHER:
-            return WeatherDomainData(location, MODEL_RUN, [weather_sample(), weather_sample(FUTURE, temperature=25.0)])
+            return WeatherDomainData(
+                location, MODEL_RUN, [weather_sample(), weather_sample(FUTURE, temperature=25.0)], model=model
+            )
         case Domain.AIR_QUALITY:
             return AirQualityDomainData(
                 location,
@@ -141,7 +152,9 @@ def mock_client():
     mock.connect = AsyncMock()
     mock.close = AsyncMock()
     mock.get_catalog = AsyncMock(return_value=default_catalog())
-    mock.get_domain_data = AsyncMock(side_effect=lambda location, domain: default_domain_data(location, domain))
+    mock.get_domain_data = AsyncMock(
+        side_effect=lambda location, domain, model="": default_domain_data(location, domain, model)
+    )
     mock.get_enrichments = AsyncMock(side_effect=lambda location: default_enrichment(location))
     mock.get_status = AsyncMock(
         return_value=ServerStatusData(

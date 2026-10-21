@@ -75,6 +75,7 @@ class WeatherDomainData:
     model_run: datetime | None = None
     points: list[WeatherSampleData] = field(default_factory=list)
     domain: Domain = Domain.WEATHER
+    model: str = ""
 
 
 @dataclass(frozen=True)
@@ -117,6 +118,7 @@ class ModelInfoData:
     max_forecast_hours: int | None = None
     resolution_km: float | None = None
     description: str | None = None
+    enabled: bool = True
 
 
 @dataclass(frozen=True)

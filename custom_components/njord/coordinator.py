@@ -15,7 +15,14 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 
 from .const import DOMAIN, Domain, Feature, StreamName, feature_enabled
 from .grpc_client import NjordClient
-from .models import DomainData, FeatureData, ModelInfoData, NjordLocation, ServerStatusData
+from .models import (
+    DomainData,
+    FeatureData,
+    ModelInfoData,
+    NjordLocation,
+    ServerStatusData,
+    WeatherDomainData,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -30,11 +37,23 @@ class NjordCoordinatorData:
     locations: list[NjordLocation] = field(default_factory=list)
     domains: dict[tuple[str, Domain], DomainData] = field(default_factory=dict)
     features: dict[tuple[str, Feature], FeatureData] = field(default_factory=dict)
+    model_domains: dict[tuple[str, str], WeatherDomainData] = field(default_factory=dict)
     model_info: dict[str, ModelInfoData] = field(default_factory=dict)
     active_enrichments: set[str] | None = None
 
     def locations_with(self, domain: Domain) -> list[str]:
         return sorted({location for location, kind in self.domains if kind == domain})
+
+    def primary_model(self, location: str) -> str | None:
+        found = next((loc for loc in self.locations if loc.name == location), None)
+        return found.models[0] if found is not None and found.models else None
+
+    def secondary_models(self, location: str) -> list[str]:
+        """Enabled models of a location beyond the primary one; a model missing from the catalog counts as enabled."""
+        found = next((loc for loc in self.locations if loc.name == location), None)
+        if found is None:
+            return []
+        return [model for model in found.models[1:] if (info := self.model_info.get(model)) is None or info.enabled]
 
     @property
     def location_names(self) -> list[str]:
@@ -48,6 +67,9 @@ EntityFactory = Callable[[str, Domain], list]
 
 # Called for every (location, feature) pair that appears for the first time; returns the new entities.
 FeatureEntityFactory = Callable[[str, Feature], list]
+
+# Called for every (location, model) pair that appears for the first time; returns the new entities.
+ModelEntityFactory = Callable[[str, str], list]
 
 
 class NjordDataCoordinator(DataUpdateCoordinator[NjordCoordinatorData]):
@@ -64,6 +86,7 @@ class NjordDataCoordinator(DataUpdateCoordinator[NjordCoordinatorData]):
         self._stream_tasks: list[asyncio.Task] = []
         self._entity_factories: dict[str, tuple[AddEntitiesCallback, EntityFactory]] = {}
         self._feature_factories: dict[str, tuple[AddEntitiesCallback, FeatureEntityFactory]] = {}
+        self._model_factories: dict[str, tuple[AddEntitiesCallback, ModelEntityFactory]] = {}
         self.stream_states: dict[StreamName, bool] = {name: False for name in StreamName}
         self._stream_disconnect_times: dict[StreamName, float] = {}
         self._stream_issue_created: dict[StreamName, bool] = {}
@@ -88,6 +111,15 @@ class NjordDataCoordinator(DataUpdateCoordinator[NjordCoordinatorData]):
                 if data is not None:
                     result.domains[(location.name, domain)] = data
 
+            for model in result.secondary_models(location.name):
+                try:
+                    data = await self.client.get_domain_data(location.name, Domain.WEATHER, model=model)
+                except Exception as err:
+                    _LOGGER.debug("No %s data for %s/%s: %s", Domain.WEATHER, location.name, model, err)
+                    continue
+                if isinstance(data, WeatherDomainData):
+                    result.model_domains[(location.name, model)] = data
+
             try:
                 for item in await self.client.get_enrichments(location.name):
                     result.features[(item.location, item.feature)] = item
@@ -111,6 +143,14 @@ class NjordDataCoordinator(DataUpdateCoordinator[NjordCoordinatorData]):
         factory: FeatureEntityFactory,
     ) -> None:
         self._feature_factories[platform] = (add_entities, factory)
+
+    def register_model_factory(
+        self,
+        platform: str,
+        add_entities: AddEntitiesCallback,
+        factory: ModelEntityFactory,
+    ) -> None:
+        self._model_factories[platform] = (add_entities, factory)
 
     def start_streams(self) -> None:
         self._stream_tasks = [
@@ -158,6 +198,9 @@ class NjordDataCoordinator(DataUpdateCoordinator[NjordCoordinatorData]):
                 on_reconnect=lambda: self._on_stream_connect(StreamName.DOMAIN),
                 on_disconnect=lambda: self._on_stream_disconnect(StreamName.DOMAIN),
             ):
+                if isinstance(update, WeatherDomainData) and self._is_secondary_model(update):
+                    self._apply_model_update(update)
+                    continue
                 key = (update.location, update.domain)
                 is_new = key not in self.data.domains
                 self.data.domains[key] = update
@@ -169,6 +212,17 @@ class NjordDataCoordinator(DataUpdateCoordinator[NjordCoordinatorData]):
         except Exception:
             _LOGGER.exception("Domain data stream task failed")
             self._on_stream_disconnect(StreamName.DOMAIN)
+
+    def _is_secondary_model(self, update: WeatherDomainData) -> bool:
+        return bool(update.model) and update.model != self.data.primary_model(update.location)
+
+    def _apply_model_update(self, update: WeatherDomainData) -> None:
+        key = (update.location, update.model)
+        is_new = key not in self.data.model_domains
+        self.data.model_domains[key] = update
+        if is_new:
+            self._create_model_entities_for(update.location, update.model)
+        self.async_set_updated_data(self.data)
 
     async def _run_enrichment_stream(self) -> None:
         try:
@@ -202,6 +256,15 @@ class NjordDataCoordinator(DataUpdateCoordinator[NjordCoordinatorData]):
                     add_entities(entities)
             except Exception as err:
                 _LOGGER.error("Failed to create %s entities for %s/%s: %s", platform, location, feature, err)
+
+    def _create_model_entities_for(self, location: str, model: str) -> None:
+        for platform, (add_entities, factory) in self._model_factories.items():
+            try:
+                entities = factory(location, model)
+                if entities:
+                    add_entities(entities)
+            except Exception as err:
+                _LOGGER.error("Failed to create %s entities for %s/%s: %s", platform, location, model, err)
 
     def _create_entities_for(self, location: str, domain: Domain) -> None:
         for platform, (add_entities, factory) in self._entity_factories.items():

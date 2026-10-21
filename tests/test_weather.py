@@ -8,6 +8,7 @@ import pytest
 from homeassistant.core import HomeAssistant
 
 from custom_components.njord.const import DOMAIN, Domain
+from custom_components.njord.models import WeatherDomainData
 from tests.conftest import FUTURE, MODEL_RUN, PAST, entity_id_for, init_integration, weather_sample
 
 
@@ -22,14 +23,82 @@ async def test_one_weather_entity_per_location_with_weather_data(
 ) -> None:
     await init_integration(hass, mock_config_entry)
 
-    assert len(hass.states.async_entity_ids("weather")) == 1
+    assert entity_id_for(hass, "weather", f"{mock_config_entry.entry_id}_home_weather") is not None
     assert entity_id_for(hass, "weather", f"{mock_config_entry.entry_id}_home_icon_d2_weather") is None
+    assert len(hass.states.async_entity_ids("weather")) == 2
+
+
+async def test_secondary_model_gets_its_own_weather_entity(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+    from tests.conftest import default_domain_data
+
+    mock_client.get_domain_data.side_effect = lambda loc, dom, model="": (
+        WeatherDomainData(loc, MODEL_RUN, [weather_sample(temperature=18.0)], model=model)
+        if dom == Domain.WEATHER and model
+        else default_domain_data(loc, dom, model)
+    )
+
+    await init_integration(hass, mock_config_entry)
+
+    entity_id = entity_id_for(hass, "weather", f"{mock_config_entry.entry_id}_home_ecmwf_ifs025_weather")
+    assert entity_id is not None
+    state = hass.states.get(entity_id)
+    assert state is not None
+    assert state.attributes["temperature"] == 18.0
+    assert state.attributes["friendly_name"] == "Home ECMWF IFS"
+    primary = hass.states.get(_entity_id(hass, mock_config_entry))
+    assert primary is not None
+    assert primary.attributes["temperature"] == 22.5
+
+
+async def test_disabled_secondary_model_has_no_entity(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+    catalog = mock_client.get_catalog.return_value
+    catalog.model_info["ecmwf_ifs025"] = replace(catalog.model_info["ecmwf_ifs025"], enabled=False)
+
+    await init_integration(hass, mock_config_entry)
+
+    assert entity_id_for(hass, "weather", f"{mock_config_entry.entry_id}_home_ecmwf_ifs025_weather") is None
+    assert len(hass.states.async_entity_ids("weather")) == 1
+    models_asked = {call.kwargs.get("model", "") for call in mock_client.get_domain_data.await_args_list}
+    assert models_asked == {""}
+
+
+async def test_weather_entities_expose_model_metadata(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+    await init_integration(hass, mock_config_entry)
+
+    primary = hass.states.get(_entity_id(hass, mock_config_entry))
+    secondary = hass.states.get(
+        entity_id_for(hass, "weather", f"{mock_config_entry.entry_id}_home_ecmwf_ifs025_weather")
+    )
+    assert primary is not None
+    assert secondary is not None
+    assert primary.attributes["model"] == "icon_d2"
+    assert primary.attributes["model_name"] == "ICON-D2"
+    assert primary.attributes["provider"] == "DWD"
+    assert primary.attributes["region"] == "DE, CH, AT"
+    assert primary.attributes["resolution_km"] == 2.2
+    assert primary.attributes["forecast_hours"] == 60
+    assert secondary.attributes["model"] == "ecmwf_ifs025"
+    assert secondary.attributes["forecast_hours"] == 360
+
+
+async def test_model_missing_from_catalog_only_exposes_its_id(
+    hass: HomeAssistant, mock_client, mock_config_entry
+) -> None:
+    mock_client.get_catalog.return_value.model_info.pop("icon_d2")
+
+    await init_integration(hass, mock_config_entry)
+
+    state = hass.states.get(_entity_id(hass, mock_config_entry))
+    assert state is not None
+    assert state.attributes["model"] == "icon_d2"
+    for name in ("model_name", "provider", "region", "resolution_km", "forecast_hours"):
+        assert name not in state.attributes
 
 
 async def test_no_weather_entity_without_weather_data(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
     from tests.conftest import default_domain_data
 
-    mock_client.get_domain_data.side_effect = lambda loc, dom: (
+    mock_client.get_domain_data.side_effect = lambda loc, dom, model="": (
         None if dom == Domain.WEATHER else default_domain_data(loc, dom)
     )
 
