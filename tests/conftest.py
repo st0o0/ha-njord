@@ -27,6 +27,8 @@ from custom_components.njord.models import (
     FloodSampleData,
     ModelInfoData,
     NjordLocation,
+    SeasonalDomainData,
+    SeasonalSampleData,
     ServerStatusData,
     TargetData,
     WeatherDomainData,
@@ -104,6 +106,16 @@ def default_domain_data(location: str, domain: Domain, model: str = ""):
         case Domain.FLOOD:
             return FloodDomainData(
                 location, MODEL_RUN, [FloodSampleData(valid_at=PAST, discharge=55.5, discharge_mean=50.0)]
+            )
+        case Domain.SEASONAL:
+            return SeasonalDomainData(
+                location,
+                MODEL_RUN,
+                [
+                    SeasonalSampleData(
+                        valid_at=PAST, temperature_anomaly=1.2, precipitation_anomaly=None, precipitation_mean=None
+                    )
+                ],
             )
     return None
 

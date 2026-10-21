@@ -19,7 +19,7 @@ njord (gRPC server)  ──►  ha-njord (HA integration)
   GetStatus()                 NjordStatusCoordinator (polling)
 ```
 
-Domains: weather, air quality, flood, marine are tracked and get entities. The proto also carries seasonal and satellite (`DomainDataUpdate` oneof has weather, air_quality, flood, marine, satellite); they are not consumed.
+Domains: weather, air quality, flood, marine get entities; seasonal is parsed and kept in the coordinator (no entity). The proto also carries satellite (`DomainDataUpdate` oneof has weather, air_quality, flood, marine, seasonal, satellite); it is not consumed.
 Enrichments on the wire are typed per-feature `EnrichmentEvent`s (oneof `feature`: alerts, scores, conditions, trends, forecasts). Which features get entities follows `StatusResponse.active_enrichments` (`<Category>:<Name>` keys, see `FEATURE_KEYS` in `const.py`); an empty list means all enabled. There are no enrichment toggles on the HA side.
 
 ## Tech Stack

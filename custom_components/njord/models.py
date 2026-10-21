@@ -70,6 +70,14 @@ class MarineSampleData:
 
 
 @dataclass(frozen=True)
+class SeasonalSampleData:
+    valid_at: datetime
+    temperature_anomaly: float | None = None
+    precipitation_anomaly: float | None = None
+    precipitation_mean: float | None = None
+
+
+@dataclass(frozen=True)
 class WeatherDomainData:
     location: str
     model_run: datetime | None = None
@@ -102,7 +110,15 @@ class MarineDomainData:
     domain: Domain = Domain.MARINE
 
 
-DomainData = WeatherDomainData | AirQualityDomainData | FloodDomainData | MarineDomainData
+@dataclass(frozen=True)
+class SeasonalDomainData:
+    location: str
+    model_run: datetime | None = None
+    points: list[SeasonalSampleData] = field(default_factory=list)
+    domain: Domain = Domain.SEASONAL
+
+
+DomainData = WeatherDomainData | AirQualityDomainData | FloodDomainData | MarineDomainData | SeasonalDomainData
 
 
 # --- Catalog ---

@@ -10,7 +10,14 @@ from homeassistant.helpers import issue_registry as ir
 
 from custom_components.njord.const import DOMAIN, Domain, Feature, StreamName
 from custom_components.njord.coordinator import NjordCoordinatorData, NjordDataCoordinator
-from custom_components.njord.models import AlertData, FeatureData, NjordLocation, WeatherDomainData
+from custom_components.njord.models import (
+    AlertData,
+    FeatureData,
+    NjordLocation,
+    SeasonalDomainData,
+    SeasonalSampleData,
+    WeatherDomainData,
+)
 from tests.conftest import weather_sample
 
 
@@ -50,7 +57,7 @@ async def test_domain_stream_requests_tracked_domains(hass: HomeAssistant, mock_
 
     kwargs = mock_client.stream_domain_data.call_args.kwargs
     assert kwargs["location"] is None
-    assert set(kwargs["domains"]) == {Domain.WEATHER, Domain.AIR_QUALITY, Domain.FLOOD, Domain.MARINE}
+    assert set(kwargs["domains"]) == {Domain.WEATHER, Domain.AIR_QUALITY, Domain.FLOOD, Domain.MARINE, Domain.SEASONAL}
 
 
 async def test_enrichment_stream_stores_feature_by_location_and_feature(hass: HomeAssistant, mock_client) -> None:
@@ -159,3 +166,15 @@ async def test_secondary_model_update_goes_to_model_domains(hass: HomeAssistant,
     assert coordinator.data.domains[("home", Domain.WEATHER)] is unlabeled
     assert coordinator.data.model_domains == {("home", "other"): again}
     assert created == [("home", "other")]
+
+
+async def test_domain_stream_stores_latest_seasonal_data(hass: HomeAssistant, mock_client) -> None:
+    coordinator = _coordinator(hass, mock_client)
+    sample = SeasonalSampleData(weather_sample().valid_at, 1.0, None, None)
+    first = SeasonalDomainData("home", None, [sample])
+    second = SeasonalDomainData("home", None, [])
+    mock_client.stream_domain_data = _stream_of(first, second)
+
+    await coordinator._run_domain_stream()
+
+    assert coordinator.data.domains[("home", Domain.SEASONAL)] is second

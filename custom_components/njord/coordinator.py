@@ -29,7 +29,13 @@ _LOGGER = logging.getLogger(__name__)
 _STREAM_DISCONNECT_GRACE = 60.0
 
 # Domains the integration creates entities for.
-TRACKED_DOMAINS: tuple[Domain, ...] = (Domain.WEATHER, Domain.AIR_QUALITY, Domain.FLOOD, Domain.MARINE)
+TRACKED_DOMAINS: tuple[Domain, ...] = (
+    Domain.WEATHER,
+    Domain.AIR_QUALITY,
+    Domain.FLOOD,
+    Domain.MARINE,
+    Domain.SEASONAL,
+)
 
 
 @dataclass

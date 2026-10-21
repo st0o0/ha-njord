@@ -24,6 +24,7 @@ async def test_coordinator_fetches_catalog_domains_and_enrichments(
         ("home", Domain.WEATHER),
         ("home", Domain.AIR_QUALITY),
         ("home", Domain.FLOOD),
+        ("home", Domain.SEASONAL),
     }
     assert "icon_d2" in coordinator.data.model_info
     assert set(coordinator.data.features) == {
@@ -44,7 +45,7 @@ async def test_solar_is_not_requested(hass: HomeAssistant, mock_client, mock_con
     await init_integration(hass, mock_config_entry)
 
     requested = {call.args[1] for call in mock_client.get_domain_data.await_args_list}
-    assert requested == {Domain.WEATHER, Domain.AIR_QUALITY, Domain.FLOOD, Domain.MARINE}
+    assert requested == {Domain.WEATHER, Domain.AIR_QUALITY, Domain.FLOOD, Domain.MARINE, Domain.SEASONAL}
 
 
 async def test_domain_failure_skips_only_that_domain(hass: HomeAssistant, mock_client, mock_config_entry) -> None:

@@ -30,6 +30,8 @@ from .models import (
     ModelInfoData,
     NjordLocation,
     ScoreData,
+    SeasonalDomainData,
+    SeasonalSampleData,
     ServerStatusData,
     TargetData,
     WeatherDomainData,
@@ -184,6 +186,15 @@ def _to_marine_sample(pb: weather_pb2.MarineSample) -> MarineSampleData:
     )
 
 
+def _to_seasonal_sample(pb: weather_pb2.SeasonalSample) -> SeasonalSampleData:
+    return SeasonalSampleData(
+        valid_at=_ts_to_dt(pb.valid_at),
+        temperature_anomaly=_opt(pb, "temperature_anomaly"),
+        precipitation_anomaly=_opt(pb, "precipitation_anomaly"),
+        precipitation_mean=_opt(pb, "precipitation_mean"),
+    )
+
+
 def _to_domain_data(pb: weather_pb2.DomainDataUpdate) -> DomainData | None:
     """Convert a DomainDataUpdate; None when the payload is empty or of an unknown kind."""
     model_run = _optional_ts(pb.model_run)
@@ -200,6 +211,8 @@ def _to_domain_data(pb: weather_pb2.DomainDataUpdate) -> DomainData | None:
             return FloodDomainData(pb.location, model_run, [_to_flood_sample(p) for p in pb.flood.points])
         case "marine":
             return MarineDomainData(pb.location, model_run, [_to_marine_sample(p) for p in pb.marine.points])
+        case "seasonal":
+            return SeasonalDomainData(pb.location, model_run, [_to_seasonal_sample(p) for p in pb.seasonal.points])
     return None
 
 

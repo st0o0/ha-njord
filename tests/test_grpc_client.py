@@ -22,6 +22,7 @@ from custom_components.njord.models import (
     AirQualityDomainData,
     FloodDomainData,
     MarineDomainData,
+    SeasonalDomainData,
     WeatherDomainData,
 )
 from custom_components.njord.proto.njord.v2 import common_pb2, ops_pb2, weather_pb2
@@ -527,3 +528,47 @@ def test_model_comparison_feature_converted():
     assert [m["model"] for m in days[0]["models"]] == ["icon_d2", "ecmwf_ifs025"]
     assert days[0]["models"][0]["max_temperature"] == 21.4
     assert days[0]["models"][1]["max_temperature"] == 19.0
+
+
+def test_seasonal_update_converted():
+    pb = weather_pb2.DomainDataUpdate(
+        location="home",
+        seasonal=weather_pb2.SeasonalData(
+            points=[
+                weather_pb2.SeasonalSample(
+                    valid_at=_ts(), temperature_anomaly=1.5, precipitation_anomaly=-12.0, precipitation_mean=60.0
+                )
+            ]
+        ),
+    )
+
+    data = _to_domain_data(pb)
+
+    assert isinstance(data, SeasonalDomainData)
+    assert data.location == "home"
+    sample = data.points[0]
+    assert (sample.temperature_anomaly, sample.precipitation_anomaly, sample.precipitation_mean) == (1.5, -12.0, 60.0)
+
+
+def test_seasonal_unset_optionals_are_none():
+    pb = weather_pb2.DomainDataUpdate(
+        location="home",
+        seasonal=weather_pb2.SeasonalData(points=[weather_pb2.SeasonalSample(valid_at=_ts(), temperature_anomaly=0.0)]),
+    )
+
+    data = _to_domain_data(pb)
+
+    assert isinstance(data, SeasonalDomainData)
+    sample = data.points[0]
+    assert sample.temperature_anomaly == 0.0
+    assert sample.precipitation_anomaly is None
+    assert sample.precipitation_mean is None
+
+
+def test_seasonal_empty_points():
+    pb = weather_pb2.DomainDataUpdate(location="home", seasonal=weather_pb2.SeasonalData())
+
+    data = _to_domain_data(pb)
+
+    assert isinstance(data, SeasonalDomainData)
+    assert data.points == []

@@ -17,7 +17,7 @@ async def test_diagnostics_output(hass: HomeAssistant, mock_client, mock_config_
     assert diag["options"] == {}
     assert diag["coordinator"] == {
         "locations": ["home"],
-        "domains": {"home": ["air_quality", "flood", "weather"]},
+        "domains": {"home": ["air_quality", "flood", "seasonal", "weather"]},
         "features": {"home": ["flood_risk", "frost", "pollen", "uv"]},
         "active_enrichments": ["AirQuality:Pollen", "Flood:FloodRisk", "Weather:Frost", "Weather:Uv"],
         "last_update_success": True,
