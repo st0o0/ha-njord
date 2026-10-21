@@ -3,6 +3,7 @@
 Defines how typed per-feature enrichment events from njord become coordinator state and entities, gated by the server's active enrichments.
 
 ## Requirements
+
 ### Requirement: Enrichment events are typed per feature
 The client SHALL map every `EnrichmentEvent` and every entry of `GetEnrichmentsResponse.events` to a `FeatureData` keyed by `(location, Feature)`. Alert features SHALL carry an `AlertData`, score features a `ScoreData`, and all other fields SHALL be in `values` with native types. A newer result of a feature SHALL replace the previous one.
 
@@ -57,3 +58,18 @@ The v2 to v3 migration SHALL keep only `status_poll_interval` and drop all enric
 #### Scenario: v2 entry with toggles
 - **WHEN** a version 2 entry with disabled enrichment groups is loaded
 - **THEN** the entry becomes version 3 with only `status_poll_interval` left
+
+### Requirement: ModelComparison is shown as a temperature spread sensor
+The integration SHALL map the `Weather:ModelComparison` feature (`EnrichmentEvent.model_comparison`) to a sensor "Model Temperature Spread" with unique id `{entry_id}_{location_slug}_model_comparison`, device class temperature, unit °C and precision 1. Its state SHALL be the difference between the highest and the lowest `max_temperature` of the first day across the models that report one, or unknown with fewer than two values. Its attributes SHALL include the full `days` list with per-model values.
+
+#### Scenario: Two models disagree
+- **WHEN** the first day reports `max_temperature` 21.4 for one model and 19.0 for another
+- **THEN** the sensor state is 2.4 and the attribute `days` lists both models
+
+#### Scenario: One model only
+- **WHEN** the first day reports a `max_temperature` for a single model
+- **THEN** the sensor state is unknown
+
+#### Scenario: Feature not active
+- **WHEN** the server's `active_enrichments` do not contain `Weather:ModelComparison`
+- **THEN** no Model Temperature Spread sensor is created
