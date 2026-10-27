@@ -40,6 +40,7 @@ class Domain(StrEnum):
     MARINE = "marine"
     SEASONAL = "seasonal"
     SATELLITE = "satellite"
+    ENSEMBLE = "ensemble"
 
     @classmethod
     def _missing_(cls, value: object) -> Domain:

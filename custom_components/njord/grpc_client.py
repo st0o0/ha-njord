@@ -83,6 +83,7 @@ _DOMAIN_TO_PB: dict[Domain, int] = {
     Domain.MARINE: weather_pb2.DOMAIN_MARINE,
     Domain.SEASONAL: weather_pb2.DOMAIN_SEASONAL,
     Domain.SATELLITE: weather_pb2.DOMAIN_SATELLITE,
+    Domain.ENSEMBLE: weather_pb2.DOMAIN_ENSEMBLE,
 }
 
 _POLL_PHASE_MAP: dict[int, PollPhase] = {
@@ -138,7 +139,6 @@ def _to_weather_sample(pb: weather_pb2.WeatherSample) -> WeatherSampleData:
         humidity=pb.humidity,
         dew_point=pb.dew_point,
         uv_index=pb.uv_index,
-        ensemble_std_dev=_opt(pb, "ensemble_std_dev"),
         wind_gusts=_opt(pb, "wind_gusts"),
         visibility=_opt(pb, "visibility"),
         cape=_opt(pb, "cape"),
@@ -213,6 +213,8 @@ def _to_domain_data(pb: weather_pb2.DomainDataUpdate) -> DomainData | None:
             return MarineDomainData(pb.location, model_run, [_to_marine_sample(p) for p in pb.marine.points])
         case "seasonal":
             return SeasonalDomainData(pb.location, model_run, [_to_seasonal_sample(p) for p in pb.seasonal.points])
+        case "ensemble":
+            return None
     return None
 
 

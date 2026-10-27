@@ -192,7 +192,7 @@ class NjordWeatherEntity(SingleCoordinatorWeatherEntity[NjordDataCoordinator]):
         attrs: dict[str, object] = {"valid_at": sample.valid_at.isoformat()}
         if data.model_run is not None:
             attrs["model_run"] = data.model_run.isoformat()
-        for name in ("ensemble_std_dev", "cape", "rain", "snowfall", "soil_temperature", "freezing_level_height"):
+        for name in ("cape", "rain", "snowfall", "soil_temperature", "freezing_level_height"):
             value = getattr(sample, name)
             if value is not None:
                 attrs[name] = value

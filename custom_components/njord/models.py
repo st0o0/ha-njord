@@ -25,7 +25,6 @@ class WeatherSampleData:
     humidity: float
     dew_point: float
     uv_index: float
-    ensemble_std_dev: float | None = None
     wind_gusts: float | None = None
     visibility: float | None = None
     cape: float | None = None
