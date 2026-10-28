@@ -22,7 +22,14 @@ from .grpc_client import NjordClient
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS = [Platform.WEATHER, Platform.BINARY_SENSOR, Platform.SENSOR, Platform.BUTTON, Platform.EVENT]
+PLATFORMS = [
+    Platform.WEATHER,
+    Platform.BINARY_SENSOR,
+    Platform.SENSOR,
+    Platform.BUTTON,
+    Platform.EVENT,
+    Platform.CALENDAR,
+]
 
 SERVICE_TRIGGER_POLL = "trigger_poll"
 SERVICE_TRIGGER_POLL_SCHEMA = vol.Schema(

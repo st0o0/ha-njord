@@ -290,6 +290,16 @@ class NjordDomainSensor(CoordinatorEntity[NjordDataCoordinator], SensorEntity):
         return attrs
 
 
+def _serialize(value):
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if isinstance(value, dict):
+        return {k: _serialize(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_serialize(v) for v in value]
+    return value
+
+
 def _attributes(item: FeatureData) -> dict[str, object]:
     attrs: dict[str, object] = {}
     for name, value in item.values.items():
@@ -299,6 +309,8 @@ def _attributes(item: FeatureData) -> dict[str, object]:
     if item.score is not None:
         attrs["best_start"] = item.score.best_start.isoformat() if item.score.best_start else None
         attrs["best_hours"] = item.score.best_hours if item.score.best_hours else None
+        if item.score.windows:
+            attrs["windows"] = [_serialize(w) for w in item.score.windows]
     return attrs
 
 

@@ -219,6 +219,7 @@ class ScoreData:
     score: int = 0
     best_start: datetime | None = None
     best_hours: int = 0
+    windows: list[dict[str, Any]] = field(default_factory=list)
 
 
 @dataclass(frozen=True)

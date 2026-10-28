@@ -334,7 +334,12 @@ def _to_feature(pb: weather_pb2.EnrichmentEvent) -> FeatureData | None:
         alert = _to_alert(alert_type, payload.alert)
     elif "score" in payload.DESCRIPTOR.fields_by_name:
         sc = payload.score
-        score = ScoreData(score=sc.score, best_start=_optional_ts(sc.best_start), best_hours=sc.best_hours)
+        score = ScoreData(
+            score=sc.score,
+            best_start=_optional_ts(sc.best_start),
+            best_hours=sc.best_hours,
+            windows=[_message_values(w) for w in getattr(sc, "windows", [])],
+        )
     values = _message_values(payload, skip=frozenset(_WRAPPER_FIELDS))
     return FeatureData(
         location=pb.location,

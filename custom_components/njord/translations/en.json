@@ -237,6 +237,28 @@
         "name": "Enrichment Stream"
       }
     },
+    "calendar": {
+      "activity_windows": {
+        "name": "Activity Windows",
+        "state_attributes": {
+          "limiting_kind": {
+            "state": {
+              "rain": "Rain",
+              "uv": "UV",
+              "wind": "Wind",
+              "temperature_high": "High temperature",
+              "temperature_low": "Low temperature",
+              "humidity": "Humidity",
+              "pollen": "Pollen",
+              "air_quality": "Air quality",
+              "visibility": "Visibility",
+              "thunderstorm": "Thunderstorm",
+              "darkness": "Darkness"
+            }
+          }
+        }
+      }
+    },
     "event": {
       "weather_alert": {
         "name": "Weather Alert",
