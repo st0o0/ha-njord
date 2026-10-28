@@ -146,3 +146,10 @@ async def test_status_without_active_enrichments_keeps_every_entity(
     assert _alert_state(hass, mock_config_entry, "uv") is not None
     assert _alert_state(hass, mock_config_entry, "heat") is not None
     assert entity_id_for(hass, "binary_sensor", f"{mock_config_entry.entry_id}_domain_stream") is not None
+
+
+async def test_new_alert_types_are_created(hass: HomeAssistant, mock_client, all_alerts_entry) -> None:
+    await init_integration(hass, all_alerts_entry)
+
+    assert _alert_state(hass, all_alerts_entry, "compound_heat_stress") is not None
+    assert _alert_state(hass, all_alerts_entry, "migraine_risk") is not None

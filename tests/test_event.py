@@ -119,3 +119,35 @@ async def test_enabled_extra_alert_type_fires(hass: HomeAssistant, mock_client, 
     state = _state(hass, all_alerts_entry)
     assert state.attributes["event_type"] == "alert_deescalated"
     assert state.attributes["type"] == "flood_risk"
+
+
+async def test_data_event_entity_attributes(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+    from custom_components.njord.event import NjordDataEvent
+
+    await init_integration(hass, mock_config_entry)
+    coordinator = hass.data[DOMAIN][mock_config_entry.entry_id]["coordinator"]
+
+    entity = NjordDataEvent(coordinator, mock_config_entry, "home")
+
+    assert entity.translation_key == "data_lifecycle"
+    assert "domain_updated" in entity.event_types
+    assert "features_updated" in entity.event_types
+
+
+async def test_feature_event_entity_attributes(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
+    from custom_components.njord.event import NjordFeatureEvent
+
+    await init_integration(hass, mock_config_entry)
+    coordinator = hass.data[DOMAIN][mock_config_entry.entry_id]["coordinator"]
+
+    entity = NjordFeatureEvent(coordinator, mock_config_entry, "home")
+
+    assert entity.translation_key == "feature_transitions"
+    for event_type in (
+        "score_threshold",
+        "condition_changed",
+        "window_opened",
+        "window_closing_soon",
+        "window_closed",
+    ):
+        assert event_type in entity.event_types

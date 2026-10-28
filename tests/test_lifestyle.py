@@ -346,3 +346,57 @@ async def test_model_comparison_sensor_needs_active_enrichment(
     await _setup(hass, mock_client, mock_config_entry, [_comparison(21.4, 19.0)], active=["Forecast:Uv"])
 
     assert _state(hass, mock_config_entry, "sensor", "model_comparison") is None
+
+
+# --- Added features ---
+
+
+def test_new_score_sensor_descriptions_exist():
+    from custom_components.njord.lifestyle import LIFESTYLE_SENSORS
+
+    by_key = {d.key: d for d in LIFESTYLE_SENSORS}
+    expected = {
+        "allergy_severity": Feature.ALLERGY_SEVERITY,
+        "sleep_quality": Feature.SLEEP_QUALITY,
+        "asthma_risk": Feature.ASTHMA_RISK,
+        "spray_window": Feature.SPRAY_WINDOW,
+    }
+    for key, feature in expected.items():
+        assert key in by_key, key
+        assert by_key[key].feature is feature
+        assert by_key[key].unit == "points"
+        assert by_key[key].value_fn(_scored(feature, 55)) == 55
+
+
+def test_new_condition_sensor_descriptions_exist():
+    from custom_components.njord.lifestyle import LIFESTYLE_SENSORS
+
+    by_key = {d.key: d for d in LIFESTYLE_SENSORS}
+    expected = {
+        "heat_pump_cop": Feature.HEAT_PUMP_COP,
+        "solar_battery_strategy": Feature.SOLAR_BATTERY_STRATEGY,
+        "irrigation_need": Feature.IRRIGATION_NEED,
+        "frost_depth": Feature.FROST_DEPTH,
+        "inversion_detection": Feature.INVERSION_DETECTION,
+        "atmospheric_stability": Feature.ATMOSPHERIC_STABILITY,
+        "cloud_ceiling": Feature.CLOUD_CEILING,
+    }
+    for key, feature in expected.items():
+        assert key in by_key, key
+        assert by_key[key].feature is feature
+
+
+def test_new_condition_sensor_value_extraction():
+    from custom_components.njord.lifestyle import LIFESTYLE_SENSORS
+
+    by_key = {d.key: d for d in LIFESTYLE_SENSORS}
+    assert by_key["heat_pump_cop"].value_fn(_feature(Feature.HEAT_PUMP_COP, cop=3.4)) == 3.4
+    battery = _feature(Feature.SOLAR_BATTERY_STRATEGY, strategy="normal")
+    assert by_key["solar_battery_strategy"].value_fn(battery) == "normal"
+    assert by_key["irrigation_need"].value_fn(_feature(Feature.IRRIGATION_NEED, advice="skip")) == "skip"
+    assert by_key["frost_depth"].value_fn(_feature(Feature.FROST_DEPTH, depth_cm=12)) == 12
+    assert by_key["inversion_detection"].value_fn(_feature(Feature.INVERSION_DETECTION, strength="mild")) == "mild"
+    assert (
+        by_key["atmospheric_stability"].value_fn(_feature(Feature.ATMOSPHERIC_STABILITY, stability_class="stable"))
+        == "stable"
+    )

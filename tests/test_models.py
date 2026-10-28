@@ -120,3 +120,16 @@ def test_primary_and_secondary_models():
     assert data.secondary_models("home") == ["c", "d"]
     assert data.primary_model("nowhere") is None
     assert data.secondary_models("nowhere") == []
+
+
+def test_new_alert_types_present():
+    assert AlertType.COMPOUND_HEAT_STRESS in ALERT_META
+    assert AlertType.MIGRAINE_RISK in ALERT_META
+
+
+def test_score_data_windows_default_empty_and_hold_values():
+    from custom_components.njord.models import ScoreData
+
+    assert ScoreData(score=10).windows == []
+    windows = [{"start": 1, "end": 2, "score": 80}]
+    assert ScoreData(score=80, windows=windows).windows == windows
