@@ -61,7 +61,7 @@ async def async_setup_entry(
     for location, feature in sorted(coordinator.data.features):
         if feature_enabled(feature, coordinator.data.active_enrichments):
             entities.extend(feature_entities(location, feature))
-    for location in coordinator.data.locations_with(Domain.WEATHER):
+    for location in coordinator.data.locations_with(Domain.FORECAST):
         entities.extend(alert_entities(location))
 
     for stream_name in StreamName:
@@ -71,7 +71,7 @@ async def async_setup_entry(
 
     def binary_sensor_factory(location: str, domain: Domain) -> list[BinarySensorEntity]:
         # Alerts are per location: they are created when the location's weather domain first appears.
-        return alert_entities(location) if domain == Domain.WEATHER else []
+        return alert_entities(location) if domain == Domain.FORECAST else []
 
     coordinator.register_entity_factory("binary_sensor", async_add_entities, binary_sensor_factory)
     coordinator.register_feature_factory("binary_sensor", async_add_entities, feature_entities)

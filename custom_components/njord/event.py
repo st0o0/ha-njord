@@ -42,12 +42,12 @@ async def async_setup_entry(
         return [NjordAlertEvent(coordinator, entry, location, alert_types, sw_version)]
 
     entities: list[EventEntity] = []
-    for location in coordinator.data.locations_with(Domain.WEATHER):
+    for location in coordinator.data.locations_with(Domain.FORECAST):
         entities.extend(alert_events(location))
     async_add_entities(entities)
 
     def event_factory(location: str, domain: Domain) -> list[EventEntity]:
-        return alert_events(location) if domain == Domain.WEATHER else []
+        return alert_events(location) if domain == Domain.FORECAST else []
 
     coordinator.register_entity_factory("event", async_add_entities, event_factory)
 

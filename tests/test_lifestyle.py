@@ -324,7 +324,7 @@ def _comparison(*max_temps: float | None) -> FeatureData:
 
 
 async def test_model_comparison_sensor_shows_spread(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
-    await _setup(hass, mock_client, mock_config_entry, [_comparison(21.4, 19.0)], active=["Weather:ModelComparison"])
+    await _setup(hass, mock_client, mock_config_entry, [_comparison(21.4, 19.0)], active=["Forecast:ModelComparison"])
 
     state = _state(hass, mock_config_entry, "sensor", "model_comparison")
     assert state is not None
@@ -333,7 +333,7 @@ async def test_model_comparison_sensor_shows_spread(hass: HomeAssistant, mock_cl
 
 
 async def test_model_comparison_single_model_is_unknown(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
-    await _setup(hass, mock_client, mock_config_entry, [_comparison(21.4, None)], active=["Weather:ModelComparison"])
+    await _setup(hass, mock_client, mock_config_entry, [_comparison(21.4, None)], active=["Forecast:ModelComparison"])
 
     state = _state(hass, mock_config_entry, "sensor", "model_comparison")
     assert state is not None
@@ -343,6 +343,6 @@ async def test_model_comparison_single_model_is_unknown(hass: HomeAssistant, moc
 async def test_model_comparison_sensor_needs_active_enrichment(
     hass: HomeAssistant, mock_client, mock_config_entry
 ) -> None:
-    await _setup(hass, mock_client, mock_config_entry, [_comparison(21.4, 19.0)], active=["Weather:Uv"])
+    await _setup(hass, mock_client, mock_config_entry, [_comparison(21.4, 19.0)], active=["Forecast:Uv"])
 
     assert _state(hass, mock_config_entry, "sensor", "model_comparison") is None

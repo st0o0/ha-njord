@@ -25,14 +25,14 @@ from custom_components.njord.models import (
     FeatureData,
     FloodDomainData,
     FloodSampleData,
+    ForecastDomainData,
+    ForecastSampleData,
     ModelInfoData,
     NjordLocation,
     SeasonalDomainData,
     SeasonalSampleData,
     ServerStatusData,
     TargetData,
-    WeatherDomainData,
-    WeatherSampleData,
 )
 
 # One sample in the past (the "current" one) and one far in the future (the forecast).
@@ -41,7 +41,7 @@ FUTURE = datetime(2099, 1, 1, 12, 0, tzinfo=UTC)
 MODEL_RUN = datetime(2000, 1, 1, 6, 0, tzinfo=UTC)
 
 
-def weather_sample(valid_at: datetime = PAST, **overrides) -> WeatherSampleData:
+def forecast_sample(valid_at: datetime = PAST, **overrides) -> ForecastSampleData:
     values = {
         "valid_at": valid_at,
         "temperature": 22.5,
@@ -61,7 +61,7 @@ def weather_sample(valid_at: datetime = PAST, **overrides) -> WeatherSampleData:
         "cape": 120.0,
     }
     values.update(overrides)
-    return WeatherSampleData(**values)
+    return ForecastSampleData(**values)
 
 
 def default_catalog() -> CatalogData:
@@ -93,9 +93,9 @@ def default_catalog() -> CatalogData:
 def default_domain_data(location: str, domain: Domain, model: str = ""):
     """Canned data per domain; marine has none."""
     match domain:
-        case Domain.WEATHER:
-            return WeatherDomainData(
-                location, MODEL_RUN, [weather_sample(), weather_sample(FUTURE, temperature=25.0)], model=model
+        case Domain.FORECAST:
+            return ForecastDomainData(
+                location, MODEL_RUN, [forecast_sample(), forecast_sample(FUTURE, temperature=25.0)], model=model
             )
         case Domain.AIR_QUALITY:
             return AirQualityDomainData(
@@ -175,7 +175,7 @@ def mock_client():
             budget=BudgetStatusData(
                 monthly_limit=20000, monthly_used=5000, daily_limit=700, daily_used=100, usage_percent=25.0
             ),
-            active_enrichments=["Weather:Uv", "Weather:Frost", "AirQuality:Pollen", "Flood:FloodRisk"],
+            active_enrichments=["Forecast:Uv", "Forecast:Frost", "AirQuality:Pollen", "Flood:FloodRisk"],
         )
     )
     mock.trigger_poll = AsyncMock(return_value=2)

@@ -24,6 +24,8 @@ from .models import (
     FeatureData,
     FloodDomainData,
     FloodSampleData,
+    ForecastDomainData,
+    ForecastSampleData,
     LocationStatusData,
     MarineDomainData,
     MarineSampleData,
@@ -34,8 +36,6 @@ from .models import (
     SeasonalSampleData,
     ServerStatusData,
     TargetData,
-    WeatherDomainData,
-    WeatherSampleData,
 )
 from .proto.njord.v2 import (
     common_pb2,
@@ -77,7 +77,7 @@ _COVERAGE_TIER_MAP: dict[int, str] = {
 }
 
 _DOMAIN_TO_PB: dict[Domain, int] = {
-    Domain.WEATHER: weather_pb2.DOMAIN_WEATHER,
+    Domain.FORECAST: weather_pb2.DOMAIN_FORECAST,
     Domain.AIR_QUALITY: weather_pb2.DOMAIN_AIR_QUALITY,
     Domain.FLOOD: weather_pb2.DOMAIN_FLOOD,
     Domain.MARINE: weather_pb2.DOMAIN_MARINE,
@@ -125,8 +125,8 @@ def _to_catalog_data(pb: weather_pb2.GetCatalogResponse) -> CatalogData:
     )
 
 
-def _to_weather_sample(pb: weather_pb2.WeatherSample) -> WeatherSampleData:
-    return WeatherSampleData(
+def _to_forecast_sample(pb: weather_pb2.ForecastSample) -> ForecastSampleData:
+    return ForecastSampleData(
         valid_at=_ts_to_dt(pb.valid_at),
         temperature=pb.temperature,
         apparent_temperature=pb.apparent_temperature,
@@ -199,9 +199,9 @@ def _to_domain_data(pb: weather_pb2.DomainDataUpdate) -> DomainData | None:
     """Convert a DomainDataUpdate; None when the payload is empty or of an unknown kind."""
     model_run = _optional_ts(pb.model_run)
     match pb.WhichOneof("data"):
-        case "weather":
-            return WeatherDomainData(
-                pb.location, model_run, [_to_weather_sample(p) for p in pb.weather.points], model=pb.model
+        case "forecast":
+            return ForecastDomainData(
+                pb.location, model_run, [_to_forecast_sample(p) for p in pb.forecast.points], model=pb.model
             )
         case "air_quality":
             return AirQualityDomainData(

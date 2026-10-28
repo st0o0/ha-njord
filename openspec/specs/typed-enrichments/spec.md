@@ -23,7 +23,7 @@ The client SHALL map every `EnrichmentEvent` and every entry of `GetEnrichmentsR
 Entities for a feature SHALL be created only when `feature_enabled(feature, active)` is true. `active` is `StatusResponse.active_enrichments` (`<Category>:<Name>` keys, matched case-insensitively); an empty or missing list SHALL enable all features.
 
 #### Scenario: Feature not active
-- **WHEN** `active_enrichments` is `["Weather:Uv"]` and a frost event arrives
+- **WHEN** `active_enrichments` is `["Forecast:Uv"]` and a frost event arrives
 - **THEN** no frost entity is created
 
 #### Scenario: Empty list

@@ -15,7 +15,7 @@ from custom_components.njord.const import (
     feature_enabled,
 )
 from custom_components.njord.coordinator import NjordCoordinatorData
-from custom_components.njord.models import AlertData, TargetData, WeatherDomainData
+from custom_components.njord.models import AlertData, ForecastDomainData, TargetData
 
 
 def test_alert_data_coerces_strings_to_enums():
@@ -67,7 +67,7 @@ def test_feature_enabled_without_active_list_enables_all():
 
 
 def test_enabled_alert_types_filters_by_active_keys():
-    types = enabled_alert_types(["Weather:Frost", "AirQuality:Pollen"])
+    types = enabled_alert_types(["Forecast:Frost", "AirQuality:Pollen"])
     assert types == [AlertType.FROST, AlertType.POLLEN]
 
 
@@ -81,12 +81,12 @@ def test_coordinator_data_location_helpers():
     data = NjordCoordinatorData(
         locations=[NjordLocation("home", 1.0, 2.0)],
         domains={
-            ("bern", Domain.WEATHER): WeatherDomainData("bern"),
-            ("home", Domain.WEATHER): WeatherDomainData("home"),
-            ("home", Domain.FLOOD): WeatherDomainData("home"),
+            ("bern", Domain.FORECAST): ForecastDomainData("bern"),
+            ("home", Domain.FORECAST): ForecastDomainData("home"),
+            ("home", Domain.FLOOD): ForecastDomainData("home"),
         },
     )
-    assert data.locations_with(Domain.WEATHER) == ["bern", "home"]
+    assert data.locations_with(Domain.FORECAST) == ["bern", "home"]
     assert data.locations_with(Domain.FLOOD) == ["home"]
     assert data.locations_with(Domain.MARINE) == []
     assert data.location_names == ["bern", "home"]
@@ -101,10 +101,10 @@ def test_target_data_defaults():
 
 
 def test_multi_model_defaults():
-    from custom_components.njord.models import ModelInfoData, WeatherDomainData
+    from custom_components.njord.models import ForecastDomainData, ModelInfoData
 
     assert ModelInfoData(id="x").enabled is True
-    assert WeatherDomainData("home").model == ""
+    assert ForecastDomainData("home").model == ""
 
 
 def test_primary_and_secondary_models():

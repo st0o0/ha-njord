@@ -21,9 +21,9 @@ from custom_components.njord.grpc_client import (
 from custom_components.njord.models import (
     AirQualityDomainData,
     FloodDomainData,
+    ForecastDomainData,
     MarineDomainData,
     SeasonalDomainData,
-    WeatherDomainData,
 )
 from custom_components.njord.proto.njord.v2 import common_pb2, ops_pb2, weather_pb2
 
@@ -50,11 +50,11 @@ async def _aiter(*items, error: Exception | None = None):
 def test_weather_update_converted():
     pb = weather_pb2.DomainDataUpdate(
         location="home",
-        domain=weather_pb2.DOMAIN_WEATHER,
+        domain=weather_pb2.DOMAIN_FORECAST,
         model_run=_ts(),
-        weather=weather_pb2.WeatherData(
+        forecast=weather_pb2.ForecastDomainData(
             points=[
-                weather_pb2.WeatherSample(
+                weather_pb2.ForecastSample(
                     valid_at=_ts(),
                     temperature=21.5,
                     apparent_temperature=20.0,
@@ -64,16 +64,16 @@ def test_weather_update_converted():
                     wind_gusts=9.5,
                     is_day=False,
                 ),
-                weather_pb2.WeatherSample(valid_at=_ts(EPOCH + 3600), temperature=19.0),
+                weather_pb2.ForecastSample(valid_at=_ts(EPOCH + 3600), temperature=19.0),
             ]
         ),
     )
 
     data = _to_domain_data(pb)
 
-    assert isinstance(data, WeatherDomainData)
+    assert isinstance(data, ForecastDomainData)
     assert data.location == "home"
-    assert data.domain is Domain.WEATHER
+    assert data.domain is Domain.FORECAST
     assert data.model_run == EXPECTED_DT
     first, second = data.points
     assert first.valid_at == EXPECTED_DT
@@ -213,7 +213,7 @@ def test_server_status_converted():
         models=[
             ops_pb2.ModelStatus(location="home", phase=ops_pb2.POLL_PHASE_DISCOVERY, next_poll=_ts(), miss_count=2)
         ],
-        active_enrichments=["Weather:Frost"],
+        active_enrichments=["Forecast:Frost"],
         budget_partial=True,
     )
 
@@ -226,7 +226,7 @@ def test_server_status_converted():
     assert status.budget.monthly_used == 10
     assert status.budget_partial is True
     assert status.models_partial is False
-    assert status.active_enrichments == ["Weather:Frost"]
+    assert status.active_enrichments == ["Forecast:Frost"]
     location_status = status.location_statuses[0]
     assert location_status.phase is PollPhase.DISCOVERY
     assert location_status.next_poll == EXPECTED_DT
@@ -389,7 +389,7 @@ async def test_get_status_and_targets_and_trigger():
 async def test_stream_domain_data_skips_unconvertible_messages():
     client = _connected_client()
     weather = weather_pb2.DomainDataUpdate(
-        location="home", weather=weather_pb2.WeatherData(points=[weather_pb2.WeatherSample(valid_at=_ts())])
+        location="home", forecast=weather_pb2.ForecastDomainData(points=[weather_pb2.ForecastSample(valid_at=_ts())])
     )
     empty = weather_pb2.DomainDataUpdate(location="home")
     aq = weather_pb2.DomainDataUpdate(
@@ -400,17 +400,17 @@ async def test_stream_domain_data_skips_unconvertible_messages():
 
     received = []
     async for item in client.stream_domain_data(
-        domains=[Domain.WEATHER, Domain.AIR_QUALITY, Domain.SATELLITE], on_reconnect=on_reconnect
+        domains=[Domain.FORECAST, Domain.AIR_QUALITY, Domain.SATELLITE], on_reconnect=on_reconnect
     ):
         received.append(item)
         if len(received) == 2:
             break
 
-    assert [type(item) for item in received] == [WeatherDomainData, AirQualityDomainData]
+    assert [type(item) for item in received] == [ForecastDomainData, AirQualityDomainData]
     request = client._weather_stub.StreamDomainData.call_args.args[0]
     assert request.location == ""
     assert list(request.domains) == [
-        weather_pb2.DOMAIN_WEATHER,
+        weather_pb2.DOMAIN_FORECAST,
         weather_pb2.DOMAIN_AIR_QUALITY,
         weather_pb2.DOMAIN_SATELLITE,
     ]
@@ -438,7 +438,7 @@ def _rpc_error(code: grpc.StatusCode) -> grpc.aio.AioRpcError:
 async def test_stream_reconnects_after_error_and_reports_state():
     client = _connected_client()
     update = weather_pb2.DomainDataUpdate(
-        location="home", weather=weather_pb2.WeatherData(points=[weather_pb2.WeatherSample(valid_at=_ts())])
+        location="home", forecast=weather_pb2.ForecastDomainData(points=[weather_pb2.ForecastSample(valid_at=_ts())])
     )
     client._weather_stub.StreamDomainData = MagicMock(
         side_effect=[_aiter(error=_rpc_error(grpc.StatusCode.UNAVAILABLE)), _aiter(update)]
@@ -449,7 +449,7 @@ async def test_stream_reconnects_after_error_and_reports_state():
         async for item in client.stream_domain_data(
             on_disconnect=lambda: events.append("disconnect"), on_reconnect=lambda: events.append("reconnect")
         ):
-            assert isinstance(item, WeatherDomainData)
+            assert isinstance(item, ForecastDomainData)
             break
 
     assert events == ["reconnect", "disconnect", "reconnect"]
@@ -476,23 +476,23 @@ def test_model_info_enabled_is_mapped():
 
 def test_weather_update_carries_model():
     pb = weather_pb2.DomainDataUpdate(
-        location="home", domain=weather_pb2.DOMAIN_WEATHER, model="ecmwf_ifs025", weather=weather_pb2.WeatherData()
+        location="home", domain=weather_pb2.DOMAIN_FORECAST, model="ecmwf_ifs025", forecast=weather_pb2.ForecastDomainData()
     )
 
     data = _to_domain_data(pb)
 
-    assert isinstance(data, WeatherDomainData)
+    assert isinstance(data, ForecastDomainData)
     assert data.model == "ecmwf_ifs025"
 
 
 async def test_get_domain_data_sends_model():
     client = _connected_client()
     client._weather_stub.GetDomainData = AsyncMock(
-        return_value=weather_pb2.DomainDataUpdate(location="home", weather=weather_pb2.WeatherData())
+        return_value=weather_pb2.DomainDataUpdate(location="home", forecast=weather_pb2.ForecastDomainData())
     )
 
-    await client.get_domain_data("home", Domain.WEATHER, model="icon_d2")
-    await client.get_domain_data("home", Domain.WEATHER)
+    await client.get_domain_data("home", Domain.FORECAST, model="icon_d2")
+    await client.get_domain_data("home", Domain.FORECAST)
 
     first, second = (c.args[0] for c in client._weather_stub.GetDomainData.await_args_list)
     assert first.model == "icon_d2"

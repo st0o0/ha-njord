@@ -18,10 +18,10 @@ from .grpc_client import NjordClient
 from .models import (
     DomainData,
     FeatureData,
+    ForecastDomainData,
     ModelInfoData,
     NjordLocation,
     ServerStatusData,
-    WeatherDomainData,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -30,7 +30,7 @@ _STREAM_DISCONNECT_GRACE = 60.0
 
 # Domains the integration creates entities for.
 TRACKED_DOMAINS: tuple[Domain, ...] = (
-    Domain.WEATHER,
+    Domain.FORECAST,
     Domain.AIR_QUALITY,
     Domain.FLOOD,
     Domain.MARINE,
@@ -43,7 +43,7 @@ class NjordCoordinatorData:
     locations: list[NjordLocation] = field(default_factory=list)
     domains: dict[tuple[str, Domain], DomainData] = field(default_factory=dict)
     features: dict[tuple[str, Feature], FeatureData] = field(default_factory=dict)
-    model_domains: dict[tuple[str, str], WeatherDomainData] = field(default_factory=dict)
+    model_domains: dict[tuple[str, str], ForecastDomainData] = field(default_factory=dict)
     model_info: dict[str, ModelInfoData] = field(default_factory=dict)
     active_enrichments: set[str] | None = None
 
@@ -119,11 +119,11 @@ class NjordDataCoordinator(DataUpdateCoordinator[NjordCoordinatorData]):
 
             for model in result.secondary_models(location.name):
                 try:
-                    data = await self.client.get_domain_data(location.name, Domain.WEATHER, model=model)
+                    data = await self.client.get_domain_data(location.name, Domain.FORECAST, model=model)
                 except Exception as err:
-                    _LOGGER.debug("No %s data for %s/%s: %s", Domain.WEATHER, location.name, model, err)
+                    _LOGGER.debug("No %s data for %s/%s: %s", Domain.FORECAST, location.name, model, err)
                     continue
-                if isinstance(data, WeatherDomainData):
+                if isinstance(data, ForecastDomainData):
                     result.model_domains[(location.name, model)] = data
 
             try:
@@ -204,7 +204,7 @@ class NjordDataCoordinator(DataUpdateCoordinator[NjordCoordinatorData]):
                 on_reconnect=lambda: self._on_stream_connect(StreamName.DOMAIN),
                 on_disconnect=lambda: self._on_stream_disconnect(StreamName.DOMAIN),
             ):
-                if isinstance(update, WeatherDomainData) and self._is_secondary_model(update):
+                if isinstance(update, ForecastDomainData) and self._is_secondary_model(update):
                     self._apply_model_update(update)
                     continue
                 key = (update.location, update.domain)
@@ -219,10 +219,10 @@ class NjordDataCoordinator(DataUpdateCoordinator[NjordCoordinatorData]):
             _LOGGER.exception("Domain data stream task failed")
             self._on_stream_disconnect(StreamName.DOMAIN)
 
-    def _is_secondary_model(self, update: WeatherDomainData) -> bool:
+    def _is_secondary_model(self, update: ForecastDomainData) -> bool:
         return bool(update.model) and update.model != self.data.primary_model(update.location)
 
-    def _apply_model_update(self, update: WeatherDomainData) -> None:
+    def _apply_model_update(self, update: ForecastDomainData) -> None:
         key = (update.location, update.model)
         is_new = key not in self.data.model_domains
         self.data.model_domains[key] = update

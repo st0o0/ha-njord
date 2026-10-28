@@ -8,8 +8,8 @@ import pytest
 from homeassistant.core import HomeAssistant
 
 from custom_components.njord.const import DOMAIN, Domain
-from custom_components.njord.models import WeatherDomainData
-from tests.conftest import FUTURE, MODEL_RUN, PAST, entity_id_for, init_integration, weather_sample
+from custom_components.njord.models import ForecastDomainData
+from tests.conftest import FUTURE, MODEL_RUN, PAST, entity_id_for, forecast_sample, init_integration
 
 
 def _entity_id(hass: HomeAssistant, entry, location: str = "home") -> str:
@@ -32,8 +32,8 @@ async def test_secondary_model_gets_its_own_weather_entity(hass: HomeAssistant, 
     from tests.conftest import default_domain_data
 
     mock_client.get_domain_data.side_effect = lambda loc, dom, model="": (
-        WeatherDomainData(loc, MODEL_RUN, [weather_sample(temperature=18.0)], model=model)
-        if dom == Domain.WEATHER and model
+        ForecastDomainData(loc, MODEL_RUN, [forecast_sample(temperature=18.0)], model=model)
+        if dom == Domain.FORECAST and model
         else default_domain_data(loc, dom, model)
     )
 
@@ -99,7 +99,7 @@ async def test_no_weather_entity_without_weather_data(hass: HomeAssistant, mock_
     from tests.conftest import default_domain_data
 
     mock_client.get_domain_data.side_effect = lambda loc, dom, model="": (
-        None if dom == Domain.WEATHER else default_domain_data(loc, dom)
+        None if dom == Domain.FORECAST else default_domain_data(loc, dom)
     )
 
     await init_integration(hass, mock_config_entry)
@@ -140,10 +140,10 @@ async def test_extra_attributes(hass: HomeAssistant, mock_client, mock_config_en
 async def test_night_condition_uses_is_day(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
     await init_integration(hass, mock_config_entry)
     coordinator = hass.data[DOMAIN][mock_config_entry.entry_id]["coordinator"]
-    key = ("home", Domain.WEATHER)
+    key = ("home", Domain.FORECAST)
 
     coordinator.data.domains[key] = replace(
-        coordinator.data.domains[key], points=[weather_sample(weather_code=0, is_day=False)]
+        coordinator.data.domains[key], points=[forecast_sample(weather_code=0, is_day=False)]
     )
     coordinator.async_set_updated_data(coordinator.data)
     await hass.async_block_till_done()
@@ -154,7 +154,7 @@ async def test_night_condition_uses_is_day(hass: HomeAssistant, mock_client, moc
 async def test_unavailable_without_points(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
     await init_integration(hass, mock_config_entry)
     coordinator = hass.data[DOMAIN][mock_config_entry.entry_id]["coordinator"]
-    key = ("home", Domain.WEATHER)
+    key = ("home", Domain.FORECAST)
 
     coordinator.data.domains[key] = replace(coordinator.data.domains[key], points=[])
     coordinator.async_set_updated_data(coordinator.data)
@@ -202,9 +202,9 @@ async def test_daily_forecast_is_not_supported(hass: HomeAssistant, mock_client,
 async def test_forecast_without_gusts_omits_key(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
     await init_integration(hass, mock_config_entry)
     coordinator = hass.data[DOMAIN][mock_config_entry.entry_id]["coordinator"]
-    key = ("home", Domain.WEATHER)
+    key = ("home", Domain.FORECAST)
     coordinator.data.domains[key] = replace(
-        coordinator.data.domains[key], points=[weather_sample(FUTURE, wind_gusts=None)]
+        coordinator.data.domains[key], points=[forecast_sample(FUTURE, wind_gusts=None)]
     )
 
     forecast = await _forecast(hass, _entity_id(hass, mock_config_entry))

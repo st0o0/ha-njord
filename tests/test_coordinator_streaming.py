@@ -13,12 +13,12 @@ from custom_components.njord.coordinator import NjordCoordinatorData, NjordDataC
 from custom_components.njord.models import (
     AlertData,
     FeatureData,
+    ForecastDomainData,
     NjordLocation,
     SeasonalDomainData,
     SeasonalSampleData,
-    WeatherDomainData,
 )
-from tests.conftest import weather_sample
+from tests.conftest import forecast_sample
 
 
 def _coordinator(hass: HomeAssistant, client) -> NjordDataCoordinator:
@@ -39,14 +39,14 @@ async def test_domain_stream_stores_update_and_creates_entities_once(hass: HomeA
     coordinator = _coordinator(hass, mock_client)
     created: list[tuple[str, Domain]] = []
     coordinator.register_entity_factory("weather", MagicMock(), lambda loc, dom: created.append((loc, dom)) or [])
-    first = WeatherDomainData("home", None, [weather_sample()])
-    second = WeatherDomainData("home", None, [weather_sample(temperature=1.0)])
+    first = ForecastDomainData("home", None, [forecast_sample()])
+    second = ForecastDomainData("home", None, [forecast_sample(temperature=1.0)])
     mock_client.stream_domain_data = _stream_of(first, second)
 
     await coordinator._run_domain_stream()
 
-    assert coordinator.data.domains[("home", Domain.WEATHER)] is second
-    assert created == [("home", Domain.WEATHER)]
+    assert coordinator.data.domains[("home", Domain.FORECAST)] is second
+    assert created == [("home", Domain.FORECAST)]
 
 
 async def test_domain_stream_requests_tracked_domains(hass: HomeAssistant, mock_client) -> None:
@@ -57,7 +57,7 @@ async def test_domain_stream_requests_tracked_domains(hass: HomeAssistant, mock_
 
     kwargs = mock_client.stream_domain_data.call_args.kwargs
     assert kwargs["location"] is None
-    assert set(kwargs["domains"]) == {Domain.WEATHER, Domain.AIR_QUALITY, Domain.FLOOD, Domain.MARINE, Domain.SEASONAL}
+    assert set(kwargs["domains"]) == {Domain.FORECAST, Domain.AIR_QUALITY, Domain.FLOOD, Domain.MARINE, Domain.SEASONAL}
 
 
 async def test_enrichment_stream_stores_feature_by_location_and_feature(hass: HomeAssistant, mock_client) -> None:
@@ -84,7 +84,7 @@ async def test_factory_error_does_not_stop_other_factories(hass: HomeAssistant, 
     coordinator.register_entity_factory("sensor", MagicMock(), broken)
     coordinator.register_entity_factory("weather", add_entities, lambda loc, dom: [MagicMock()])
 
-    coordinator._create_entities_for("home", Domain.WEATHER)
+    coordinator._create_entities_for("home", Domain.FORECAST)
 
     add_entities.assert_called_once()
 
@@ -155,22 +155,22 @@ async def test_secondary_model_update_goes_to_model_domains(hass: HomeAssistant,
     coordinator.data.locations = [NjordLocation(name="home", latitude=1.0, longitude=2.0, models=["icon_d2", "other"])]
     created: list[tuple[str, str]] = []
     coordinator.register_model_factory("weather", MagicMock(), lambda loc, model: created.append((loc, model)) or [])
-    primary = WeatherDomainData("home", None, [weather_sample()], model="icon_d2")
-    unlabeled = WeatherDomainData("home", None, [weather_sample(temperature=2.0)])
-    secondary = WeatherDomainData("home", None, [weather_sample(temperature=3.0)], model="other")
-    again = WeatherDomainData("home", None, [weather_sample(temperature=4.0)], model="other")
+    primary = ForecastDomainData("home", None, [forecast_sample()], model="icon_d2")
+    unlabeled = ForecastDomainData("home", None, [forecast_sample(temperature=2.0)])
+    secondary = ForecastDomainData("home", None, [forecast_sample(temperature=3.0)], model="other")
+    again = ForecastDomainData("home", None, [forecast_sample(temperature=4.0)], model="other")
     mock_client.stream_domain_data = _stream_of(primary, secondary, unlabeled, again)
 
     await coordinator._run_domain_stream()
 
-    assert coordinator.data.domains[("home", Domain.WEATHER)] is unlabeled
+    assert coordinator.data.domains[("home", Domain.FORECAST)] is unlabeled
     assert coordinator.data.model_domains == {("home", "other"): again}
     assert created == [("home", "other")]
 
 
 async def test_domain_stream_stores_latest_seasonal_data(hass: HomeAssistant, mock_client) -> None:
     coordinator = _coordinator(hass, mock_client)
-    sample = SeasonalSampleData(weather_sample().valid_at, 1.0, None, None)
+    sample = SeasonalSampleData(forecast_sample().valid_at, 1.0, None, None)
     first = SeasonalDomainData("home", None, [sample])
     second = SeasonalDomainData("home", None, [])
     mock_client.stream_domain_data = _stream_of(first, second)

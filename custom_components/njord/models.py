@@ -12,7 +12,7 @@ from .const import AlertSeverity, AlertType, Domain, Feature, PollPhase
 
 
 @dataclass(frozen=True)
-class WeatherSampleData:
+class ForecastSampleData:
     valid_at: datetime
     temperature: float
     apparent_temperature: float
@@ -77,11 +77,11 @@ class SeasonalSampleData:
 
 
 @dataclass(frozen=True)
-class WeatherDomainData:
+class ForecastDomainData:
     location: str
     model_run: datetime | None = None
-    points: list[WeatherSampleData] = field(default_factory=list)
-    domain: Domain = Domain.WEATHER
+    points: list[ForecastSampleData] = field(default_factory=list)
+    domain: Domain = Domain.FORECAST
     model: str = ""
 
 
@@ -117,7 +117,7 @@ class SeasonalDomainData:
     domain: Domain = Domain.SEASONAL
 
 
-DomainData = WeatherDomainData | AirQualityDomainData | FloodDomainData | MarineDomainData | SeasonalDomainData
+DomainData = ForecastDomainData | AirQualityDomainData | FloodDomainData | MarineDomainData | SeasonalDomainData
 
 
 # --- Catalog ---

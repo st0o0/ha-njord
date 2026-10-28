@@ -27,7 +27,7 @@ from .condition_mapper import map_condition
 from .const import DOMAIN, Domain
 from .coordinator import NjordDataCoordinator, NjordStatusCoordinator
 from .helpers import current_point, device_info, slugify_location
-from .models import WeatherDomainData, WeatherSampleData
+from .models import ForecastDomainData, ForecastSampleData
 
 
 def _get_sw_version(hass: HomeAssistant, entry: ConfigEntry) -> str | None:
@@ -48,14 +48,14 @@ async def async_setup_entry(
 
     entities: list[WeatherEntity] = [
         NjordWeatherEntity(coordinator, entry, location, sw_version)
-        for location in coordinator.data.locations_with(Domain.WEATHER)
+        for location in coordinator.data.locations_with(Domain.FORECAST)
     ]
     for location, model in sorted(coordinator.data.model_domains):
         entities.append(NjordWeatherEntity(coordinator, entry, location, sw_version, model=model))
     async_add_entities(entities)
 
     def weather_factory(location: str, domain: Domain) -> list[WeatherEntity]:
-        if domain != Domain.WEATHER:
+        if domain != Domain.FORECAST:
             return []
         return [NjordWeatherEntity(coordinator, entry, location, sw_version)]
 
@@ -67,7 +67,7 @@ async def async_setup_entry(
     coordinator.register_model_factory("weather", async_add_entities, model_factory)
 
 
-def _condition(sample: WeatherSampleData) -> str:
+def _condition(sample: ForecastSampleData) -> str:
     return map_condition(sample.weather_code, sample.is_day if sample.is_day is not None else True)
 
 
@@ -112,15 +112,15 @@ class NjordWeatherEntity(SingleCoordinatorWeatherEntity[NjordDataCoordinator]):
         self.async_write_ha_state()
 
     @property
-    def _weather(self) -> WeatherDomainData | None:
+    def _weather(self) -> ForecastDomainData | None:
         if self.coordinator.data is None:
             return None
         if self._model is not None:
             return self.coordinator.data.model_domains.get((self._location, self._model))
-        data = self.coordinator.data.domains.get((self._location, Domain.WEATHER))
-        return data if isinstance(data, WeatherDomainData) else None
+        data = self.coordinator.data.domains.get((self._location, Domain.FORECAST))
+        return data if isinstance(data, ForecastDomainData) else None
 
-    def _current(self) -> WeatherSampleData | None:
+    def _current(self) -> ForecastSampleData | None:
         data = self._weather
         return current_point(data.points) if data is not None else None
 

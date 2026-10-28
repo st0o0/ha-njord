@@ -21,7 +21,7 @@ async def test_coordinator_fetches_catalog_domains_and_enrichments(
     assert isinstance(coordinator.data, NjordCoordinatorData)
     assert [loc.name for loc in coordinator.data.locations] == ["home"]
     assert set(coordinator.data.domains) == {
-        ("home", Domain.WEATHER),
+        ("home", Domain.FORECAST),
         ("home", Domain.AIR_QUALITY),
         ("home", Domain.FLOOD),
         ("home", Domain.SEASONAL),
@@ -34,8 +34,8 @@ async def test_coordinator_fetches_catalog_domains_and_enrichments(
         ("home", Feature.FLOOD_RISK),
     }
     assert coordinator.data.active_enrichments == {
-        "Weather:Uv",
-        "Weather:Frost",
+        "Forecast:Uv",
+        "Forecast:Frost",
         "AirQuality:Pollen",
         "Flood:FloodRisk",
     }
@@ -45,7 +45,7 @@ async def test_solar_is_not_requested(hass: HomeAssistant, mock_client, mock_con
     await init_integration(hass, mock_config_entry)
 
     requested = {call.args[1] for call in mock_client.get_domain_data.await_args_list}
-    assert requested == {Domain.WEATHER, Domain.AIR_QUALITY, Domain.FLOOD, Domain.MARINE, Domain.SEASONAL}
+    assert requested == {Domain.FORECAST, Domain.AIR_QUALITY, Domain.FLOOD, Domain.MARINE, Domain.SEASONAL}
 
 
 async def test_domain_failure_skips_only_that_domain(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
@@ -59,7 +59,7 @@ async def test_domain_failure_skips_only_that_domain(hass: HomeAssistant, mock_c
     await init_integration(hass, mock_config_entry)
 
     coordinator = hass.data[DOMAIN][mock_config_entry.entry_id]["coordinator"]
-    assert ("home", Domain.WEATHER) in coordinator.data.domains
+    assert ("home", Domain.FORECAST) in coordinator.data.domains
     assert ("home", Domain.FLOOD) not in coordinator.data.domains
 
 
@@ -69,7 +69,7 @@ async def test_enrichment_failure_does_not_block_domains(hass: HomeAssistant, mo
     await init_integration(hass, mock_config_entry)
 
     coordinator = hass.data[DOMAIN][mock_config_entry.entry_id]["coordinator"]
-    assert ("home", Domain.WEATHER) in coordinator.data.domains
+    assert ("home", Domain.FORECAST) in coordinator.data.domains
     assert coordinator.data.features == {}
 
 
@@ -110,7 +110,7 @@ async def test_secondary_models_are_fetched_per_model(hass: HomeAssistant, mock_
     weather_models = [
         call.kwargs.get("model", "")
         for call in mock_client.get_domain_data.await_args_list
-        if call.args[1] == Domain.WEATHER
+        if call.args[1] == Domain.FORECAST
     ]
     assert sorted(weather_models) == ["", "ecmwf_ifs025"]
     assert set(coordinator.data.model_domains) == {("home", "ecmwf_ifs025")}
@@ -131,4 +131,4 @@ async def test_failed_secondary_model_fetch_keeps_refresh_alive(
 
     coordinator = hass.data[DOMAIN][mock_config_entry.entry_id]["coordinator"]
     assert coordinator.data.model_domains == {}
-    assert ("home", Domain.WEATHER) in coordinator.data.domains
+    assert ("home", Domain.FORECAST) in coordinator.data.domains

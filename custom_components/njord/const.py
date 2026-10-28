@@ -34,7 +34,7 @@ class Domain(StrEnum):
     """Data domains njord serves through GetDomainData / StreamDomainData."""
 
     UNSPECIFIED = "unspecified"
-    WEATHER = "weather"
+    FORECAST = "forecast"
     AIR_QUALITY = "air_quality"
     FLOOD = "flood"
     MARINE = "marine"
@@ -236,20 +236,20 @@ class Feature(StrEnum):
 
 # njord's `<Category>:<Name>` toggle key per feature, as listed in StatusResponse.active_enrichments.
 FEATURE_KEYS: dict[Feature, str] = {
-    Feature.FROST: "Weather:Frost",
-    Feature.HEAT: "Weather:Heat",
-    Feature.STORM: "Weather:Storm",
-    Feature.HEAVY_RAIN: "Weather:HeavyRain",
-    Feature.UV: "Weather:Uv",
-    Feature.FOG: "Weather:Fog",
-    Feature.SNOW: "Weather:Snow",
-    Feature.PRESSURE_DROP: "Weather:PressureDrop",
-    Feature.THUNDERSTORM: "Weather:Thunderstorm",
-    Feature.ICE: "Weather:Ice",
-    Feature.WIND_CHILL: "Weather:WindChill",
-    Feature.VISIBILITY: "Weather:Visibility",
-    Feature.TROPICAL_NIGHT: "Weather:TropicalNight",
-    Feature.HUMIDITY: "Weather:Humidity",
+    Feature.FROST: "Forecast:Frost",
+    Feature.HEAT: "Forecast:Heat",
+    Feature.STORM: "Forecast:Storm",
+    Feature.HEAVY_RAIN: "Forecast:HeavyRain",
+    Feature.UV: "Forecast:Uv",
+    Feature.FOG: "Forecast:Fog",
+    Feature.SNOW: "Forecast:Snow",
+    Feature.PRESSURE_DROP: "Forecast:PressureDrop",
+    Feature.THUNDERSTORM: "Forecast:Thunderstorm",
+    Feature.ICE: "Forecast:Ice",
+    Feature.WIND_CHILL: "Forecast:WindChill",
+    Feature.VISIBILITY: "Forecast:Visibility",
+    Feature.TROPICAL_NIGHT: "Forecast:TropicalNight",
+    Feature.HUMIDITY: "Forecast:Humidity",
     Feature.POLLEN: "AirQuality:Pollen",
     Feature.PM25: "AirQuality:Pm25",
     Feature.DUST: "AirQuality:Dust",
@@ -272,7 +272,7 @@ FEATURE_KEYS: dict[Feature, str] = {
     Feature.SEASONAL_OUTLOOK: "Insight:SeasonalOutlook",
     Feature.SOLAR_YIELD: "Energy:SolarYield",
     Feature.SATELLITE_RADIATION: "Energy:SatelliteRadiation",
-    Feature.MODEL_COMPARISON: "Weather:ModelComparison",
+    Feature.MODEL_COMPARISON: "Forecast:ModelComparison",
 }
 
 
