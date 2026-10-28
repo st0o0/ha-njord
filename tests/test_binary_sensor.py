@@ -27,11 +27,11 @@ async def test_default_entry_creates_alerts_of_active_enrichments_only(
         assert _alert_state(hass, mock_config_entry, alert_type) is None, alert_type
 
 
-async def test_unfiltered_server_creates_all_twenty_alerts(hass: HomeAssistant, mock_client, all_alerts_entry) -> None:
+async def test_unfiltered_server_creates_all_alerts(hass: HomeAssistant, mock_client, all_alerts_entry) -> None:
     await init_integration(hass, all_alerts_entry)
 
     created = [t for t in AlertType if t is not AlertType.UNSPECIFIED and _alert_state(hass, all_alerts_entry, t)]
-    assert len(created) == 20
+    assert len(created) == 22
 
 
 async def test_active_alert_is_on_with_attributes(hass: HomeAssistant, mock_client, mock_config_entry) -> None:

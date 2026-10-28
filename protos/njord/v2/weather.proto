@@ -262,7 +262,7 @@ message StreamEnrichmentsRequest {
 }
 
 // One feature result. The oneof case identifies the feature. Field number ranges per output kind:
-// alerts 20-49, scores 50-59, conditions 60-79, trends 80-89, forecasts 90-99.
+// alerts 20-49 (+55), scores 50-58, conditions 60-79 (+82-84), trends 80-81, forecasts 90-99.
 message EnrichmentEvent {
   reserved 2, 10, 11, 12, 13, 14, 15;
   reserved "type_name", "alerts", "lifestyle", "payload";
@@ -298,16 +298,26 @@ message EnrichmentEvent {
     FireRiskAlert fire_risk = 45;
     PollenBlastAlert pollen_blast = 46;
     CoastalFloodAlert coastal_flood = 47;
+    CompoundHeatStressAlert compound_heat_stress = 48;
     SoilMoistureCondition soil_moisture = 70;
     EvapotranspirationCondition evapotranspiration = 71;
     RagweedPollenCondition ragweed_pollen = 72;
     GranularAqiCondition granular_aqi = 73;
     OceanCurrentsCondition ocean_currents = 74;
     ElevatedWindCondition elevated_wind = 75;
+    HeatPumpCopCondition heat_pump_cop = 76;
+    SolarBatteryStrategyCondition solar_battery_strategy = 77;
+    IrrigationNeedCondition irrigation_need = 78;
+    FrostDepthCondition frost_depth = 79;
     Bbq bbq = 50;
     Laundry laundry = 51;
     Outdoor outdoor = 52;
     SurfConditions surf_conditions = 53;
+    AllergySeverityScore allergy_severity = 54;
+    MigraineRiskAlert migraine_risk = 55;
+    SleepQualityScore sleep_quality = 56;
+    AsthmaRiskScore asthma_risk = 57;
+    SprayWindowScore spray_window = 58;
     CommuteSafety commute_safety = 60;
     VentilationWindow ventilation_window = 61;
     NightVentilation night_ventilation = 62;
@@ -319,6 +329,9 @@ message EnrichmentEvent {
     ApproachingFront approaching_front = 68;
     ConfidenceTrend confidence_trend = 80;
     PollenTrend pollen_trend = 81;
+    InversionDetectionCondition inversion_detection = 82;
+    AtmosphericStabilityCondition atmospheric_stability = 83;
+    CloudCeilingCondition cloud_ceiling = 84;
     SeasonalOutlook seasonal_outlook = 90;
     ModelComparison model_comparison = 91;
     GrowingDegreeForecast growing_degree = 92;
@@ -340,10 +353,39 @@ message AlertData {
   ConfidenceLevel confidence_level = 8;
 }
 
+enum LimitingKind {
+  LIMITING_KIND_UNSPECIFIED = 0;
+  LIMITING_KIND_RAIN = 1;
+  LIMITING_KIND_UV = 2;
+  LIMITING_KIND_WIND = 3;
+  LIMITING_KIND_TEMPERATURE_HIGH = 4;
+  LIMITING_KIND_TEMPERATURE_LOW = 5;
+  LIMITING_KIND_HUMIDITY = 6;
+  LIMITING_KIND_POLLEN = 7;
+  LIMITING_KIND_AIR_QUALITY = 8;
+  LIMITING_KIND_VISIBILITY = 9;
+  LIMITING_KIND_THUNDERSTORM = 10;
+  LIMITING_KIND_DARKNESS = 11;
+}
+
+message LimitingFactor {
+  LimitingKind kind = 1;
+  google.protobuf.Timestamp from = 2;
+  double value = 3;
+}
+
+message TimeWindow {
+  google.protobuf.Timestamp start = 1;
+  google.protobuf.Timestamp end = 2;
+  int32 score = 3;
+  LimitingFactor limiting = 4;
+}
+
 message ScoreData {
   int32 score = 1;
   google.protobuf.Timestamp best_start = 2;
   int32 best_hours = 3;
+  repeated TimeWindow windows = 4;
 }
 
 message ConditionData {}
@@ -590,6 +632,14 @@ message SmogRiskAlert {
   double pm25 = 3;
 }
 
+message CompoundHeatStressAlert {
+  AlertData alert = 1;
+}
+
+message MigraineRiskAlert {
+  AlertData alert = 1;
+}
+
 message FireRiskAlert {
   AlertData alert = 1;
   double risk_score = 2;
@@ -673,7 +723,23 @@ message Bbq {
   ScoreData score = 1;
 }
 
+message AllergySeverityScore {
+  ScoreData score = 1;
+}
+
+message SleepQualityScore {
+  ScoreData score = 1;
+}
+
+message AsthmaRiskScore {
+  ScoreData score = 1;
+}
+
 message Laundry {
+  ScoreData score = 1;
+}
+
+message SprayWindowScore {
   ScoreData score = 1;
 }
 
@@ -726,6 +792,129 @@ message FloodTimeline {
   google.protobuf.Timestamp peak_time = 3;
   double peak_discharge = 4;
   int32 days_above_warning = 5;
+}
+
+enum HeatPumpRecommendation {
+  HEAT_PUMP_RECOMMENDATION_UNSPECIFIED = 0;
+  HEAT_PUMP_RECOMMENDATION_IDEAL = 1;
+  HEAT_PUMP_RECOMMENDATION_NORMAL = 2;
+  HEAT_PUMP_RECOMMENDATION_INEFFICIENT = 3;
+  HEAT_PUMP_RECOMMENDATION_AVOID = 4;
+}
+
+enum BatteryStrategy {
+  BATTERY_STRATEGY_UNSPECIFIED = 0;
+  BATTERY_STRATEGY_FEED_IN = 1;
+  BATTERY_STRATEGY_CHARGE_BATTERY = 2;
+  BATTERY_STRATEGY_CONSERVE = 3;
+  BATTERY_STRATEGY_NORMAL = 4;
+}
+
+enum IrrigationAdvice {
+  IRRIGATION_ADVICE_UNSPECIFIED = 0;
+  IRRIGATION_ADVICE_WATER = 1;
+  IRRIGATION_ADVICE_SKIP = 2;
+  IRRIGATION_ADVICE_REDUCE = 3;
+  IRRIGATION_ADVICE_SOIL_WET = 4;
+}
+
+enum FrostDepthRisk {
+  FROST_DEPTH_RISK_UNSPECIFIED = 0;
+  FROST_DEPTH_RISK_NONE = 1;
+  FROST_DEPTH_RISK_SURFACE = 2;
+  FROST_DEPTH_RISK_SHALLOW = 3;
+  FROST_DEPTH_RISK_MODERATE = 4;
+  FROST_DEPTH_RISK_DEEP = 5;
+}
+
+enum InversionStrength {
+  INVERSION_STRENGTH_UNSPECIFIED = 0;
+  INVERSION_STRENGTH_NONE = 1;
+  INVERSION_STRENGTH_MILD = 2;
+  INVERSION_STRENGTH_STRONG = 3;
+  INVERSION_STRENGTH_EXTREME = 4;
+}
+
+enum InversionType {
+  INVERSION_TYPE_UNSPECIFIED = 0;
+  INVERSION_TYPE_RADIATION = 1;
+  INVERSION_TYPE_SUBSIDENCE = 2;
+  INVERSION_TYPE_FRONTAL = 3;
+}
+
+enum StabilityClass {
+  STABILITY_CLASS_UNSPECIFIED = 0;
+  STABILITY_CLASS_STABLE = 1;
+  STABILITY_CLASS_MARGINAL = 2;
+  STABILITY_CLASS_CAPPED = 3;
+  STABILITY_CLASS_UNSTABLE = 4;
+  STABILITY_CLASS_EXPLOSIVE = 5;
+}
+
+enum CeilingCategory {
+  CEILING_CATEGORY_UNSPECIFIED = 0;
+  CEILING_CATEGORY_VERY_LOW = 1;
+  CEILING_CATEGORY_LOW = 2;
+  CEILING_CATEGORY_MODERATE = 3;
+  CEILING_CATEGORY_HIGH = 4;
+  CEILING_CATEGORY_VERY_HIGH = 5;
+  CEILING_CATEGORY_UNLIMITED = 6;
+}
+
+message HeatPumpCopCondition {
+  ConditionData condition = 1;
+  double cop = 2;
+  HeatPumpRecommendation recommendation = 3;
+  double best_cop = 4;
+  int32 best_hour = 5;
+}
+
+message SolarBatteryStrategyCondition {
+  ConditionData condition = 1;
+  BatteryStrategy strategy = 2;
+  double today_kwh = 3;
+  double tomorrow_kwh_estimate = 4;
+}
+
+message IrrigationNeedCondition {
+  ConditionData condition = 1;
+  IrrigationAdvice advice = 2;
+  double soil_moisture_percent = 3;
+  double rain_expected_mm = 4;
+  double et_mm = 5;
+}
+
+message FrostDepthCondition {
+  ConditionData condition = 1;
+  double depth_cm = 2;
+  FrostDepthRisk risk = 3;
+  double snow_insulation_cm = 4;
+  double soil_temperature_c = 5;
+}
+
+message InversionDetectionCondition {
+  ConditionData condition = 1;
+  InversionStrength strength = 2;
+  InversionType inversion_type = 3;
+  double temperature_difference_c = 4;
+  double boundary_layer_height_m = 5;
+}
+
+message AtmosphericStabilityCondition {
+  ConditionData condition = 1;
+  StabilityClass stability_class = 2;
+  double cape_j_per_kg = 3;
+  double cin_j_per_kg = 4;
+  double lifted_index = 5;
+}
+
+message CloudCeilingCondition {
+  ConditionData condition = 1;
+  CeilingCategory ceiling_category = 2;
+  int32 estimated_ceiling_m = 3;
+  int32 cloud_cover_low_percent = 4;
+  int32 cloud_cover_mid_percent = 5;
+  int32 cloud_cover_high_percent = 6;
 }
 
 message SolarYield {

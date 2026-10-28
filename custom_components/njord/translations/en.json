@@ -144,6 +144,63 @@
       "model_comparison": {
         "name": "Model Temperature Spread"
       },
+      "allergy_severity": {
+        "name": "Allergy Severity"
+      },
+      "sleep_quality": {
+        "name": "Sleep Quality"
+      },
+      "asthma_risk": {
+        "name": "Asthma Risk"
+      },
+      "spray_window": {
+        "name": "Spray Window"
+      },
+      "heat_pump_cop": {
+        "name": "Heat Pump COP"
+      },
+      "solar_battery_strategy": {
+        "name": "Solar Battery Strategy",
+        "state": {
+          "feed_in": "Feed In",
+          "charge_battery": "Charge Battery",
+          "conserve": "Conserve",
+          "normal": "Normal"
+        }
+      },
+      "irrigation_need": {
+        "name": "Irrigation Need",
+        "state": {
+          "water": "Water",
+          "skip": "Skip",
+          "reduce": "Reduce",
+          "soil_wet": "Soil Wet"
+        }
+      },
+      "frost_depth": {
+        "name": "Frost Depth"
+      },
+      "inversion_detection": {
+        "name": "Inversion Detection",
+        "state": {
+          "mild": "Mild",
+          "strong": "Strong",
+          "extreme": "Extreme"
+        }
+      },
+      "atmospheric_stability": {
+        "name": "Atmospheric Stability",
+        "state": {
+          "stable": "Stable",
+          "marginal": "Marginal",
+          "capped": "Capped",
+          "unstable": "Unstable",
+          "explosive": "Explosive"
+        }
+      },
+      "cloud_ceiling": {
+        "name": "Cloud Ceiling"
+      },
       "monthly_usage": {
         "name": "Monthly Usage"
       },
@@ -223,6 +280,12 @@
       },
       "swimming_conditions_alert": {
         "name": "Swimming Conditions Alert"
+      },
+      "compound_heat_stress_alert": {
+        "name": "Compound Heat Stress Alert"
+      },
+      "migraine_risk_alert": {
+        "name": "Migraine Risk Alert"
       },
       "ventilation_window": {
         "name": "Ventilation Window"

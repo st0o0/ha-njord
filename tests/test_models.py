@@ -48,7 +48,7 @@ def test_stream_names_are_domain_and_enrichment_only():
 
 def test_alert_meta_covers_all_alert_types_but_unspecified():
     assert set(ALERT_META) == set(AlertType) - {AlertType.UNSPECIFIED}
-    assert len(ALERT_META) == 20
+    assert len(ALERT_META) == 22
 
 
 def test_every_feature_has_a_njord_key():
@@ -72,7 +72,7 @@ def test_enabled_alert_types_filters_by_active_keys():
 
 
 def test_enabled_alert_types_without_active_list_returns_all():
-    assert len(enabled_alert_types(None)) == 20
+    assert len(enabled_alert_types(None)) == 22
 
 
 def test_coordinator_data_location_helpers():

@@ -5,7 +5,7 @@ import warnings
 
 from njord.v2 import ops_pb2 as njord_dot_v2_dot_ops__pb2
 
-GRPC_GENERATED_VERSION = '1.68.1'
+GRPC_GENERATED_VERSION = '1.71.2'
 GRPC_VERSION = grpc.__version__
 _version_not_supported = False
 

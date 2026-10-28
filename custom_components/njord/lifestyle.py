@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from homeassistant.components.sensor import SensorDeviceClass
-from homeassistant.const import UnitOfTemperature, UnitOfTime
+from homeassistant.const import UnitOfLength, UnitOfTemperature, UnitOfTime
 from homeassistant.util import dt as dt_util
 
 from .const import DISCHARGE_UNIT, Feature
@@ -184,6 +184,74 @@ LIFESTYLE_SENSORS: tuple[LifestyleSensorDescription, ...] = (
         unit=UnitOfTemperature.CELSIUS,
         device_class=SensorDeviceClass.TEMPERATURE,
         precision=1,
+    ),
+    _score_sensor(Feature.ALLERGY_SEVERITY, "allergy_severity", "Allergy Severity", "mdi:flower-pollen-outline"),
+    _score_sensor(Feature.SLEEP_QUALITY, "sleep_quality", "Sleep Quality", "mdi:sleep"),
+    _score_sensor(Feature.ASTHMA_RISK, "asthma_risk", "Asthma Risk", "mdi:lungs"),
+    _score_sensor(Feature.SPRAY_WINDOW, "spray_window", "Spray Window", "mdi:spray"),
+    LifestyleSensorDescription(
+        feature=Feature.HEAT_PUMP_COP,
+        key="heat_pump_cop",
+        name="Heat Pump COP",
+        icon="mdi:heat-pump",
+        value_fn=_number("cop"),
+        precision=1,
+    ),
+    LifestyleSensorDescription(
+        feature=Feature.SOLAR_BATTERY_STRATEGY,
+        key="solar_battery_strategy",
+        name="Solar Battery Strategy",
+        icon="mdi:battery-charging-high",
+        value_fn=_text("strategy"),
+        device_class=SensorDeviceClass.ENUM,
+        options=("feed_in", "charge_battery", "conserve", "normal"),
+    ),
+    LifestyleSensorDescription(
+        feature=Feature.IRRIGATION_NEED,
+        key="irrigation_need",
+        name="Irrigation Need",
+        icon="mdi:sprinkler-variant",
+        value_fn=_text("advice"),
+        device_class=SensorDeviceClass.ENUM,
+        options=("water", "skip", "reduce", "soil_wet"),
+    ),
+    LifestyleSensorDescription(
+        feature=Feature.FROST_DEPTH,
+        key="frost_depth",
+        name="Frost Depth",
+        icon="mdi:snowflake-melt",
+        value_fn=_number("depth_cm"),
+        unit=UnitOfLength.CENTIMETERS,
+        device_class=SensorDeviceClass.DISTANCE,
+        precision=0,
+    ),
+    LifestyleSensorDescription(
+        feature=Feature.INVERSION_DETECTION,
+        key="inversion_detection",
+        name="Inversion Detection",
+        icon="mdi:layers-triple",
+        value_fn=_text("strength"),
+        device_class=SensorDeviceClass.ENUM,
+        options=("mild", "strong", "extreme"),
+    ),
+    LifestyleSensorDescription(
+        feature=Feature.ATMOSPHERIC_STABILITY,
+        key="atmospheric_stability",
+        name="Atmospheric Stability",
+        icon="mdi:weather-cloudy-alert",
+        value_fn=_text("stability_class"),
+        device_class=SensorDeviceClass.ENUM,
+        options=("stable", "marginal", "capped", "unstable", "explosive"),
+    ),
+    LifestyleSensorDescription(
+        feature=Feature.CLOUD_CEILING,
+        key="cloud_ceiling",
+        name="Cloud Ceiling",
+        icon="mdi:cloud-arrow-up",
+        value_fn=_number("estimated_ceiling_m"),
+        unit=UnitOfLength.METERS,
+        device_class=SensorDeviceClass.DISTANCE,
+        precision=0,
     ),
 )
 

@@ -144,6 +144,63 @@
       "model_comparison": {
         "name": "Modell-Temperaturspreizung"
       },
+      "allergy_severity": {
+        "name": "Allergiebelastung"
+      },
+      "sleep_quality": {
+        "name": "Schlafqualität"
+      },
+      "asthma_risk": {
+        "name": "Asthma-Risiko"
+      },
+      "spray_window": {
+        "name": "Sprühfenster"
+      },
+      "heat_pump_cop": {
+        "name": "Wärmepumpen-COP"
+      },
+      "solar_battery_strategy": {
+        "name": "Solar-Batterie-Strategie",
+        "state": {
+          "feed_in": "Einspeisen",
+          "charge_battery": "Batterie laden",
+          "conserve": "Schonen",
+          "normal": "Normal"
+        }
+      },
+      "irrigation_need": {
+        "name": "Bewässerungsbedarf",
+        "state": {
+          "water": "Bewässern",
+          "skip": "Auslassen",
+          "reduce": "Reduzieren",
+          "soil_wet": "Boden feucht"
+        }
+      },
+      "frost_depth": {
+        "name": "Frosttiefe"
+      },
+      "inversion_detection": {
+        "name": "Inversionserkennung",
+        "state": {
+          "mild": "Leicht",
+          "strong": "Stark",
+          "extreme": "Extrem"
+        }
+      },
+      "atmospheric_stability": {
+        "name": "Atmosphärische Stabilität",
+        "state": {
+          "stable": "Stabil",
+          "marginal": "Marginal",
+          "capped": "Gedeckelt",
+          "unstable": "Instabil",
+          "explosive": "Explosiv"
+        }
+      },
+      "cloud_ceiling": {
+        "name": "Wolkenuntergrenze"
+      },
       "monthly_usage": {
         "name": "Monatlicher Verbrauch"
       },
@@ -223,6 +280,12 @@
       },
       "swimming_conditions_alert": {
         "name": "Schwimmwarnung"
+      },
+      "compound_heat_stress_alert": {
+        "name": "Hitze-Smog-Warnung"
+      },
+      "migraine_risk_alert": {
+        "name": "Migräne-Risiko-Warnung"
       },
       "ventilation_window": {
         "name": "Lüftungsfenster"

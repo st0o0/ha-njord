@@ -112,6 +112,8 @@ class AlertType(StrEnum):
     FLOOD_RISK = "flood_risk"
     FLOOD_RAIN = "flood_rain"
     SWIMMING_CONDITIONS = "swimming_conditions"
+    COMPOUND_HEAT_STRESS = "compound_heat_stress"
+    MIGRAINE_RISK = "migraine_risk"
 
     @classmethod
     def _missing_(cls, value: object) -> AlertType:
@@ -189,6 +191,10 @@ ALERT_META: dict[AlertType, AlertMeta] = {
     AlertType.FLOOD_RISK: AlertMeta("Flood Risk Alert", DISCHARGE_UNIT, "mdi:home-flood", 1),
     AlertType.FLOOD_RAIN: AlertMeta("Flood Rain Alert", "mm", "mdi:weather-pouring", 1),
     AlertType.SWIMMING_CONDITIONS: AlertMeta("Swimming Conditions Alert", UnitOfLength.METERS, "mdi:swim", 1),
+    AlertType.COMPOUND_HEAT_STRESS: AlertMeta(
+        "Compound Heat Stress Alert", UnitOfTemperature.CELSIUS, "mdi:thermometer-alert", 1
+    ),
+    AlertType.MIGRAINE_RISK: AlertMeta("Migraine Risk Alert", "points", "mdi:head-flash", 0),
 }
 
 
@@ -232,6 +238,19 @@ class Feature(StrEnum):
     POLLEN_TREND = "pollen_trend"
     SEASONAL_OUTLOOK = "seasonal_outlook"
     MODEL_COMPARISON = "model_comparison"
+    COMPOUND_HEAT_STRESS = "compound_heat_stress"
+    MIGRAINE_RISK = "migraine_risk"
+    ALLERGY_SEVERITY = "allergy_severity"
+    SLEEP_QUALITY = "sleep_quality"
+    ASTHMA_RISK = "asthma_risk"
+    SPRAY_WINDOW = "spray_window"
+    HEAT_PUMP_COP = "heat_pump_cop"
+    SOLAR_BATTERY_STRATEGY = "solar_battery_strategy"
+    IRRIGATION_NEED = "irrigation_need"
+    FROST_DEPTH = "frost_depth"
+    INVERSION_DETECTION = "inversion_detection"
+    ATMOSPHERIC_STABILITY = "atmospheric_stability"
+    CLOUD_CEILING = "cloud_ceiling"
 
 
 # njord's `<Category>:<Name>` toggle key per feature, as listed in StatusResponse.active_enrichments.
@@ -273,6 +292,19 @@ FEATURE_KEYS: dict[Feature, str] = {
     Feature.SOLAR_YIELD: "Energy:SolarYield",
     Feature.SATELLITE_RADIATION: "Energy:SatelliteRadiation",
     Feature.MODEL_COMPARISON: "Forecast:ModelComparison",
+    Feature.COMPOUND_HEAT_STRESS: "Forecast:CompoundHeatStress",
+    Feature.MIGRAINE_RISK: "Forecast:MigraineRisk",
+    Feature.ALLERGY_SEVERITY: "AirQuality:AllergySeverity",
+    Feature.ASTHMA_RISK: "AirQuality:AsthmaRisk",
+    Feature.SLEEP_QUALITY: "Lifestyle:SleepQuality",
+    Feature.SPRAY_WINDOW: "Lifestyle:SprayWindow",
+    Feature.IRRIGATION_NEED: "Lifestyle:IrrigationNeed",
+    Feature.FROST_DEPTH: "Lifestyle:FrostDepth",
+    Feature.HEAT_PUMP_COP: "Energy:HeatPumpCop",
+    Feature.SOLAR_BATTERY_STRATEGY: "Energy:SolarBatteryStrategy",
+    Feature.INVERSION_DETECTION: "Insight:InversionDetection",
+    Feature.ATMOSPHERIC_STABILITY: "Insight:AtmosphericStability",
+    Feature.CLOUD_CEILING: "Insight:CloudCeiling",
 }
 
 
