@@ -272,6 +272,31 @@
             }
           }
         }
+      },
+      "data_lifecycle": {
+        "name": "Daten",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "domain_updated": "Domäne aktualisiert",
+              "features_updated": "Features aktualisiert"
+            }
+          }
+        }
+      },
+      "feature_transitions": {
+        "name": "Features",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "score_threshold": "Score-Schwellwert",
+              "condition_changed": "Zustand geändert",
+              "window_opened": "Fenster geöffnet",
+              "window_closing_soon": "Fenster schließt bald",
+              "window_closed": "Fenster geschlossen"
+            }
+          }
+        }
       }
     }
   }
