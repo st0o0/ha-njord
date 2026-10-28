@@ -97,7 +97,7 @@ class NjordAlertBinarySensor(CoordinatorEntity[NjordDataCoordinator], BinarySens
         meta = ALERT_META[alert_type]
         self._unit = meta.unit
         self._attr_unique_id = f"{entry.entry_id}_{slugify_location(location)}_{alert_type}_alert"
-        self._attr_name = meta.name
+        self._attr_translation_key = f"{alert_type.value}_alert"
         self._attr_icon = meta.icon
         self._attr_device_info = device_info(entry, location, sw_version)
 
@@ -154,7 +154,7 @@ class NjordLifestyleBinarySensor(CoordinatorEntity[NjordDataCoordinator], Binary
         self._location = location
         self._description = description
         self._attr_unique_id = f"{entry.entry_id}_{slugify_location(location)}_{description.key}"
-        self._attr_name = description.name
+        self._attr_translation_key = description.key
         self._attr_icon = description.icon
         if description.device_class is not None:
             self._attr_device_class = BinarySensorDeviceClass(description.device_class)
@@ -194,11 +194,6 @@ class NjordStreamSensor(CoordinatorEntity[NjordDataCoordinator], BinarySensorEnt
     _attr_device_class = BinarySensorDeviceClass.CONNECTIVITY
     _attr_entity_category = EntityCategory.DIAGNOSTIC
 
-    _STREAM_NAMES = {
-        StreamName.DOMAIN: "Domain Data Stream",
-        StreamName.ENRICHMENT: "Enrichment Stream",
-    }
-
     def __init__(
         self,
         coordinator: NjordDataCoordinator,
@@ -209,7 +204,6 @@ class NjordStreamSensor(CoordinatorEntity[NjordDataCoordinator], BinarySensorEnt
         super().__init__(coordinator)
         self._stream_name = stream_name
         self._attr_unique_id = f"{entry.entry_id}_{stream_name}_stream"
-        self._attr_name = self._STREAM_NAMES.get(stream_name, f"{stream_name} Stream")
         self._attr_translation_key = f"{stream_name}_stream"
         self._attr_device_info = server_device_info(entry, sw_version)
 

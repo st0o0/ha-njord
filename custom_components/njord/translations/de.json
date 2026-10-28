@@ -56,17 +56,180 @@
       }
     },
     "sensor": {
-      "target_poll": {
-        "name": "Abfrage-Ziel"
+      "pm25": {
+        "name": "PM2.5"
+      },
+      "pm10": {
+        "name": "PM10"
+      },
+      "ozone": {
+        "name": "Ozon"
+      },
+      "birch_pollen": {
+        "name": "Birkenpollen"
+      },
+      "grass_pollen": {
+        "name": "Gräserpollen"
+      },
+      "alder_pollen": {
+        "name": "Erlenpollen"
+      },
+      "mugwort_pollen": {
+        "name": "Beifußpollen"
+      },
+      "river_discharge": {
+        "name": "Abfluss"
+      },
+      "wave_height": {
+        "name": "Wellenhöhe"
+      },
+      "wave_period": {
+        "name": "Wellenperiode"
+      },
+      "wave_direction": {
+        "name": "Wellenrichtung"
+      },
+      "water_temperature": {
+        "name": "Wassertemperatur"
+      },
+      "laundry_score": {
+        "name": "Wäsche-Score"
+      },
+      "commute_safety": {
+        "name": "Pendlersicherheit",
+        "state": {
+          "safe": "Sicher",
+          "caution": "Vorsicht",
+          "dangerous": "Gefährlich"
+        }
+      },
+      "exercise": {
+        "name": "Sport",
+        "state": {
+          "safe": "Sicher",
+          "caution": "Vorsicht",
+          "avoid": "Vermeiden"
+        }
+      },
+      "outdoor_score": {
+        "name": "Outdoor-Score"
+      },
+      "bbq_score": {
+        "name": "Grill-Score"
+      },
+      "surf_conditions": {
+        "name": "Surfbedingungen"
+      },
+      "pollen_trend": {
+        "name": "Pollentrend"
+      },
+      "night_ventilation": {
+        "name": "Nachtlüftung"
+      },
+      "confidence_trend": {
+        "name": "Vorhersagekonfidenz"
+      },
+      "solar_yield": {
+        "name": "Solarertrag"
+      },
+      "flood_timeline": {
+        "name": "Hochwasser-Spitzenabfluss"
+      },
+      "front_approaching": {
+        "name": "Frontannäherung"
+      },
+      "seasonal_outlook": {
+        "name": "Saisonale Temperaturanomalie"
+      },
+      "model_comparison": {
+        "name": "Modell-Temperaturspreizung"
+      },
+      "monthly_usage": {
+        "name": "Monatlicher Verbrauch"
+      },
+      "daily_usage": {
+        "name": "Täglicher Verbrauch"
+      },
+      "version": {
+        "name": "Version"
       },
       "uptime": {
         "name": "Betriebszeit"
+      },
+      "target_poll": {
+        "name": "Abfrage {location}"
       },
       "api_budget": {
         "name": "API-Budget"
       }
     },
     "binary_sensor": {
+      "frost_alert": {
+        "name": "Frostwarnung"
+      },
+      "heat_alert": {
+        "name": "Hitzewarnung"
+      },
+      "storm_alert": {
+        "name": "Sturmwarnung"
+      },
+      "heavy_rain_alert": {
+        "name": "Starkregenwarnung"
+      },
+      "uv_alert": {
+        "name": "UV-Warnung"
+      },
+      "fog_alert": {
+        "name": "Nebelwarnung"
+      },
+      "snow_alert": {
+        "name": "Schneewarnung"
+      },
+      "pressure_drop_alert": {
+        "name": "Druckabfallwarnung"
+      },
+      "thunderstorm_alert": {
+        "name": "Gewitterwarnung"
+      },
+      "ice_alert": {
+        "name": "Glättewarnung"
+      },
+      "wind_chill_alert": {
+        "name": "Windkühlwarnung"
+      },
+      "visibility_alert": {
+        "name": "Sichtwarnung"
+      },
+      "tropical_night_alert": {
+        "name": "Tropennachtwarnung"
+      },
+      "humidity_alert": {
+        "name": "Schwülewarnung"
+      },
+      "pollen_alert": {
+        "name": "Pollenwarnung"
+      },
+      "pm25_alert": {
+        "name": "PM2.5-Warnung"
+      },
+      "dust_alert": {
+        "name": "Staubwarnung"
+      },
+      "flood_risk_alert": {
+        "name": "Hochwasserwarnung"
+      },
+      "flood_rain_alert": {
+        "name": "Hochwasser-Regenwarnung"
+      },
+      "swimming_conditions_alert": {
+        "name": "Schwimmwarnung"
+      },
+      "ventilation_window": {
+        "name": "Lüftungsfenster"
+      },
+      "planting_safe": {
+        "name": "Frostsicher zum Pflanzen"
+      },
       "domain_stream": {
         "name": "Domänendaten-Stream"
       },
@@ -80,9 +243,9 @@
         "state_attributes": {
           "event_type": {
             "state": {
-              "alert_started": "Warnung ausgelöst",
-              "alert_escalated": "Warnung verschärft",
-              "alert_deescalated": "Warnung herabgestuft",
+              "alert_started": "Warnung gestartet",
+              "alert_escalated": "Warnung eskaliert",
+              "alert_deescalated": "Warnung deeskaliert",
               "alert_cleared": "Warnung aufgehoben"
             }
           }

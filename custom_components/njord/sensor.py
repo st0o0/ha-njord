@@ -244,7 +244,7 @@ class NjordDomainSensor(CoordinatorEntity[NjordDataCoordinator], SensorEntity):
         self._location = location
         self._description = description
         self._attr_unique_id = f"{entry.entry_id}_{slugify_location(location)}_{description.key}"
-        self._attr_name = description.name
+        self._attr_translation_key = description.key
         self._attr_native_unit_of_measurement = description.unit
         self._attr_device_class = description.device_class
         self._attr_icon = description.icon
@@ -296,6 +296,9 @@ def _attributes(item: FeatureData) -> dict[str, object]:
         if value is None:
             continue
         attrs[name] = value.isoformat() if isinstance(value, datetime) else value
+    if item.score is not None:
+        attrs["best_start"] = item.score.best_start.isoformat() if item.score.best_start else None
+        attrs["best_hours"] = item.score.best_hours if item.score.best_hours else None
     return attrs
 
 
@@ -316,7 +319,7 @@ class NjordLifestyleSensor(CoordinatorEntity[NjordDataCoordinator], SensorEntity
         self._location = location
         self._description = description
         self._attr_unique_id = f"{entry.entry_id}_{slugify_location(location)}_{description.key}"
-        self._attr_name = description.name
+        self._attr_translation_key = description.key
         self._attr_icon = description.icon
         self._attr_native_unit_of_measurement = description.unit
         self._attr_device_class = description.device_class
@@ -368,7 +371,7 @@ class NjordMonthlyUsageSensor(CoordinatorEntity[NjordStatusCoordinator], SensorE
     def __init__(self, coordinator: NjordStatusCoordinator, entry: ConfigEntry, sw_version: str | None = None) -> None:
         super().__init__(coordinator)
         self._attr_unique_id = f"{entry.entry_id}_monthly_usage"
-        self._attr_name = "Monthly Usage"
+        self._attr_translation_key = "monthly_usage"
         self._attr_device_info = server_device_info(entry, sw_version)
 
     @property
@@ -411,7 +414,7 @@ class NjordDailyUsageSensor(CoordinatorEntity[NjordStatusCoordinator], SensorEnt
     def __init__(self, coordinator: NjordStatusCoordinator, entry: ConfigEntry, sw_version: str | None = None) -> None:
         super().__init__(coordinator)
         self._attr_unique_id = f"{entry.entry_id}_daily_usage"
-        self._attr_name = "Daily Usage"
+        self._attr_translation_key = "daily_usage"
         self._attr_device_info = server_device_info(entry, sw_version)
 
     @property
@@ -451,7 +454,7 @@ class NjordVersionSensor(CoordinatorEntity[NjordStatusCoordinator], SensorEntity
     def __init__(self, coordinator: NjordStatusCoordinator, entry: ConfigEntry, sw_version: str | None = None) -> None:
         super().__init__(coordinator)
         self._attr_unique_id = f"{entry.entry_id}_version"
-        self._attr_name = "Version"
+        self._attr_translation_key = "version"
         self._attr_device_info = server_device_info(entry, sw_version)
 
     @property
@@ -480,7 +483,6 @@ class NjordUptimeSensor(CoordinatorEntity[NjordStatusCoordinator], SensorEntity)
     def __init__(self, coordinator: NjordStatusCoordinator, entry: ConfigEntry, sw_version: str | None = None) -> None:
         super().__init__(coordinator)
         self._attr_unique_id = f"{entry.entry_id}_uptime"
-        self._attr_name = "Uptime"
         self._attr_device_info = server_device_info(entry, sw_version)
 
     @property
@@ -514,7 +516,7 @@ class NjordTargetSensor(CoordinatorEntity[NjordStatusCoordinator], SensorEntity)
         super().__init__(coordinator)
         self._target_location = location
         self._attr_unique_id = f"{entry.entry_id}_{slugify_location(location)}_target"
-        self._attr_name = f"Poll {location}"
+        self._attr_translation_placeholders = {"location": location}
         self._attr_translation_key = "target_poll"
         self._attr_device_info = server_device_info(entry, sw_version)
 

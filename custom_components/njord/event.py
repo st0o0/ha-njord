@@ -74,7 +74,6 @@ class NjordAlertEvent(CoordinatorEntity[NjordDataCoordinator], EventEntity):
         self._previous_alerts: dict[AlertType, AlertSeverity] = self._current_alert_map()
 
         self._attr_unique_id = f"{entry.entry_id}_{slugify_location(location)}_weather_alert"
-        self._attr_name = "Weather Alert"
         self._attr_device_info = device_info(entry, location, sw_version)
 
     def _alerts(self) -> dict[AlertType, AlertData]:

@@ -33,7 +33,7 @@ class NjordTriggerPollButton(ButtonEntity):
     """Button to trigger a poll of every location on njord."""
 
     _attr_has_entity_name = True
-    _attr_name = "Trigger Poll"
+    _attr_translation_key = "trigger_poll"
 
     def __init__(self, entry: ConfigEntry, client: NjordClient, sw_version: str | None = None) -> None:
         self._client = client

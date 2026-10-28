@@ -1,0 +1,256 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to njord",
+        "description": "Enter the host and port of your njord weather service.",
+        "data": {
+          "host": "Host",
+          "port": "Port"
+        }
+      },
+      "reconfigure": {
+        "title": "Reconfigure njord",
+        "description": "Update the host and port of your njord weather service.",
+        "data": {
+          "host": "Host",
+          "port": "Port"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Unable to connect to njord. Please check the host and port."
+    },
+    "abort": {
+      "already_configured": "This njord instance is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "njord Options",
+        "description": "Configure status polling.",
+        "data": {
+          "status_poll_interval": "Status poll interval (seconds)"
+        },
+        "data_description": {
+          "status_poll_interval": "How often to poll server status (10–300 seconds, default 30)."
+        }
+      }
+    }
+  },
+  "issues": {
+    "stream_domain_disconnected": {
+      "title": "Domain data stream disconnected",
+      "description": "The njord domain data stream has been disconnected for over 60 seconds. Data may be stale."
+    },
+    "stream_enrichment_disconnected": {
+      "title": "Enrichment stream disconnected",
+      "description": "The njord enrichment stream has been disconnected for over 60 seconds. Enrichment data may be stale."
+    }
+  },
+  "entity": {
+    "button": {
+      "trigger_poll": {
+        "name": "Trigger Poll"
+      }
+    },
+    "sensor": {
+      "pm25": {
+        "name": "PM2.5"
+      },
+      "pm10": {
+        "name": "PM10"
+      },
+      "ozone": {
+        "name": "Ozone"
+      },
+      "birch_pollen": {
+        "name": "Birch Pollen"
+      },
+      "grass_pollen": {
+        "name": "Grass Pollen"
+      },
+      "alder_pollen": {
+        "name": "Alder Pollen"
+      },
+      "mugwort_pollen": {
+        "name": "Mugwort Pollen"
+      },
+      "river_discharge": {
+        "name": "River Discharge"
+      },
+      "wave_height": {
+        "name": "Wave Height"
+      },
+      "wave_period": {
+        "name": "Wave Period"
+      },
+      "wave_direction": {
+        "name": "Wave Direction"
+      },
+      "water_temperature": {
+        "name": "Water Temperature"
+      },
+      "laundry_score": {
+        "name": "Laundry Score"
+      },
+      "commute_safety": {
+        "name": "Commute Safety",
+        "state": {
+          "safe": "Safe",
+          "caution": "Caution",
+          "dangerous": "Dangerous"
+        }
+      },
+      "exercise": {
+        "name": "Exercise",
+        "state": {
+          "safe": "Safe",
+          "caution": "Caution",
+          "avoid": "Avoid"
+        }
+      },
+      "outdoor_score": {
+        "name": "Outdoor Score"
+      },
+      "bbq_score": {
+        "name": "BBQ Score"
+      },
+      "surf_conditions": {
+        "name": "Surf Conditions"
+      },
+      "pollen_trend": {
+        "name": "Pollen Trend"
+      },
+      "night_ventilation": {
+        "name": "Night Ventilation"
+      },
+      "confidence_trend": {
+        "name": "Forecast Confidence"
+      },
+      "solar_yield": {
+        "name": "Solar Yield"
+      },
+      "flood_timeline": {
+        "name": "Flood Peak Discharge"
+      },
+      "front_approaching": {
+        "name": "Front Approaching"
+      },
+      "seasonal_outlook": {
+        "name": "Seasonal Temperature Anomaly"
+      },
+      "model_comparison": {
+        "name": "Model Temperature Spread"
+      },
+      "monthly_usage": {
+        "name": "Monthly Usage"
+      },
+      "daily_usage": {
+        "name": "Daily Usage"
+      },
+      "version": {
+        "name": "Version"
+      },
+      "uptime": {
+        "name": "Uptime"
+      },
+      "target_poll": {
+        "name": "Poll {location}"
+      },
+      "api_budget": {
+        "name": "API Budget"
+      }
+    },
+    "binary_sensor": {
+      "frost_alert": {
+        "name": "Frost Alert"
+      },
+      "heat_alert": {
+        "name": "Heat Alert"
+      },
+      "storm_alert": {
+        "name": "Storm Alert"
+      },
+      "heavy_rain_alert": {
+        "name": "Heavy Rain Alert"
+      },
+      "uv_alert": {
+        "name": "UV Alert"
+      },
+      "fog_alert": {
+        "name": "Fog Alert"
+      },
+      "snow_alert": {
+        "name": "Snow Alert"
+      },
+      "pressure_drop_alert": {
+        "name": "Pressure Drop Alert"
+      },
+      "thunderstorm_alert": {
+        "name": "Thunderstorm Alert"
+      },
+      "ice_alert": {
+        "name": "Ice Alert"
+      },
+      "wind_chill_alert": {
+        "name": "Wind Chill Alert"
+      },
+      "visibility_alert": {
+        "name": "Visibility Alert"
+      },
+      "tropical_night_alert": {
+        "name": "Tropical Night Alert"
+      },
+      "humidity_alert": {
+        "name": "Humidity Alert"
+      },
+      "pollen_alert": {
+        "name": "Pollen Alert"
+      },
+      "pm25_alert": {
+        "name": "PM2.5 Alert"
+      },
+      "dust_alert": {
+        "name": "Dust Alert"
+      },
+      "flood_risk_alert": {
+        "name": "Flood Risk Alert"
+      },
+      "flood_rain_alert": {
+        "name": "Flood Rain Alert"
+      },
+      "swimming_conditions_alert": {
+        "name": "Swimming Conditions Alert"
+      },
+      "ventilation_window": {
+        "name": "Ventilation Window"
+      },
+      "planting_safe": {
+        "name": "Planting Safe"
+      },
+      "domain_stream": {
+        "name": "Domain Stream"
+      },
+      "enrichment_stream": {
+        "name": "Enrichment Stream"
+      }
+    },
+    "event": {
+      "weather_alert": {
+        "name": "Weather Alert",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "alert_started": "Alert started",
+              "alert_escalated": "Alert escalated",
+              "alert_deescalated": "Alert de-escalated",
+              "alert_cleared": "Alert cleared"
+            }
+          }
+        }
+      }
+    }
+  }
+}
