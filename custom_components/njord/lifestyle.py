@@ -232,7 +232,7 @@ LIFESTYLE_SENSORS: tuple[LifestyleSensorDescription, ...] = (
         icon="mdi:layers-triple",
         value_fn=_text("strength"),
         device_class=SensorDeviceClass.ENUM,
-        options=("mild", "strong", "extreme"),
+        options=("none", "mild", "strong", "extreme"),
     ),
     LifestyleSensorDescription(
         feature=Feature.ATMOSPHERIC_STABILITY,

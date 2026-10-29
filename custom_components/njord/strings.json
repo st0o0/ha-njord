@@ -183,6 +183,7 @@
       "inversion_detection": {
         "name": "Inversion Detection",
         "state": {
+          "none": "None",
           "mild": "Mild",
           "strong": "Strong",
           "extreme": "Extreme"
