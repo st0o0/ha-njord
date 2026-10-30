@@ -83,4 +83,4 @@ docker run --rm -v "$PWD:/work" -w /work python:3.12-slim \
 
 ## License
 
-MIT
+[MIT](LICENSE). Weather data from [Open-Meteo](https://open-meteo.com/) is licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). The data is enriched and transformed by [njord](https://github.com/st0o0/njord) before being displayed. Open-Meteo aggregates data from national weather services (DWD, ECMWF, NOAA, and [others](https://open-meteo.com/en/licence)) under their respective licences.
