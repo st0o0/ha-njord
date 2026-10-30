@@ -135,12 +135,6 @@ def test_marine_update_converted():
     assert data.points[0].water_temperature is None
 
 
-def test_satellite_update_is_not_consumed():
-    pb = weather_pb2.DomainDataUpdate(location="home", satellite=weather_pb2.SatelliteData())
-
-    assert _to_domain_data(pb) is None
-
-
 def test_update_without_payload_is_none():
     assert _to_domain_data(weather_pb2.DomainDataUpdate(location="home")) is None
 
@@ -400,7 +394,7 @@ async def test_stream_domain_data_skips_unconvertible_messages():
 
     received = []
     async for item in client.stream_domain_data(
-        domains=[Domain.FORECAST, Domain.AIR_QUALITY, Domain.SATELLITE], on_reconnect=on_reconnect
+        domains=[Domain.FORECAST, Domain.AIR_QUALITY], on_reconnect=on_reconnect
     ):
         received.append(item)
         if len(received) == 2:
@@ -412,7 +406,6 @@ async def test_stream_domain_data_skips_unconvertible_messages():
     assert list(request.domains) == [
         weather_pb2.DOMAIN_FORECAST,
         weather_pb2.DOMAIN_AIR_QUALITY,
-        weather_pb2.DOMAIN_SATELLITE,
     ]
     on_reconnect.assert_called_once_with()
 

@@ -82,7 +82,6 @@ _DOMAIN_TO_PB: dict[Domain, int] = {
     Domain.FLOOD: weather_pb2.DOMAIN_FLOOD,
     Domain.MARINE: weather_pb2.DOMAIN_MARINE,
     Domain.SEASONAL: weather_pb2.DOMAIN_SEASONAL,
-    Domain.SATELLITE: weather_pb2.DOMAIN_SATELLITE,
     Domain.ENSEMBLE: weather_pb2.DOMAIN_ENSEMBLE,
 }
 

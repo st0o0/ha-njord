@@ -53,7 +53,7 @@ def test_alert_meta_covers_all_alert_types_but_unspecified():
 
 def test_every_feature_has_a_njord_key():
     assert set(FEATURE_KEYS) == set(Feature)
-    assert len(FEATURE_KEYS) == 37
+    assert len(FEATURE_KEYS) == 49
 
 
 def test_feature_enabled_matches_case_insensitively():

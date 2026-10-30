@@ -39,7 +39,6 @@ class Domain(StrEnum):
     FLOOD = "flood"
     MARINE = "marine"
     SEASONAL = "seasonal"
-    SATELLITE = "satellite"
     ENSEMBLE = "ensemble"
 
     @classmethod
@@ -232,7 +231,6 @@ class Feature(StrEnum):
     GARDENING = "gardening"
     FLOOD_TIMELINE = "flood_timeline"
     SOLAR_YIELD = "solar_yield"
-    SATELLITE_RADIATION = "satellite_radiation"
     APPROACHING_FRONT = "approaching_front"
     CONFIDENCE_TREND = "confidence_trend"
     POLLEN_TREND = "pollen_trend"
@@ -290,7 +288,6 @@ FEATURE_KEYS: dict[Feature, str] = {
     Feature.APPROACHING_FRONT: "Insight:FrontApproaching",
     Feature.SEASONAL_OUTLOOK: "Insight:SeasonalOutlook",
     Feature.SOLAR_YIELD: "Energy:SolarYield",
-    Feature.SATELLITE_RADIATION: "Energy:SatelliteRadiation",
     Feature.MODEL_COMPARISON: "Forecast:ModelComparison",
     Feature.COMPOUND_HEAT_STRESS: "Forecast:CompoundHeatStress",
     Feature.MIGRAINE_RISK: "Forecast:MigraineRisk",
