@@ -101,6 +101,10 @@ class AirQualitySampleData:
     us_aqi_ozone: float | None = None
     us_aqi_sulphur_dioxide: float | None = None
     us_aqi_carbon_monoxide: float | None = None
+    carbon_monoxide: float | None = None
+    sulphur_dioxide: float | None = None
+    nitrogen_dioxide: float | None = None
+    european_aqi: float | None = None
 
 
 @dataclass(frozen=True)

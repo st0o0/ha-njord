@@ -217,6 +217,10 @@ def _to_air_quality_sample(pb: weather_pb2.AirQualitySample) -> AirQualitySample
         us_aqi_ozone=_opt(pb, "us_aqi_ozone"),
         us_aqi_sulphur_dioxide=_opt(pb, "us_aqi_sulphur_dioxide"),
         us_aqi_carbon_monoxide=_opt(pb, "us_aqi_carbon_monoxide"),
+        carbon_monoxide=_opt(pb, "carbon_monoxide"),
+        sulphur_dioxide=_opt(pb, "sulphur_dioxide"),
+        nitrogen_dioxide=_opt(pb, "nitrogen_dioxide"),
+        european_aqi=_opt(pb, "european_aqi"),
     )
 
 
