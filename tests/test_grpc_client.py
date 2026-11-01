@@ -20,6 +20,7 @@ from custom_components.njord.grpc_client import (
 )
 from custom_components.njord.models import (
     AirQualityDomainData,
+    EnsembleDomainData,
     FloodDomainData,
     ForecastDomainData,
     MarineDomainData,
@@ -577,3 +578,124 @@ def test_seasonal_empty_points():
 
     assert isinstance(data, SeasonalDomainData)
     assert data.points == []
+
+
+def test_forecast_extended_fields_converted():
+    pb = weather_pb2.DomainDataUpdate(
+        location="home",
+        forecast=weather_pb2.ForecastDomainData(
+            points=[
+                weather_pb2.ForecastSample(
+                    valid_at=_ts(),
+                    uv_index_clear_sky=7.5,
+                    soil_moisture_0_to_1cm=0.21,
+                    wind_speed_120m=11.0,
+                    wind_direction_10m=270.0,
+                    snow_depth=0.4,
+                    global_tilted_irradiance=640.0,
+                    wet_bulb_temperature_2m=18.2,
+                    wind_speed_100m=9.0,
+                    precipitation_type=1.0,
+                    snowfall_water_equivalent=0.2,
+                )
+            ]
+        ),
+    )
+
+    data = _to_domain_data(pb)
+
+    assert isinstance(data, ForecastDomainData)
+    sample = data.points[0]
+    assert sample.uv_index_clear_sky == 7.5
+    assert sample.soil_moisture_0_to_1cm == 0.21
+    assert sample.wind_speed_120m == 11.0
+    assert sample.wind_direction_10m == 270.0
+    assert sample.snow_depth == 0.4
+    assert sample.global_tilted_irradiance == 640.0
+    assert sample.wet_bulb_temperature_2m == 18.2
+    assert sample.wind_speed_100m == 9.0
+    assert sample.precipitation_type == 1.0
+    assert sample.snowfall_water_equivalent == 0.2
+    assert sample.showers is None
+    assert sample.thunderstorm_probability is None
+
+
+def test_air_quality_extended_fields_converted():
+    pb = weather_pb2.DomainDataUpdate(
+        location="home",
+        air_quality=weather_pb2.AirQualityData(
+            points=[
+                weather_pb2.AirQualitySample(
+                    valid_at=_ts(), ragweed_pollen=4.0, european_aqi_ozone=35.0, us_aqi_pm25=52.0, dust=8.0
+                )
+            ]
+        ),
+    )
+
+    data = _to_domain_data(pb)
+
+    assert isinstance(data, AirQualityDomainData)
+    sample = data.points[0]
+    assert (sample.ragweed_pollen, sample.european_aqi_ozone, sample.us_aqi_pm25, sample.dust) == (4.0, 35.0, 52.0, 8.0)
+    assert sample.methane is None
+
+
+def test_marine_extended_fields_converted():
+    pb = weather_pb2.DomainDataUpdate(
+        location="coast",
+        marine=weather_pb2.MarineData(
+            points=[
+                weather_pb2.MarineSample(
+                    valid_at=_ts(),
+                    wave_peak_period=9.5,
+                    swell_wave_height=1.8,
+                    wind_wave_peak_period=5.0,
+                    secondary_swell_wave_period=12.0,
+                    tertiary_swell_wave_direction=200.0,
+                    sea_level_height_msl=0.3,
+                    ocean_current_velocity=0.7,
+                    invert_barometer_height=0.05,
+                )
+            ]
+        ),
+    )
+
+    data = _to_domain_data(pb)
+
+    assert isinstance(data, MarineDomainData)
+    sample = data.points[0]
+    assert sample.wave_peak_period == 9.5
+    assert sample.swell_wave_height == 1.8
+    assert sample.wind_wave_peak_period == 5.0
+    assert sample.secondary_swell_wave_period == 12.0
+    assert sample.tertiary_swell_wave_direction == 200.0
+    assert sample.sea_level_height_msl == 0.3
+    assert sample.ocean_current_velocity == 0.7
+    assert sample.invert_barometer_height == 0.05
+    assert sample.wind_wave_height is None
+
+
+def test_ensemble_update_converted():
+    pb = weather_pb2.DomainDataUpdate(
+        location="home",
+        domain=weather_pb2.DOMAIN_ENSEMBLE,
+        model_run=_ts(),
+        ensemble=weather_pb2.EnsembleData(
+            points=[
+                weather_pb2.EnsembleSample(
+                    valid_at=_ts(), temperature_spread=1.2, wind_speed_100m_spread=0.9, cape_spread=40.0
+                ),
+                weather_pb2.EnsembleSample(valid_at=_ts(EPOCH + 3600)),
+            ]
+        ),
+    )
+
+    data = _to_domain_data(pb)
+
+    assert isinstance(data, EnsembleDomainData)
+    assert data.domain is Domain.ENSEMBLE
+    assert data.model_run == EXPECTED_DT
+    first, second = data.points
+    assert (first.temperature_spread, first.wind_speed_100m_spread, first.cape_spread) == (1.2, 0.9, 40.0)
+    assert first.precipitation_spread is None
+    assert second.temperature_spread is None

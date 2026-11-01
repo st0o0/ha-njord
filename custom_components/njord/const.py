@@ -113,6 +113,14 @@ class AlertType(StrEnum):
     SWIMMING_CONDITIONS = "swimming_conditions"
     COMPOUND_HEAT_STRESS = "compound_heat_stress"
     MIGRAINE_RISK = "migraine_risk"
+    RAIN_PROBABILITY = "rain_probability"
+    WET_BULB_DANGER = "wet_bulb_danger"
+    CLEAR_SKY_UV = "clear_sky_uv"
+    SHOWER = "shower"
+    SMOG_RISK = "smog_risk"
+    FIRE_RISK = "fire_risk"
+    POLLEN_BLAST = "pollen_blast"
+    COASTAL_FLOOD = "coastal_flood"
 
     @classmethod
     def _missing_(cls, value: object) -> AlertType:
@@ -194,6 +202,20 @@ ALERT_META: dict[AlertType, AlertMeta] = {
         "Compound Heat Stress Alert", UnitOfTemperature.CELSIUS, "mdi:thermometer-alert", 1
     ),
     AlertType.MIGRAINE_RISK: AlertMeta("Migraine Risk Alert", "points", "mdi:head-flash", 0),
+    AlertType.RAIN_PROBABILITY: AlertMeta("Rain Probability Alert", PERCENTAGE, "mdi:umbrella", 0),
+    AlertType.WET_BULB_DANGER: AlertMeta(
+        "Wet Bulb Danger Alert", UnitOfTemperature.CELSIUS, "mdi:thermometer-water", 1, SensorDeviceClass.TEMPERATURE
+    ),
+    AlertType.CLEAR_SKY_UV: AlertMeta("Clear Sky UV Alert", "UV", "mdi:weather-sunny-alert", 0),
+    AlertType.SHOWER: AlertMeta("Shower Alert", "mm", "mdi:weather-partly-rainy", 1),
+    AlertType.SMOG_RISK: AlertMeta(
+        "Smog Risk Alert", CONCENTRATION_MICROGRAMS_PER_CUBIC_METER, "mdi:smog", 1, SensorDeviceClass.PM25
+    ),
+    AlertType.FIRE_RISK: AlertMeta("Fire Risk Alert", "points", "mdi:fire-alert", 0),
+    AlertType.POLLEN_BLAST: AlertMeta("Pollen Blast Alert", "grains/m³", "mdi:flower-pollen", 1),
+    AlertType.COASTAL_FLOOD: AlertMeta(
+        "Coastal Flood Alert", UnitOfLength.METERS, "mdi:home-flood", 2, SensorDeviceClass.DISTANCE
+    ),
 }
 
 
@@ -250,6 +272,22 @@ class Feature(StrEnum):
     INVERSION_DETECTION = "inversion_detection"
     ATMOSPHERIC_STABILITY = "atmospheric_stability"
     CLOUD_CEILING = "cloud_ceiling"
+    RAIN_PROBABILITY = "rain_probability"
+    WET_BULB_DANGER = "wet_bulb_danger"
+    CLEAR_SKY_UV = "clear_sky_uv"
+    SHOWER = "shower"
+    SMOG_RISK = "smog_risk"
+    FIRE_RISK = "fire_risk"
+    POLLEN_BLAST = "pollen_blast"
+    COASTAL_FLOOD = "coastal_flood"
+    SNOW_DEPTH_WATCH = "snow_depth_watch"
+    SOIL_MOISTURE = "soil_moisture"
+    EVAPOTRANSPIRATION = "evapotranspiration"
+    RAGWEED_POLLEN = "ragweed_pollen"
+    GRANULAR_AQI = "granular_aqi"
+    OCEAN_CURRENTS = "ocean_currents"
+    ELEVATED_WIND = "elevated_wind"
+    GROWING_DEGREE = "growing_degree"
 
 
 # njord's `<Category>:<Name>` toggle key per feature, as listed in StatusResponse.active_enrichments.
@@ -304,6 +342,22 @@ FEATURE_KEYS: dict[Feature, str] = {
     Feature.INVERSION_DETECTION: "Insight:InversionDetection",
     Feature.ATMOSPHERIC_STABILITY: "Insight:AtmosphericStability",
     Feature.CLOUD_CEILING: "Insight:CloudCeiling",
+    Feature.RAIN_PROBABILITY: "Forecast:RainProbability",
+    Feature.WET_BULB_DANGER: "Forecast:WetBulbDanger",
+    Feature.CLEAR_SKY_UV: "Lifestyle:ClearSkyUv",
+    Feature.SHOWER: "Forecast:Shower",
+    Feature.SMOG_RISK: "AirQuality:SmogRisk",
+    Feature.FIRE_RISK: "Lifestyle:FireRisk",
+    Feature.POLLEN_BLAST: "AirQuality:PollenBlast",
+    Feature.COASTAL_FLOOD: "Marine:CoastalFlood",
+    Feature.SNOW_DEPTH_WATCH: "Forecast:SnowDepthWatch",
+    Feature.SOIL_MOISTURE: "Lifestyle:SoilMoisture",
+    Feature.EVAPOTRANSPIRATION: "Lifestyle:Evapotranspiration",
+    Feature.RAGWEED_POLLEN: "AirQuality:RagweedPollen",
+    Feature.GRANULAR_AQI: "AirQuality:GranularAqi",
+    Feature.OCEAN_CURRENTS: "Marine:OceanCurrents",
+    Feature.ELEVATED_WIND: "Energy:ElevatedWind",
+    Feature.GROWING_DEGREE: "Lifestyle:GrowingDegree",
 }
 
 

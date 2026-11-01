@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from homeassistant.components.sensor import SensorDeviceClass
-from homeassistant.const import UnitOfLength, UnitOfTemperature, UnitOfTime
+from homeassistant.const import UnitOfLength, UnitOfSpeed, UnitOfTemperature, UnitOfTime
 from homeassistant.util import dt as dt_util
 
 from .const import DISCHARGE_UNIT, Feature
@@ -45,6 +45,13 @@ def _model_spread(item: FeatureData) -> float | None:
         return None
     highs = [m["max_temperature"] for m in days[0].get("models", []) if m.get("max_temperature") is not None]
     return max(highs) - min(highs) if len(highs) >= 2 else None
+
+
+def _worst_aqi(item: FeatureData) -> float | None:
+    """Highest of the per-pollutant AQI values that are present."""
+    keys = ("pm25_aqi", "pm10_aqi", "no2_aqi", "ozone_aqi", "so2_aqi")
+    values = [item.values[key] for key in keys if item.values.get(key) is not None]
+    return max(values) if values else None
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -262,6 +269,81 @@ LIFESTYLE_SENSORS: tuple[LifestyleSensorDescription, ...] = (
         unit=UnitOfLength.METERS,
         device_class=SensorDeviceClass.DISTANCE,
         precision=0,
+    ),
+    LifestyleSensorDescription(
+        feature=Feature.SNOW_DEPTH_WATCH,
+        key="snow_depth_watch",
+        name="Snow Depth",
+        icon="mdi:snowflake-variant",
+        value_fn=_number("depth_cm"),
+        unit=UnitOfLength.CENTIMETERS,
+        device_class=SensorDeviceClass.DISTANCE,
+        precision=1,
+    ),
+    LifestyleSensorDescription(
+        feature=Feature.SOIL_MOISTURE,
+        key="soil_moisture",
+        name="Soil Moisture",
+        icon="mdi:water-percent",
+        value_fn=_number("moisture"),
+        unit="m³/m³",
+        precision=3,
+    ),
+    LifestyleSensorDescription(
+        feature=Feature.EVAPOTRANSPIRATION,
+        key="evapotranspiration",
+        name="Evapotranspiration",
+        icon="mdi:water-sync",
+        value_fn=_number("daily_mm"),
+        unit="mm",
+        precision=1,
+    ),
+    LifestyleSensorDescription(
+        feature=Feature.RAGWEED_POLLEN,
+        key="ragweed_pollen_peak",
+        name="Ragweed Pollen Peak",
+        icon="mdi:flower-pollen",
+        value_fn=_number("peak_value"),
+        unit="grains/m³",
+        precision=1,
+    ),
+    LifestyleSensorDescription(
+        feature=Feature.GRANULAR_AQI,
+        key="granular_aqi",
+        name="Granular AQI",
+        icon="mdi:air-filter",
+        value_fn=_worst_aqi,
+        device_class=SensorDeviceClass.AQI,
+        precision=0,
+    ),
+    LifestyleSensorDescription(
+        feature=Feature.OCEAN_CURRENTS,
+        key="ocean_currents",
+        name="Ocean Current Velocity",
+        icon="mdi:waves-arrow-right",
+        value_fn=_number("peak_velocity_kmh"),
+        unit=UnitOfSpeed.KILOMETERS_PER_HOUR,
+        device_class=SensorDeviceClass.SPEED,
+        precision=1,
+    ),
+    LifestyleSensorDescription(
+        feature=Feature.ELEVATED_WIND,
+        key="elevated_wind",
+        name="Wind Speed 80 m",
+        icon="mdi:wind-turbine",
+        value_fn=_number("speed_80m"),
+        unit=UnitOfSpeed.METERS_PER_SECOND,
+        device_class=SensorDeviceClass.WIND_SPEED,
+        precision=1,
+    ),
+    LifestyleSensorDescription(
+        feature=Feature.GROWING_DEGREE,
+        key="growing_degree",
+        name="Cumulative Growing Degree Days",
+        icon="mdi:sprout-outline",
+        value_fn=_number("cumulative_gdd"),
+        unit="°C·d",
+        precision=1,
     ),
 )
 

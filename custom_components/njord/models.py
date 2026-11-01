@@ -33,6 +33,41 @@ class ForecastSampleData:
     soil_temperature: float | None = None
     freezing_level_height: float | None = None
     is_day: bool | None = None
+    uv_index_clear_sky: float | None = None
+    showers: float | None = None
+    soil_moisture_0_to_1cm: float | None = None
+    soil_moisture_1_to_3cm: float | None = None
+    evapotranspiration: float | None = None
+    vapour_pressure_deficit: float | None = None
+    boundary_layer_height: float | None = None
+    cloud_cover_low: float | None = None
+    cloud_cover_mid: float | None = None
+    cloud_cover_high: float | None = None
+    convective_inhibition: float | None = None
+    lifted_index: float | None = None
+    surface_pressure: float | None = None
+    wind_speed_80m: float | None = None
+    wind_direction_80m: float | None = None
+    wind_speed_120m: float | None = None
+    wind_direction_120m: float | None = None
+    temperature_80m: float | None = None
+    temperature_120m: float | None = None
+    wind_direction_10m: float | None = None
+    snow_depth: float | None = None
+    shortwave_radiation: float | None = None
+    direct_radiation: float | None = None
+    diffuse_radiation: float | None = None
+    direct_normal_irradiance: float | None = None
+    sunshine_duration: float | None = None
+    global_tilted_irradiance: float | None = None
+    wet_bulb_temperature_2m: float | None = None
+    snowfall_height: float | None = None
+    wind_speed_100m: float | None = None
+    wind_direction_100m: float | None = None
+    thunderstorm_probability: float | None = None
+    precipitation_type: float | None = None
+    surface_temperature: float | None = None
+    snowfall_water_equivalent: float | None = None
 
 
 @dataclass(frozen=True)
@@ -45,6 +80,27 @@ class AirQualitySampleData:
     grass_pollen: float | None = None
     alder: float | None = None
     mugwort: float | None = None
+    dust: float | None = None
+    ammonia: float | None = None
+    olive_pollen: float | None = None
+    us_aqi: float | None = None
+    uv_index: float | None = None
+    uv_index_clear_sky: float | None = None
+    ragweed_pollen: float | None = None
+    european_aqi_pm25: float | None = None
+    european_aqi_pm10: float | None = None
+    european_aqi_nitrogen_dioxide: float | None = None
+    european_aqi_ozone: float | None = None
+    european_aqi_sulphur_dioxide: float | None = None
+    aerosol_optical_depth: float | None = None
+    carbon_dioxide: float | None = None
+    methane: float | None = None
+    us_aqi_pm25: float | None = None
+    us_aqi_pm10: float | None = None
+    us_aqi_nitrogen_dioxide: float | None = None
+    us_aqi_ozone: float | None = None
+    us_aqi_sulphur_dioxide: float | None = None
+    us_aqi_carbon_monoxide: float | None = None
 
 
 @dataclass(frozen=True)
@@ -66,6 +122,25 @@ class MarineSampleData:
     wave_period: float
     wave_direction: float
     water_temperature: float | None = None
+    wind_wave_height: float | None = None
+    wind_wave_period: float | None = None
+    wind_wave_direction: float | None = None
+    wind_wave_peak_period: float | None = None
+    swell_wave_height: float | None = None
+    swell_wave_period: float | None = None
+    swell_wave_direction: float | None = None
+    swell_wave_peak_period: float | None = None
+    sea_level_height_msl: float | None = None
+    ocean_current_velocity: float | None = None
+    ocean_current_direction: float | None = None
+    secondary_swell_wave_height: float | None = None
+    secondary_swell_wave_direction: float | None = None
+    secondary_swell_wave_period: float | None = None
+    tertiary_swell_wave_height: float | None = None
+    tertiary_swell_wave_direction: float | None = None
+    tertiary_swell_wave_period: float | None = None
+    invert_barometer_height: float | None = None
+    wave_peak_period: float | None = None
 
 
 @dataclass(frozen=True)
@@ -74,6 +149,26 @@ class SeasonalSampleData:
     temperature_anomaly: float | None = None
     precipitation_anomaly: float | None = None
     precipitation_mean: float | None = None
+
+
+@dataclass(frozen=True)
+class EnsembleSampleData:
+    valid_at: datetime
+    temperature_spread: float | None = None
+    precipitation_spread: float | None = None
+    wind_speed_spread: float | None = None
+    pressure_msl_spread: float | None = None
+    cloud_cover_spread: float | None = None
+    wind_gusts_10m_spread: float | None = None
+    cape_spread: float | None = None
+    snowfall_spread: float | None = None
+    rain_spread: float | None = None
+    dew_point_2m_spread: float | None = None
+    relative_humidity_2m_spread: float | None = None
+    surface_pressure_spread: float | None = None
+    wind_direction_10m_spread: float | None = None
+    wet_bulb_temperature_2m_spread: float | None = None
+    wind_speed_100m_spread: float | None = None
 
 
 @dataclass(frozen=True)
@@ -117,7 +212,22 @@ class SeasonalDomainData:
     domain: Domain = Domain.SEASONAL
 
 
-DomainData = ForecastDomainData | AirQualityDomainData | FloodDomainData | MarineDomainData | SeasonalDomainData
+@dataclass(frozen=True)
+class EnsembleDomainData:
+    location: str
+    model_run: datetime | None = None
+    points: list[EnsembleSampleData] = field(default_factory=list)
+    domain: Domain = Domain.ENSEMBLE
+
+
+DomainData = (
+    ForecastDomainData
+    | AirQualityDomainData
+    | FloodDomainData
+    | MarineDomainData
+    | SeasonalDomainData
+    | EnsembleDomainData
+)
 
 
 # --- Catalog ---

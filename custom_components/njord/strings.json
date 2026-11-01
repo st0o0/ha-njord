@@ -205,6 +205,30 @@
       "cloud_ceiling": {
         "name": "Cloud Ceiling"
       },
+      "snow_depth_watch": {
+        "name": "Snow Depth"
+      },
+      "soil_moisture": {
+        "name": "Soil Moisture"
+      },
+      "evapotranspiration": {
+        "name": "Evapotranspiration"
+      },
+      "ragweed_pollen_peak": {
+        "name": "Ragweed Pollen Peak"
+      },
+      "granular_aqi": {
+        "name": "Granular AQI"
+      },
+      "ocean_currents": {
+        "name": "Ocean Current Velocity"
+      },
+      "elevated_wind": {
+        "name": "Wind Speed 80 m"
+      },
+      "growing_degree": {
+        "name": "Cumulative Growing Degree Days"
+      },
       "monthly_usage": {
         "name": "Monthly Usage"
       },
@@ -290,6 +314,30 @@
       },
       "migraine_risk_alert": {
         "name": "Migraine Risk Alert"
+      },
+      "rain_probability_alert": {
+        "name": "Rain Probability Alert"
+      },
+      "wet_bulb_danger_alert": {
+        "name": "Wet Bulb Danger Alert"
+      },
+      "clear_sky_uv_alert": {
+        "name": "Clear Sky UV Alert"
+      },
+      "shower_alert": {
+        "name": "Shower Alert"
+      },
+      "smog_risk_alert": {
+        "name": "Smog Risk Alert"
+      },
+      "fire_risk_alert": {
+        "name": "Fire Risk Alert"
+      },
+      "pollen_blast_alert": {
+        "name": "Pollen Blast Alert"
+      },
+      "coastal_flood_alert": {
+        "name": "Coastal Flood Alert"
       },
       "ventilation_window": {
         "name": "Ventilation Window"

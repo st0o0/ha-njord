@@ -45,7 +45,14 @@ async def test_solar_is_not_requested(hass: HomeAssistant, mock_client, mock_con
     await init_integration(hass, mock_config_entry)
 
     requested = {call.args[1] for call in mock_client.get_domain_data.await_args_list}
-    assert requested == {Domain.FORECAST, Domain.AIR_QUALITY, Domain.FLOOD, Domain.MARINE, Domain.SEASONAL}
+    assert requested == {
+        Domain.FORECAST,
+        Domain.AIR_QUALITY,
+        Domain.FLOOD,
+        Domain.MARINE,
+        Domain.SEASONAL,
+        Domain.ENSEMBLE,
+    }
 
 
 async def test_domain_failure_skips_only_that_domain(hass: HomeAssistant, mock_client, mock_config_entry) -> None:

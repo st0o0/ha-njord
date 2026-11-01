@@ -31,7 +31,7 @@ async def test_unfiltered_server_creates_all_alerts(hass: HomeAssistant, mock_cl
     await init_integration(hass, all_alerts_entry)
 
     created = [t for t in AlertType if t is not AlertType.UNSPECIFIED and _alert_state(hass, all_alerts_entry, t)]
-    assert len(created) == 22
+    assert len(created) == 30
 
 
 async def test_active_alert_is_on_with_attributes(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
@@ -153,3 +153,19 @@ async def test_new_alert_types_are_created(hass: HomeAssistant, mock_client, all
 
     assert _alert_state(hass, all_alerts_entry, "compound_heat_stress") is not None
     assert _alert_state(hass, all_alerts_entry, "migraine_risk") is not None
+
+
+async def test_v2_alert_types_are_created(hass: HomeAssistant, mock_client, all_alerts_entry) -> None:
+    await init_integration(hass, all_alerts_entry)
+
+    for alert in (
+        "rain_probability",
+        "wet_bulb_danger",
+        "clear_sky_uv",
+        "shower",
+        "smog_risk",
+        "fire_risk",
+        "pollen_blast",
+        "coastal_flood",
+    ):
+        assert _alert_state(hass, all_alerts_entry, alert) is not None, alert

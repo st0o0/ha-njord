@@ -35,6 +35,7 @@ TRACKED_DOMAINS: tuple[Domain, ...] = (
     Domain.FLOOD,
     Domain.MARINE,
     Domain.SEASONAL,
+    Domain.ENSEMBLE,
 )
 
 

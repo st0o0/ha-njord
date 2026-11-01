@@ -57,7 +57,14 @@ async def test_domain_stream_requests_tracked_domains(hass: HomeAssistant, mock_
 
     kwargs = mock_client.stream_domain_data.call_args.kwargs
     assert kwargs["location"] is None
-    assert set(kwargs["domains"]) == {Domain.FORECAST, Domain.AIR_QUALITY, Domain.FLOOD, Domain.MARINE, Domain.SEASONAL}
+    assert set(kwargs["domains"]) == {
+        Domain.FORECAST,
+        Domain.AIR_QUALITY,
+        Domain.FLOOD,
+        Domain.MARINE,
+        Domain.SEASONAL,
+        Domain.ENSEMBLE,
+    }
 
 
 async def test_enrichment_stream_stores_feature_by_location_and_feature(hass: HomeAssistant, mock_client) -> None:

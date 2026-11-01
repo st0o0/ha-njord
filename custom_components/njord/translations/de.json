@@ -205,6 +205,30 @@
       "cloud_ceiling": {
         "name": "Wolkenuntergrenze"
       },
+      "snow_depth_watch": {
+        "name": "Schneehöhe"
+      },
+      "soil_moisture": {
+        "name": "Bodenfeuchte"
+      },
+      "evapotranspiration": {
+        "name": "Evapotranspiration"
+      },
+      "ragweed_pollen_peak": {
+        "name": "Ambrosia-Pollen-Spitze"
+      },
+      "granular_aqi": {
+        "name": "Detaillierter AQI"
+      },
+      "ocean_currents": {
+        "name": "Meeresströmung"
+      },
+      "elevated_wind": {
+        "name": "Windgeschwindigkeit 80 m"
+      },
+      "growing_degree": {
+        "name": "Kumulierte Wachstumsgradtage"
+      },
       "monthly_usage": {
         "name": "Monatlicher Verbrauch"
       },
@@ -290,6 +314,30 @@
       },
       "migraine_risk_alert": {
         "name": "Migräne-Risiko-Warnung"
+      },
+      "rain_probability_alert": {
+        "name": "Regenwahrscheinlichkeits-Warnung"
+      },
+      "wet_bulb_danger_alert": {
+        "name": "Feuchtkugeltemperatur-Warnung"
+      },
+      "clear_sky_uv_alert": {
+        "name": "Klarhimmel-UV-Warnung"
+      },
+      "shower_alert": {
+        "name": "Schauer-Warnung"
+      },
+      "smog_risk_alert": {
+        "name": "Smog-Risiko-Warnung"
+      },
+      "fire_risk_alert": {
+        "name": "Brandrisiko-Warnung"
+      },
+      "pollen_blast_alert": {
+        "name": "Pollenschub-Warnung"
+      },
+      "coastal_flood_alert": {
+        "name": "Küstenhochwasser-Warnung"
       },
       "ventilation_window": {
         "name": "Lüftungsfenster"

@@ -413,3 +413,79 @@ def test_new_condition_sensor_value_extraction():
         by_key["atmospheric_stability"].value_fn(_feature(Feature.ATMOSPHERIC_STABILITY, stability_class="stable"))
         == "stable"
     )
+
+
+def test_every_feature_has_a_njord_key():
+    assert set(FEATURE_KEYS) == set(Feature)
+
+
+def test_v2_condition_and_forecast_sensor_value_extraction():
+    from custom_components.njord.lifestyle import LIFESTYLE_SENSORS
+
+    by_key = {d.key: d for d in LIFESTYLE_SENSORS}
+    assert by_key["snow_depth_watch"].value_fn(_feature(Feature.SNOW_DEPTH_WATCH, level="light", depth_cm=4.5)) == 4.5
+    assert by_key["soil_moisture"].value_fn(_feature(Feature.SOIL_MOISTURE, level="dry", moisture=0.12)) == 0.12
+    assert by_key["evapotranspiration"].value_fn(_feature(Feature.EVAPOTRANSPIRATION, daily_mm=3.2)) == 3.2
+    assert by_key["ragweed_pollen_peak"].value_fn(_feature(Feature.RAGWEED_POLLEN, peak_value=18.0)) == 18.0
+    assert by_key["ocean_currents"].value_fn(_feature(Feature.OCEAN_CURRENTS, peak_velocity_kmh=2.5)) == 2.5
+    assert by_key["elevated_wind"].value_fn(_feature(Feature.ELEVATED_WIND, speed_80m=9.1, direction_80m=270.0)) == 9.1
+    assert by_key["growing_degree"].value_fn(_feature(Feature.GROWING_DEGREE, cumulative_gdd=120.5, days=[])) == 120.5
+
+
+def test_granular_aqi_sensor_shows_worst_pollutant():
+    from custom_components.njord.lifestyle import LIFESTYLE_SENSORS
+
+    by_key = {d.key: d for d in LIFESTYLE_SENSORS}
+    aqi = by_key["granular_aqi"]
+    assert aqi.value_fn(_feature(Feature.GRANULAR_AQI, pm25_aqi=40.0, ozone_aqi=75.0)) == 75.0
+    assert aqi.value_fn(_feature(Feature.GRANULAR_AQI)) is None
+
+
+def test_v2_alert_features_map_to_alert_types():
+    from custom_components.njord.const import ALERT_META, alert_type_of
+
+    for feature in (
+        Feature.RAIN_PROBABILITY,
+        Feature.WET_BULB_DANGER,
+        Feature.CLEAR_SKY_UV,
+        Feature.SHOWER,
+        Feature.SMOG_RISK,
+        Feature.FIRE_RISK,
+        Feature.POLLEN_BLAST,
+        Feature.COASTAL_FLOOD,
+    ):
+        assert alert_type_of(feature) is AlertType(feature.value)
+        assert alert_type_of(feature) in ALERT_META
+
+
+def test_v2_alert_and_condition_events_converted():
+    alert = _to_feature(
+        weather_pb2.EnrichmentEvent(
+            location="home",
+            coastal_flood=weather_pb2.CoastalFloodAlert(
+                alert=weather_pb2.AlertData(severity=common_pb2.ALERT_SEVERITY_ORANGE),
+                sea_level_deviation=0.8,
+                max_wave_height=3.1,
+            ),
+        )
+    )
+    condition = _to_feature(
+        weather_pb2.EnrichmentEvent(
+            location="home",
+            snow_depth_watch=weather_pb2.SnowDepthWatchCondition(
+                level=weather_pb2.SNOW_DEPTH_LEVEL_HEAVY, depth_cm=25.0
+            ),
+        )
+    )
+
+    assert alert is not None
+    assert alert.feature is Feature.COASTAL_FLOOD
+    assert alert.alert is not None
+    assert alert.alert.severity is AlertSeverity.ORANGE
+    assert alert.values["sea_level_deviation"] == 0.8
+    assert alert.values["max_wave_height"] == 3.1
+    assert condition is not None
+    assert condition.feature is Feature.SNOW_DEPTH_WATCH
+    assert condition.alert is None
+    assert condition.values["level"] == "heavy"
+    assert condition.values["depth_cm"] == 25.0

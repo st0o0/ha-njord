@@ -21,6 +21,8 @@ from .models import (
     BudgetStatusData,
     CatalogData,
     DomainData,
+    EnsembleDomainData,
+    EnsembleSampleData,
     FeatureData,
     FloodDomainData,
     FloodSampleData,
@@ -146,6 +148,41 @@ def _to_forecast_sample(pb: weather_pb2.ForecastSample) -> ForecastSampleData:
         soil_temperature=_opt(pb, "soil_temperature"),
         freezing_level_height=_opt(pb, "freezing_level_height"),
         is_day=_opt(pb, "is_day"),
+        uv_index_clear_sky=_opt(pb, "uv_index_clear_sky"),
+        showers=_opt(pb, "showers"),
+        soil_moisture_0_to_1cm=_opt(pb, "soil_moisture_0_to_1cm"),
+        soil_moisture_1_to_3cm=_opt(pb, "soil_moisture_1_to_3cm"),
+        evapotranspiration=_opt(pb, "evapotranspiration"),
+        vapour_pressure_deficit=_opt(pb, "vapour_pressure_deficit"),
+        boundary_layer_height=_opt(pb, "boundary_layer_height"),
+        cloud_cover_low=_opt(pb, "cloud_cover_low"),
+        cloud_cover_mid=_opt(pb, "cloud_cover_mid"),
+        cloud_cover_high=_opt(pb, "cloud_cover_high"),
+        convective_inhibition=_opt(pb, "convective_inhibition"),
+        lifted_index=_opt(pb, "lifted_index"),
+        surface_pressure=_opt(pb, "surface_pressure"),
+        wind_speed_80m=_opt(pb, "wind_speed_80m"),
+        wind_direction_80m=_opt(pb, "wind_direction_80m"),
+        wind_speed_120m=_opt(pb, "wind_speed_120m"),
+        wind_direction_120m=_opt(pb, "wind_direction_120m"),
+        temperature_80m=_opt(pb, "temperature_80m"),
+        temperature_120m=_opt(pb, "temperature_120m"),
+        wind_direction_10m=_opt(pb, "wind_direction_10m"),
+        snow_depth=_opt(pb, "snow_depth"),
+        shortwave_radiation=_opt(pb, "shortwave_radiation"),
+        direct_radiation=_opt(pb, "direct_radiation"),
+        diffuse_radiation=_opt(pb, "diffuse_radiation"),
+        direct_normal_irradiance=_opt(pb, "direct_normal_irradiance"),
+        sunshine_duration=_opt(pb, "sunshine_duration"),
+        global_tilted_irradiance=_opt(pb, "global_tilted_irradiance"),
+        wet_bulb_temperature_2m=_opt(pb, "wet_bulb_temperature_2m"),
+        snowfall_height=_opt(pb, "snowfall_height"),
+        wind_speed_100m=_opt(pb, "wind_speed_100m"),
+        wind_direction_100m=_opt(pb, "wind_direction_100m"),
+        thunderstorm_probability=_opt(pb, "thunderstorm_probability"),
+        precipitation_type=_opt(pb, "precipitation_type"),
+        surface_temperature=_opt(pb, "surface_temperature"),
+        snowfall_water_equivalent=_opt(pb, "snowfall_water_equivalent"),
     )
 
 
@@ -159,6 +196,27 @@ def _to_air_quality_sample(pb: weather_pb2.AirQualitySample) -> AirQualitySample
         grass_pollen=_opt(pb, "grass_pollen"),
         alder=_opt(pb, "alder"),
         mugwort=_opt(pb, "mugwort"),
+        dust=_opt(pb, "dust"),
+        ammonia=_opt(pb, "ammonia"),
+        olive_pollen=_opt(pb, "olive_pollen"),
+        us_aqi=_opt(pb, "us_aqi"),
+        uv_index=_opt(pb, "uv_index"),
+        uv_index_clear_sky=_opt(pb, "uv_index_clear_sky"),
+        ragweed_pollen=_opt(pb, "ragweed_pollen"),
+        european_aqi_pm25=_opt(pb, "european_aqi_pm25"),
+        european_aqi_pm10=_opt(pb, "european_aqi_pm10"),
+        european_aqi_nitrogen_dioxide=_opt(pb, "european_aqi_nitrogen_dioxide"),
+        european_aqi_ozone=_opt(pb, "european_aqi_ozone"),
+        european_aqi_sulphur_dioxide=_opt(pb, "european_aqi_sulphur_dioxide"),
+        aerosol_optical_depth=_opt(pb, "aerosol_optical_depth"),
+        carbon_dioxide=_opt(pb, "carbon_dioxide"),
+        methane=_opt(pb, "methane"),
+        us_aqi_pm25=_opt(pb, "us_aqi_pm25"),
+        us_aqi_pm10=_opt(pb, "us_aqi_pm10"),
+        us_aqi_nitrogen_dioxide=_opt(pb, "us_aqi_nitrogen_dioxide"),
+        us_aqi_ozone=_opt(pb, "us_aqi_ozone"),
+        us_aqi_sulphur_dioxide=_opt(pb, "us_aqi_sulphur_dioxide"),
+        us_aqi_carbon_monoxide=_opt(pb, "us_aqi_carbon_monoxide"),
     )
 
 
@@ -182,6 +240,25 @@ def _to_marine_sample(pb: weather_pb2.MarineSample) -> MarineSampleData:
         wave_period=pb.wave_period,
         wave_direction=pb.wave_direction,
         water_temperature=_opt(pb, "water_temperature"),
+        wind_wave_height=_opt(pb, "wind_wave_height"),
+        wind_wave_period=_opt(pb, "wind_wave_period"),
+        wind_wave_direction=_opt(pb, "wind_wave_direction"),
+        wind_wave_peak_period=_opt(pb, "wind_wave_peak_period"),
+        swell_wave_height=_opt(pb, "swell_wave_height"),
+        swell_wave_period=_opt(pb, "swell_wave_period"),
+        swell_wave_direction=_opt(pb, "swell_wave_direction"),
+        swell_wave_peak_period=_opt(pb, "swell_wave_peak_period"),
+        sea_level_height_msl=_opt(pb, "sea_level_height_msl"),
+        ocean_current_velocity=_opt(pb, "ocean_current_velocity"),
+        ocean_current_direction=_opt(pb, "ocean_current_direction"),
+        secondary_swell_wave_height=_opt(pb, "secondary_swell_wave_height"),
+        secondary_swell_wave_direction=_opt(pb, "secondary_swell_wave_direction"),
+        secondary_swell_wave_period=_opt(pb, "secondary_swell_wave_period"),
+        tertiary_swell_wave_height=_opt(pb, "tertiary_swell_wave_height"),
+        tertiary_swell_wave_direction=_opt(pb, "tertiary_swell_wave_direction"),
+        tertiary_swell_wave_period=_opt(pb, "tertiary_swell_wave_period"),
+        invert_barometer_height=_opt(pb, "invert_barometer_height"),
+        wave_peak_period=_opt(pb, "wave_peak_period"),
     )
 
 
@@ -191,6 +268,27 @@ def _to_seasonal_sample(pb: weather_pb2.SeasonalSample) -> SeasonalSampleData:
         temperature_anomaly=_opt(pb, "temperature_anomaly"),
         precipitation_anomaly=_opt(pb, "precipitation_anomaly"),
         precipitation_mean=_opt(pb, "precipitation_mean"),
+    )
+
+
+def _to_ensemble_sample(pb: weather_pb2.EnsembleSample) -> EnsembleSampleData:
+    return EnsembleSampleData(
+        valid_at=_ts_to_dt(pb.valid_at),
+        temperature_spread=_opt(pb, "temperature_spread"),
+        precipitation_spread=_opt(pb, "precipitation_spread"),
+        wind_speed_spread=_opt(pb, "wind_speed_spread"),
+        pressure_msl_spread=_opt(pb, "pressure_msl_spread"),
+        cloud_cover_spread=_opt(pb, "cloud_cover_spread"),
+        wind_gusts_10m_spread=_opt(pb, "wind_gusts_10m_spread"),
+        cape_spread=_opt(pb, "cape_spread"),
+        snowfall_spread=_opt(pb, "snowfall_spread"),
+        rain_spread=_opt(pb, "rain_spread"),
+        dew_point_2m_spread=_opt(pb, "dew_point_2m_spread"),
+        relative_humidity_2m_spread=_opt(pb, "relative_humidity_2m_spread"),
+        surface_pressure_spread=_opt(pb, "surface_pressure_spread"),
+        wind_direction_10m_spread=_opt(pb, "wind_direction_10m_spread"),
+        wet_bulb_temperature_2m_spread=_opt(pb, "wet_bulb_temperature_2m_spread"),
+        wind_speed_100m_spread=_opt(pb, "wind_speed_100m_spread"),
     )
 
 
@@ -213,7 +311,7 @@ def _to_domain_data(pb: weather_pb2.DomainDataUpdate) -> DomainData | None:
         case "seasonal":
             return SeasonalDomainData(pb.location, model_run, [_to_seasonal_sample(p) for p in pb.seasonal.points])
         case "ensemble":
-            return None
+            return EnsembleDomainData(pb.location, model_run, [_to_ensemble_sample(p) for p in pb.ensemble.points])
     return None
 
 
