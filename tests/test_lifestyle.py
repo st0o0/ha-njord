@@ -318,34 +318,47 @@ async def test_streamed_feature_creates_and_updates_entity(hass: HomeAssistant, 
     assert state.state == "90"
 
 
-def _comparison(*max_temps: float | None) -> FeatureData:
+def _comparison(feature: Feature, *max_temps: float | None) -> FeatureData:
     models = [{"model": f"m{i}", "max_temperature": t} for i, t in enumerate(max_temps)]
-    return _feature(Feature.MODEL_COMPARISON, days=[{"year": 2026, "month": 7, "day": 1, "models": models}])
+    return _feature(feature, days=[{"year": 2026, "month": 7, "day": 1, "models": models}])
 
 
-async def test_model_comparison_sensor_shows_spread(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
-    await _setup(hass, mock_client, mock_config_entry, [_comparison(21.4, 19.0)], active=["Forecast:ModelComparison"])
+_COMPARISONS = [
+    (Feature.FORECAST_MODEL_COMPARISON, "forecast_model_comparison", "Forecast:ForecastModelComparison"),
+    (Feature.ENSEMBLE_MODEL_COMPARISON, "ensemble_model_comparison", "Forecast:EnsembleModelComparison"),
+]
 
-    state = _state(hass, mock_config_entry, "sensor", "model_comparison")
+
+@pytest.mark.parametrize(("feature", "key", "active"), _COMPARISONS)
+async def test_model_comparison_sensor_shows_spread(
+    hass: HomeAssistant, mock_client, mock_config_entry, feature, key, active
+) -> None:
+    await _setup(hass, mock_client, mock_config_entry, [_comparison(feature, 21.4, 19.0)], active=[active])
+
+    state = _state(hass, mock_config_entry, "sensor", key)
     assert state is not None
     assert float(state.state) == pytest.approx(2.4)
     assert len(state.attributes["days"]) == 1
 
 
-async def test_model_comparison_single_model_is_unknown(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
-    await _setup(hass, mock_client, mock_config_entry, [_comparison(21.4, None)], active=["Forecast:ModelComparison"])
+@pytest.mark.parametrize(("feature", "key", "active"), _COMPARISONS)
+async def test_model_comparison_single_model_is_unknown(
+    hass: HomeAssistant, mock_client, mock_config_entry, feature, key, active
+) -> None:
+    await _setup(hass, mock_client, mock_config_entry, [_comparison(feature, 21.4, None)], active=[active])
 
-    state = _state(hass, mock_config_entry, "sensor", "model_comparison")
+    state = _state(hass, mock_config_entry, "sensor", key)
     assert state is not None
     assert state.state == "unknown"
 
 
+@pytest.mark.parametrize(("feature", "key", "active"), _COMPARISONS)
 async def test_model_comparison_sensor_needs_active_enrichment(
-    hass: HomeAssistant, mock_client, mock_config_entry
+    hass: HomeAssistant, mock_client, mock_config_entry, feature, key, active
 ) -> None:
-    await _setup(hass, mock_client, mock_config_entry, [_comparison(21.4, 19.0)], active=["Forecast:Uv"])
+    await _setup(hass, mock_client, mock_config_entry, [_comparison(feature, 21.4, 19.0)], active=["Forecast:Uv"])
 
-    assert _state(hass, mock_config_entry, "sensor", "model_comparison") is None
+    assert _state(hass, mock_config_entry, "sensor", key) is None
 
 
 # --- Added features ---

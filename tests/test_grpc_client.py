@@ -469,7 +469,10 @@ def test_model_info_enabled_is_mapped():
 
 def test_weather_update_carries_model():
     pb = weather_pb2.DomainDataUpdate(
-        location="home", domain=weather_pb2.DOMAIN_FORECAST, model="ecmwf_ifs025", forecast=weather_pb2.ForecastDomainData()
+        location="home",
+        domain=weather_pb2.DOMAIN_FORECAST,
+        model="ecmwf_ifs025",
+        forecast=weather_pb2.ForecastDomainData(),
     )
 
     data = _to_domain_data(pb)
@@ -492,28 +495,37 @@ async def test_get_domain_data_sends_model():
     assert second.model == ""
 
 
-def test_model_comparison_feature_converted():
+@pytest.mark.parametrize(
+    ("field", "wrapper", "feature"),
+    [
+        ("forecast_model_comparison", weather_pb2.ForecastModelComparison, Feature.FORECAST_MODEL_COMPARISON),
+        ("ensemble_model_comparison", weather_pb2.EnsembleModelComparison, Feature.ENSEMBLE_MODEL_COMPARISON),
+    ],
+)
+def test_model_comparison_feature_converted(field, wrapper, feature):
     pb = weather_pb2.EnrichmentEvent(
         location="home",
-        model_comparison=weather_pb2.ModelComparison(
-            days=[
-                weather_pb2.ModelComparisonDay(
-                    year=2026,
-                    month=7,
-                    day=1,
-                    models=[
-                        weather_pb2.ModelDayValues(model="icon_d2", max_temperature=21.4, precipitation=0.5),
-                        weather_pb2.ModelDayValues(model="ecmwf_ifs025", max_temperature=19.0),
-                    ],
-                )
-            ]
-        ),
+        **{
+            field: wrapper(
+                days=[
+                    weather_pb2.ModelComparisonDay(
+                        year=2026,
+                        month=7,
+                        day=1,
+                        models=[
+                            weather_pb2.ModelDayValues(model="icon_d2", max_temperature=21.4, precipitation=0.5),
+                            weather_pb2.ModelDayValues(model="ecmwf_ifs025", max_temperature=19.0),
+                        ],
+                    )
+                ]
+            )
+        },
     )
 
     item = _to_feature(pb)
 
     assert item is not None
-    assert item.feature is Feature.MODEL_COMPARISON
+    assert item.feature is feature
     assert "forecast" not in item.values
     days = item.values["days"]
     assert len(days) == 1

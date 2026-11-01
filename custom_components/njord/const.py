@@ -235,7 +235,8 @@ class Feature(StrEnum):
     CONFIDENCE_TREND = "confidence_trend"
     POLLEN_TREND = "pollen_trend"
     SEASONAL_OUTLOOK = "seasonal_outlook"
-    MODEL_COMPARISON = "model_comparison"
+    FORECAST_MODEL_COMPARISON = "forecast_model_comparison"
+    ENSEMBLE_MODEL_COMPARISON = "ensemble_model_comparison"
     COMPOUND_HEAT_STRESS = "compound_heat_stress"
     MIGRAINE_RISK = "migraine_risk"
     ALLERGY_SEVERITY = "allergy_severity"
@@ -288,7 +289,8 @@ FEATURE_KEYS: dict[Feature, str] = {
     Feature.APPROACHING_FRONT: "Insight:FrontApproaching",
     Feature.SEASONAL_OUTLOOK: "Insight:SeasonalOutlook",
     Feature.SOLAR_YIELD: "Energy:SolarYield",
-    Feature.MODEL_COMPARISON: "Forecast:ModelComparison",
+    Feature.FORECAST_MODEL_COMPARISON: "Forecast:ForecastModelComparison",
+    Feature.ENSEMBLE_MODEL_COMPARISON: "Forecast:EnsembleModelComparison",
     Feature.COMPOUND_HEAT_STRESS: "Forecast:CompoundHeatStress",
     Feature.MIGRAINE_RISK: "Forecast:MigraineRisk",
     Feature.ALLERGY_SEVERITY: "AirQuality:AllergySeverity",

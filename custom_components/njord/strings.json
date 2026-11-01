@@ -141,8 +141,11 @@
       "seasonal_outlook": {
         "name": "Seasonal Temperature Anomaly"
       },
-      "model_comparison": {
-        "name": "Model Temperature Spread"
+      "forecast_model_comparison": {
+        "name": "Forecast Model Spread"
+      },
+      "ensemble_model_comparison": {
+        "name": "Ensemble Model Spread"
       },
       "allergy_severity": {
         "name": "Allergy Severity"

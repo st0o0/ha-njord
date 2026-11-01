@@ -44,6 +44,8 @@ def test_multi_model_proto_fields_exist():
     assert "enabled" in common_pb2.ModelInfo.DESCRIPTOR.fields_by_name
     assert "model" in weather_pb2.GetDomainDataRequest.DESCRIPTOR.fields_by_name
     assert "model" in weather_pb2.DomainDataUpdate.DESCRIPTOR.fields_by_name
-    for name in ("ModelComparison", "ModelComparisonDay", "ModelDayValues"):
+    for name in ("ForecastModelComparison", "EnsembleModelComparison", "ModelComparisonDay", "ModelDayValues"):
         assert hasattr(weather_pb2, name)
-    assert "model_comparison" in weather_pb2.EnrichmentEvent.DESCRIPTOR.fields_by_name
+    assert "forecast_model_comparison" in weather_pb2.EnrichmentEvent.DESCRIPTOR.fields_by_name
+    assert "ensemble_model_comparison" in weather_pb2.EnrichmentEvent.DESCRIPTOR.fields_by_name
+    assert "model_comparison" not in weather_pb2.EnrichmentEvent.DESCRIPTOR.fields_by_name
