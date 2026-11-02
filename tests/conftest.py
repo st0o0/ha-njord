@@ -66,7 +66,18 @@ def forecast_sample(valid_at: datetime = PAST, **overrides) -> ForecastSampleDat
 
 def default_catalog() -> CatalogData:
     return CatalogData(
-        locations=[NjordLocation(name="home", latitude=47.05, longitude=8.31, models=["icon_d2", "ecmwf_ifs025"])],
+        locations=[
+            NjordLocation(
+                name="home",
+                latitude=47.05,
+                longitude=8.31,
+                models=["icon_d2", "ecmwf_ifs025"],
+                resolved_domains={
+                    "air_quality": frozenset({"pm25", "pm10", "ozone", "birch_pollen", "grass_pollen", "alder", "mugwort"}),
+                    "flood": frozenset({"discharge", "discharge_mean"}),
+                },
+            )
+        ],
         model_info={
             "icon_d2": ModelInfoData(
                 id="icon_d2",
@@ -101,7 +112,7 @@ def default_domain_data(location: str, domain: Domain, model: str = ""):
             return AirQualityDomainData(
                 location,
                 MODEL_RUN,
-                [AirQualitySampleData(valid_at=PAST, pm25=12.34, pm10=20.0, ozone=80.0, birch_pollen=3.0)],
+                [AirQualitySampleData(valid_at=PAST, pm25=12.34, pm10=20.0, ozone=80.0, birch_pollen=3.0)],  # noqa: E501
             )
         case Domain.FLOOD:
             return FloodDomainData(

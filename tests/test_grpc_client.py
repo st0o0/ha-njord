@@ -51,7 +51,7 @@ async def _aiter(*items, error: Exception | None = None):
 def test_weather_update_converted():
     pb = weather_pb2.DomainDataUpdate(
         location="home",
-        domain=weather_pb2.DOMAIN_FORECAST,
+        domain=common_pb2.DOMAIN_FORECAST,
         model_run=_ts(),
         forecast=weather_pb2.ForecastDomainData(
             points=[
@@ -318,7 +318,7 @@ async def test_get_domain_data_sends_location_and_domain():
 
     request = client._weather_stub.GetDomainData.await_args.args[0]
     assert request.location == "home"
-    assert request.domain == weather_pb2.DOMAIN_FLOOD
+    assert request.domain == common_pb2.DOMAIN_FLOOD
     assert isinstance(data, FloodDomainData)
 
 
@@ -405,8 +405,8 @@ async def test_stream_domain_data_skips_unconvertible_messages():
     request = client._weather_stub.StreamDomainData.call_args.args[0]
     assert request.location == ""
     assert list(request.domains) == [
-        weather_pb2.DOMAIN_FORECAST,
-        weather_pb2.DOMAIN_AIR_QUALITY,
+        common_pb2.DOMAIN_FORECAST,
+        common_pb2.DOMAIN_AIR_QUALITY,
     ]
     on_reconnect.assert_called_once_with()
 
@@ -471,7 +471,7 @@ def test_model_info_enabled_is_mapped():
 def test_weather_update_carries_model():
     pb = weather_pb2.DomainDataUpdate(
         location="home",
-        domain=weather_pb2.DOMAIN_FORECAST,
+        domain=common_pb2.DOMAIN_FORECAST,
         model="ecmwf_ifs025",
         forecast=weather_pb2.ForecastDomainData(),
     )
@@ -678,7 +678,7 @@ def test_marine_extended_fields_converted():
 def test_ensemble_update_converted():
     pb = weather_pb2.DomainDataUpdate(
         location="home",
-        domain=weather_pb2.DOMAIN_ENSEMBLE,
+        domain=common_pb2.DOMAIN_ENSEMBLE,
         model_run=_ts(),
         ensemble=weather_pb2.EnsembleData(
             points=[

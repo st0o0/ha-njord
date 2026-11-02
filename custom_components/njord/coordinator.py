@@ -47,6 +47,7 @@ class NjordCoordinatorData:
     model_domains: dict[tuple[str, str], ForecastDomainData] = field(default_factory=dict)
     model_info: dict[str, ModelInfoData] = field(default_factory=dict)
     active_enrichments: set[str] | None = None
+    domain_schemas: dict[tuple[str, Domain], frozenset[str]] = field(default_factory=dict)
 
     def locations_with(self, domain: Domain) -> list[str]:
         return sorted({location for location, kind in self.domains if kind == domain})
@@ -109,6 +110,13 @@ class NjordDataCoordinator(DataUpdateCoordinator[NjordCoordinatorData]):
         result.model_info.update(catalog.model_info)
 
         for location in catalog.locations:
+            for domain_key, fields in location.resolved_domains.items():
+                try:
+                    domain = Domain(domain_key)
+                except ValueError:
+                    continue
+                result.domain_schemas[(location.name, domain)] = fields
+
             for domain in TRACKED_DOMAINS:
                 try:
                     data = await self.client.get_domain_data(location.name, domain)

@@ -45,126 +45,129 @@ class DomainSensorDescription:
     value_fn: Callable[[object], float | None] | None = None
 
 
-DOMAIN_SENSORS: tuple[DomainSensorDescription, ...] = (
-    DomainSensorDescription(
-        key="pm25",
-        name="PM2.5",
-        domain=Domain.AIR_QUALITY,
-        field="pm25",
-        unit=CONCENTRATION_MICROGRAMS_PER_CUBIC_METER,
-        device_class=SensorDeviceClass.PM25,
-        precision=1,
-    ),
-    DomainSensorDescription(
-        key="pm10",
-        name="PM10",
-        domain=Domain.AIR_QUALITY,
-        field="pm10",
-        unit=CONCENTRATION_MICROGRAMS_PER_CUBIC_METER,
-        device_class=SensorDeviceClass.PM10,
-        precision=1,
-    ),
-    DomainSensorDescription(
-        key="ozone",
-        name="Ozone",
-        domain=Domain.AIR_QUALITY,
-        field="ozone",
-        unit=CONCENTRATION_MICROGRAMS_PER_CUBIC_METER,
-        device_class=SensorDeviceClass.OZONE,
-        precision=1,
-    ),
-    DomainSensorDescription(
-        key="birch_pollen",
-        name="Birch Pollen",
-        domain=Domain.AIR_QUALITY,
-        field="birch_pollen",
-        unit=POLLEN_UNIT,
-        icon="mdi:flower-pollen",
-        precision=1,
-    ),
-    DomainSensorDescription(
-        key="grass_pollen",
-        name="Grass Pollen",
-        domain=Domain.AIR_QUALITY,
-        field="grass_pollen",
-        unit=POLLEN_UNIT,
-        icon="mdi:flower-pollen",
-        precision=1,
-    ),
-    DomainSensorDescription(
-        key="alder_pollen",
-        name="Alder Pollen",
-        domain=Domain.AIR_QUALITY,
-        field="alder",
-        unit=POLLEN_UNIT,
-        icon="mdi:flower-pollen",
-        precision=1,
-    ),
-    DomainSensorDescription(
-        key="mugwort_pollen",
-        name="Mugwort Pollen",
-        domain=Domain.AIR_QUALITY,
-        field="mugwort",
-        unit=POLLEN_UNIT,
-        icon="mdi:flower-pollen",
-        precision=1,
-    ),
-    DomainSensorDescription(
-        key="river_discharge",
-        name="River Discharge",
-        domain=Domain.FLOOD,
-        field="discharge",
-        unit=DISCHARGE_UNIT,
-        icon="mdi:waves-arrow-right",
-        precision=1,
-        extra_fields=(
-            "discharge_mean",
-            "discharge_median",
-            "discharge_max",
-            "discharge_min",
-            "discharge_p25",
-            "discharge_p75",
+DOMAIN_SENSOR_REGISTRY: dict[tuple[Domain, str], DomainSensorDescription] = {
+    (d.domain, d.field): d
+    for d in (
+        DomainSensorDescription(
+            key="pm25",
+            name="PM2.5",
+            domain=Domain.AIR_QUALITY,
+            field="pm25",
+            unit=CONCENTRATION_MICROGRAMS_PER_CUBIC_METER,
+            device_class=SensorDeviceClass.PM25,
+            precision=1,
         ),
-    ),
-    DomainSensorDescription(
-        key="wave_height",
-        name="Wave Height",
-        domain=Domain.MARINE,
-        field="wave_height",
-        unit=UnitOfLength.METERS,
-        device_class=SensorDeviceClass.DISTANCE,
-        icon="mdi:waves",
-        precision=1,
-    ),
-    DomainSensorDescription(
-        key="wave_period",
-        name="Wave Period",
-        domain=Domain.MARINE,
-        field="wave_period",
-        unit=UnitOfTime.SECONDS,
-        device_class=SensorDeviceClass.DURATION,
-        icon="mdi:sine-wave",
-        precision=1,
-    ),
-    DomainSensorDescription(
-        key="wave_direction",
-        name="Wave Direction",
-        domain=Domain.MARINE,
-        field="wave_direction",
-        unit=DEGREE,
-        icon="mdi:compass-outline",
-        precision=0,
-    ),
-    DomainSensorDescription(
-        key="water_temperature",
-        name="Water Temperature",
-        domain=Domain.MARINE,
-        field="water_temperature",
-        unit=UnitOfTemperature.CELSIUS,
-        device_class=SensorDeviceClass.TEMPERATURE,
-        precision=1,
-    ),
-)
+        DomainSensorDescription(
+            key="pm10",
+            name="PM10",
+            domain=Domain.AIR_QUALITY,
+            field="pm10",
+            unit=CONCENTRATION_MICROGRAMS_PER_CUBIC_METER,
+            device_class=SensorDeviceClass.PM10,
+            precision=1,
+        ),
+        DomainSensorDescription(
+            key="ozone",
+            name="Ozone",
+            domain=Domain.AIR_QUALITY,
+            field="ozone",
+            unit=CONCENTRATION_MICROGRAMS_PER_CUBIC_METER,
+            device_class=SensorDeviceClass.OZONE,
+            precision=1,
+        ),
+        DomainSensorDescription(
+            key="birch_pollen",
+            name="Birch Pollen",
+            domain=Domain.AIR_QUALITY,
+            field="birch_pollen",
+            unit=POLLEN_UNIT,
+            icon="mdi:flower-pollen",
+            precision=1,
+        ),
+        DomainSensorDescription(
+            key="grass_pollen",
+            name="Grass Pollen",
+            domain=Domain.AIR_QUALITY,
+            field="grass_pollen",
+            unit=POLLEN_UNIT,
+            icon="mdi:flower-pollen",
+            precision=1,
+        ),
+        DomainSensorDescription(
+            key="alder_pollen",
+            name="Alder Pollen",
+            domain=Domain.AIR_QUALITY,
+            field="alder",
+            unit=POLLEN_UNIT,
+            icon="mdi:flower-pollen",
+            precision=1,
+        ),
+        DomainSensorDescription(
+            key="mugwort_pollen",
+            name="Mugwort Pollen",
+            domain=Domain.AIR_QUALITY,
+            field="mugwort",
+            unit=POLLEN_UNIT,
+            icon="mdi:flower-pollen",
+            precision=1,
+        ),
+        DomainSensorDescription(
+            key="river_discharge",
+            name="River Discharge",
+            domain=Domain.FLOOD,
+            field="discharge",
+            unit=DISCHARGE_UNIT,
+            icon="mdi:waves-arrow-right",
+            precision=1,
+            extra_fields=(
+                "discharge_mean",
+                "discharge_median",
+                "discharge_max",
+                "discharge_min",
+                "discharge_p25",
+                "discharge_p75",
+            ),
+        ),
+        DomainSensorDescription(
+            key="wave_height",
+            name="Wave Height",
+            domain=Domain.MARINE,
+            field="wave_height",
+            unit=UnitOfLength.METERS,
+            device_class=SensorDeviceClass.DISTANCE,
+            icon="mdi:waves",
+            precision=1,
+        ),
+        DomainSensorDescription(
+            key="wave_period",
+            name="Wave Period",
+            domain=Domain.MARINE,
+            field="wave_period",
+            unit=UnitOfTime.SECONDS,
+            device_class=SensorDeviceClass.DURATION,
+            icon="mdi:sine-wave",
+            precision=1,
+        ),
+        DomainSensorDescription(
+            key="wave_direction",
+            name="Wave Direction",
+            domain=Domain.MARINE,
+            field="wave_direction",
+            unit=DEGREE,
+            icon="mdi:compass-outline",
+            precision=0,
+        ),
+        DomainSensorDescription(
+            key="water_temperature",
+            name="Water Temperature",
+            domain=Domain.MARINE,
+            field="water_temperature",
+            unit=UnitOfTemperature.CELSIUS,
+            device_class=SensorDeviceClass.TEMPERATURE,
+            precision=1,
+        ),
+    )
+}
 
 
 def _get_sw_version(hass: HomeAssistant, entry: ConfigEntry) -> str | None:
@@ -177,10 +180,17 @@ def _get_sw_version(hass: HomeAssistant, entry: ConfigEntry) -> str | None:
 def _domain_sensors(
     coordinator: NjordDataCoordinator, entry: ConfigEntry, location: str, domain: Domain, sw_version: str | None
 ) -> list[SensorEntity]:
+    schema_fields = coordinator.data.domain_schemas.get((location, domain))
+    if schema_fields is not None:
+        return [
+            NjordDomainSensor(coordinator, entry, location, desc, sw_version)
+            for field_name in schema_fields
+            if (desc := DOMAIN_SENSOR_REGISTRY.get((domain, field_name))) is not None
+        ]
     return [
-        NjordDomainSensor(coordinator, entry, location, description, sw_version)
-        for description in DOMAIN_SENSORS
-        if description.domain == domain
+        NjordDomainSensor(coordinator, entry, location, desc, sw_version)
+        for (d, _), desc in DOMAIN_SENSOR_REGISTRY.items()
+        if d == domain
     ]
 
 

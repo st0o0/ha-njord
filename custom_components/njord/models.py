@@ -14,17 +14,17 @@ from .const import AlertSeverity, AlertType, Domain, Feature, PollPhase
 @dataclass(frozen=True)
 class ForecastSampleData:
     valid_at: datetime
-    temperature: float
-    apparent_temperature: float
-    wind_speed: float
-    precipitation: float
-    precipitation_probability: float
-    cloud_cover: float
-    pressure: float
-    weather_code: int
-    humidity: float
-    dew_point: float
-    uv_index: float
+    weather_code: int = 0
+    temperature: float | None = None
+    apparent_temperature: float | None = None
+    wind_speed: float | None = None
+    precipitation: float | None = None
+    precipitation_probability: float | None = None
+    cloud_cover: float | None = None
+    pressure: float | None = None
+    humidity: float | None = None
+    dew_point: float | None = None
+    uv_index: float | None = None
     wind_gusts: float | None = None
     visibility: float | None = None
     cape: float | None = None
@@ -73,9 +73,9 @@ class ForecastSampleData:
 @dataclass(frozen=True)
 class AirQualitySampleData:
     valid_at: datetime
-    pm25: float
-    pm10: float
-    ozone: float
+    pm25: float | None = None
+    pm10: float | None = None
+    ozone: float | None = None
     birch_pollen: float | None = None
     grass_pollen: float | None = None
     alder: float | None = None
@@ -110,7 +110,7 @@ class AirQualitySampleData:
 @dataclass(frozen=True)
 class FloodSampleData:
     valid_at: datetime
-    discharge: float
+    discharge: float | None = None
     discharge_mean: float | None = None
     discharge_median: float | None = None
     discharge_max: float | None = None
@@ -122,9 +122,9 @@ class FloodSampleData:
 @dataclass(frozen=True)
 class MarineSampleData:
     valid_at: datetime
-    wave_height: float
-    wave_period: float
-    wave_direction: float
+    wave_height: float | None = None
+    wave_period: float | None = None
+    wave_direction: float | None = None
     water_temperature: float | None = None
     wind_wave_height: float | None = None
     wind_wave_period: float | None = None
@@ -256,6 +256,7 @@ class NjordLocation:
     latitude: float
     longitude: float
     models: list[str] = field(default_factory=list)
+    resolved_domains: dict[str, frozenset[str]] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)

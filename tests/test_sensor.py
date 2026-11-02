@@ -11,7 +11,7 @@ from homeassistant.helpers import entity_registry as er
 from custom_components.njord.const import DOMAIN, Domain
 from custom_components.njord.coordinator import NjordStatusCoordinator
 from custom_components.njord.models import BudgetStatusData, ServerStatusData
-from custom_components.njord.sensor import DOMAIN_SENSORS, NjordDailyUsageSensor, NjordMonthlyUsageSensor
+from custom_components.njord.sensor import DOMAIN_SENSOR_REGISTRY, NjordDailyUsageSensor, NjordMonthlyUsageSensor
 from tests.conftest import MODEL_RUN, entity_id_for, init_integration
 
 
@@ -24,9 +24,9 @@ def _state(hass: HomeAssistant, entry, key: str, platform: str = "sensor"):
 
 
 def test_domain_sensor_keys_are_unique_and_cover_domains() -> None:
-    keys = [d.key for d in DOMAIN_SENSORS]
+    keys = [d.key for d in DOMAIN_SENSOR_REGISTRY.values()]
     assert len(keys) == len(set(keys))
-    assert {d.domain for d in DOMAIN_SENSORS} == {Domain.AIR_QUALITY, Domain.FLOOD, Domain.MARINE}
+    assert {d.domain for d in DOMAIN_SENSOR_REGISTRY.values()} == {Domain.AIR_QUALITY, Domain.FLOOD, Domain.MARINE}
 
 
 async def test_air_quality_sensors(hass: HomeAssistant, mock_client, mock_config_entry) -> None:

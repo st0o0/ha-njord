@@ -79,13 +79,15 @@ _COVERAGE_TIER_MAP: dict[int, str] = {
 }
 
 _DOMAIN_TO_PB: dict[Domain, int] = {
-    Domain.FORECAST: weather_pb2.DOMAIN_FORECAST,
-    Domain.AIR_QUALITY: weather_pb2.DOMAIN_AIR_QUALITY,
-    Domain.FLOOD: weather_pb2.DOMAIN_FLOOD,
-    Domain.MARINE: weather_pb2.DOMAIN_MARINE,
-    Domain.SEASONAL: weather_pb2.DOMAIN_SEASONAL,
-    Domain.ENSEMBLE: weather_pb2.DOMAIN_ENSEMBLE,
+    Domain.FORECAST: common_pb2.DOMAIN_FORECAST,
+    Domain.AIR_QUALITY: common_pb2.DOMAIN_AIR_QUALITY,
+    Domain.FLOOD: common_pb2.DOMAIN_FLOOD,
+    Domain.MARINE: common_pb2.DOMAIN_MARINE,
+    Domain.SEASONAL: common_pb2.DOMAIN_SEASONAL,
+    Domain.ENSEMBLE: common_pb2.DOMAIN_ENSEMBLE,
 }
+
+_PB_TO_DOMAIN: dict[int, Domain] = {v: k for k, v in _DOMAIN_TO_PB.items()}
 
 _POLL_PHASE_MAP: dict[int, PollPhase] = {
     ops_pb2.POLL_PHASE_UNSPECIFIED: PollPhase.UNSPECIFIED,
@@ -116,7 +118,14 @@ def _to_model_info(pb: common_pb2.ModelInfo) -> ModelInfoData:
 
 
 def _to_location(pb: common_pb2.LocationInfo) -> NjordLocation:
-    return NjordLocation(name=pb.name, latitude=pb.latitude, longitude=pb.longitude, models=list(pb.models))
+    resolved: dict[str, frozenset[str]] = {}
+    for schema in pb.resolved_domains:
+        domain = _PB_TO_DOMAIN.get(schema.domain)
+        if domain is not None:
+            resolved[domain.value] = frozenset(schema.fields)
+    return NjordLocation(
+        name=pb.name, latitude=pb.latitude, longitude=pb.longitude, models=list(pb.models), resolved_domains=resolved
+    )
 
 
 def _to_catalog_data(pb: weather_pb2.GetCatalogResponse) -> CatalogData:
@@ -129,17 +138,17 @@ def _to_catalog_data(pb: weather_pb2.GetCatalogResponse) -> CatalogData:
 def _to_forecast_sample(pb: weather_pb2.ForecastSample) -> ForecastSampleData:
     return ForecastSampleData(
         valid_at=_ts_to_dt(pb.valid_at),
-        temperature=pb.temperature,
-        apparent_temperature=pb.apparent_temperature,
-        wind_speed=pb.wind_speed,
-        precipitation=pb.precipitation,
-        precipitation_probability=pb.precipitation_probability,
-        cloud_cover=pb.cloud_cover,
-        pressure=pb.pressure,
+        temperature=_opt(pb, "temperature"),
+        apparent_temperature=_opt(pb, "apparent_temperature"),
+        wind_speed=_opt(pb, "wind_speed"),
+        precipitation=_opt(pb, "precipitation"),
+        precipitation_probability=_opt(pb, "precipitation_probability"),
+        cloud_cover=_opt(pb, "cloud_cover"),
+        pressure=_opt(pb, "pressure"),
         weather_code=pb.weather_code,
-        humidity=pb.humidity,
-        dew_point=pb.dew_point,
-        uv_index=pb.uv_index,
+        humidity=_opt(pb, "humidity"),
+        dew_point=_opt(pb, "dew_point"),
+        uv_index=_opt(pb, "uv_index"),
         wind_gusts=_opt(pb, "wind_gusts"),
         visibility=_opt(pb, "visibility"),
         cape=_opt(pb, "cape"),
@@ -189,9 +198,9 @@ def _to_forecast_sample(pb: weather_pb2.ForecastSample) -> ForecastSampleData:
 def _to_air_quality_sample(pb: weather_pb2.AirQualitySample) -> AirQualitySampleData:
     return AirQualitySampleData(
         valid_at=_ts_to_dt(pb.valid_at),
-        pm25=pb.pm25,
-        pm10=pb.pm10,
-        ozone=pb.ozone,
+        pm25=_opt(pb, "pm25"),
+        pm10=_opt(pb, "pm10"),
+        ozone=_opt(pb, "ozone"),
         birch_pollen=_opt(pb, "birch_pollen"),
         grass_pollen=_opt(pb, "grass_pollen"),
         alder=_opt(pb, "alder"),
@@ -227,7 +236,7 @@ def _to_air_quality_sample(pb: weather_pb2.AirQualitySample) -> AirQualitySample
 def _to_flood_sample(pb: weather_pb2.FloodSample) -> FloodSampleData:
     return FloodSampleData(
         valid_at=_ts_to_dt(pb.valid_at),
-        discharge=pb.discharge,
+        discharge=_opt(pb, "discharge"),
         discharge_mean=_opt(pb, "discharge_mean"),
         discharge_median=_opt(pb, "discharge_median"),
         discharge_max=_opt(pb, "discharge_max"),
@@ -240,9 +249,9 @@ def _to_flood_sample(pb: weather_pb2.FloodSample) -> FloodSampleData:
 def _to_marine_sample(pb: weather_pb2.MarineSample) -> MarineSampleData:
     return MarineSampleData(
         valid_at=_ts_to_dt(pb.valid_at),
-        wave_height=pb.wave_height,
-        wave_period=pb.wave_period,
-        wave_direction=pb.wave_direction,
+        wave_height=_opt(pb, "wave_height"),
+        wave_period=_opt(pb, "wave_period"),
+        wave_direction=_opt(pb, "wave_direction"),
         water_temperature=_opt(pb, "water_temperature"),
         wind_wave_height=_opt(pb, "wind_wave_height"),
         wind_wave_period=_opt(pb, "wind_wave_period"),
