@@ -6,7 +6,7 @@ binary sensor, event, and button entities with real-time updates.
 
 ## Architecture
 
-ha-njord is a **pure consumer** -- it reads domain data and typed enrichments
+ha-njord is a **pure consumer** - it reads domain data and typed enrichments
 from njord via gRPC streaming and presents them as Home Assistant entities.
 There is no polling on the HA side; updates arrive in real time.
 
@@ -34,7 +34,7 @@ Dependency management is uv (`pyproject.toml` + committed `uv.lock`,
 distributable package).
 
 ```bash
-# Run tests -- native pytest fails on Windows (pytest-homeassistant-custom-component's
+# Run tests - native pytest fails on Windows (pytest-homeassistant-custom-component's
 # event-loop fixtures assume a Unix event loop). On Linux/macOS, uv works directly:
 uv sync --locked --all-extras
 uv run pytest tests/ -v --tb=short
@@ -101,7 +101,7 @@ workflow (`sync-protos.yml`) automates this on njord releases.
 
 ## Conventions
 
-- **Git: NEVER `git push`** -- the user pushes. Commit messages are Conventional
+- **Git: NEVER `git push`** - the user pushes. Commit messages are Conventional
   Commits (commitlint-enforced).
 - Versioning is release-please. Never edit version in `manifest.json` or
   `pyproject.toml` by hand.
@@ -111,9 +111,9 @@ workflow (`sync-protos.yml`) automates this on njord releases.
 
 ## Security-sensitive areas
 
-- `custom_components/njord/grpc_client.py` -- gRPC connection to njord server
-- `custom_components/njord/proto/` -- generated protobuf stubs (synced from njord)
-- `custom_components/njord/config_flow.py` -- host/port configuration input
+- `custom_components/njord/grpc_client.py` - gRPC connection to njord server
+- `custom_components/njord/proto/` - generated protobuf stubs (synced from njord)
+- `custom_components/njord/config_flow.py` - host/port configuration input
 
 ## Documentation
 
