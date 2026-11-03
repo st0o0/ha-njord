@@ -1,22 +1,11 @@
-<p align="center">
-  <img src="brand/logo.svg" width="120" alt="njord" />
-</p>
+# ha-njord
 
-<h1 align="center">ha-njord</h1>
+[![Release](https://img.shields.io/github/v/release/st0o0/ha-njord?sort=semver&style=flat-square)](https://github.com/st0o0/ha-njord/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=flat-square)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.12+-3776ab?style=flat-square)](https://www.python.org/)
+[![HACS](https://img.shields.io/badge/HACS-custom-41bdf5?style=flat-square)](https://hacs.xyz/)
 
-<p align="center">
-  Home Assistant custom integration for the <a href="https://github.com/st0o0/njord">njord</a> weather intelligence service
-</p>
-
-<p align="center">
-  <a href="https://github.com/st0o0/ha-njord/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="License" /></a>
-  <img src="https://img.shields.io/badge/python-3.12+-3776ab" alt="Python 3.12+" />
-  <img src="https://img.shields.io/badge/HACS-custom-41bdf5" alt="HACS" />
-</p>
-
----
-
-Connects to a [njord](https://github.com/st0o0/njord) instance via gRPC streaming and creates native Home Assistant entities for multi-domain weather intelligence. Data arrives in real time, with no polling delay on the HA side.
+Home Assistant custom integration for the [njord](https://github.com/st0o0/njord) weather intelligence service. Connects via gRPC streaming and creates native Home Assistant entities for multi-domain weather intelligence. Data arrives in real time, with no polling delay on the HA side.
 
 ## Features
 
@@ -80,6 +69,8 @@ docker run --rm -v "$PWD:/work" -w /work python:3.12-slim \
     protos/njord/v2/weather.proto \
     protos/njord/v2/ops.proto"
 ```
+
+Commits follow [Conventional Commits](https://www.conventionalcommits.org/); releases are cut automatically by release-please.
 
 ## License
 
