@@ -73,7 +73,9 @@ def default_catalog() -> CatalogData:
                 longitude=8.31,
                 models=["icon_d2", "ecmwf_ifs025"],
                 resolved_domains={
-                    "air_quality": frozenset({"pm25", "pm10", "ozone", "birch_pollen", "grass_pollen", "alder", "mugwort"}),
+                    "air_quality": frozenset(
+                        {"pm25", "pm10", "ozone", "birch_pollen", "grass_pollen", "alder", "mugwort"}
+                    ),
                     "flood": frozenset({"discharge", "discharge_mean"}),
                 },
             )
