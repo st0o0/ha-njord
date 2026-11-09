@@ -24,13 +24,13 @@
 
 ## 3. Coordinator v3 (Phase 3)
 
-- [ ] 3.1 Add `NjordV3Coordinator` to `custom_components/njord/coordinator.py` (or new file `v3_coordinator.py`): calls `get_manifest()` on setup, `subscribe()` for streaming. Processes EntityStateUpdate (dispatches to entities by entity_id), EntityUnavailable/EntityAvailable (marks entities). Snapshot-on-connect populates initial state.
+- [x] 3.1 Add `NjordV3Coordinator` to `custom_components/njord/coordinator.py` (or new file `v3_coordinator.py`): calls `get_manifest()` on setup, `subscribe()` for streaming. Processes EntityStateUpdate (dispatches to entities by entity_id), EntityUnavailable/EntityAvailable (marks entities). Snapshot-on-connect populates initial state.
 
 - [ ] 3.2 Wire v3 coordinator into `custom_components/njord/__init__.py`: replace NjordDataCoordinator with NjordV3Coordinator. Wire entity factory to create entities from manifest. Keep status coordinator (uses v3 GetStatus).
 
 - [ ] 3.3 Update `custom_components/njord/weather.py`: feed from v3 WeatherValue instead of v2 DomainDataUpdate. Map WeatherValue fields to HA weather attributes.
 
-- [ ] 3.4 Tests: `tests/test_v3_coordinator.py` — stream processing, snapshot, availability. Update `tests/test_weather.py` for v3 data path.
+- [x] 3.4 Tests: `tests/test_v3_coordinator.py` — stream processing, snapshot, availability. Update `tests/test_weather.py` for v3 data path.
 
 **Validation:** `uv run pytest tests/ -v --tb=short` (full suite)
 
