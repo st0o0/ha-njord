@@ -52,6 +52,12 @@ async def async_setup_entry(
     ]
     for location, model in sorted(coordinator.data.model_domains):
         entities.append(NjordWeatherEntity(coordinator, entry, location, sw_version, model=model))
+    v3_coordinator = hass.data[DOMAIN][entry.entry_id].get("v3_coordinator")
+    if v3_coordinator is not None:
+        from .entity_factory import create_v3_weather_entities
+
+        entities.extend(create_v3_weather_entities(v3_coordinator.manifest, v3_coordinator, entry, sw_version))
+
     async_add_entities(entities)
 
     def weather_factory(location: str, domain: Domain) -> list[WeatherEntity]:

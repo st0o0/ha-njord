@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from homeassistant.config_entries import ConfigEntry
 
-from .coordinator import NjordDataCoordinator
 from .models import ManifestEntity
+from .v3_coordinator import NjordV3Coordinator
 
 
 def create_v3_sensors(
     manifest: list[ManifestEntity],
-    coordinator: NjordDataCoordinator,
+    coordinator: NjordV3Coordinator,
     entry: ConfigEntry,
     sw_version: str | None,
 ) -> list:
@@ -26,7 +26,7 @@ def create_v3_sensors(
 
 def create_v3_binary_sensors(
     manifest: list[ManifestEntity],
-    coordinator: NjordDataCoordinator,
+    coordinator: NjordV3Coordinator,
     entry: ConfigEntry,
     sw_version: str | None,
 ) -> list:
@@ -37,4 +37,20 @@ def create_v3_binary_sensors(
         NjordV3AlertBinarySensor(coordinator, entry, e, sw_version)
         for e in manifest
         if e.output_kind == "alert"
+    ]
+
+
+def create_v3_weather_entities(
+    manifest: list[ManifestEntity],
+    coordinator: NjordV3Coordinator,
+    entry: ConfigEntry,
+    sw_version: str | None,
+) -> list:
+    """Create weather entities for weather manifest entries."""
+    from .v3_weather import NjordV3WeatherEntity
+
+    return [
+        NjordV3WeatherEntity(coordinator, entry, e, sw_version)
+        for e in manifest
+        if e.output_kind == "weather"
     ]

@@ -10,7 +10,7 @@ from homeassistant.components.sensor import SensorEntity, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .coordinator import NjordDataCoordinator
+from .v3_coordinator import NjordV3Coordinator
 from .helpers import device_info
 from .models import EntityState, ManifestEntity
 
@@ -18,14 +18,14 @@ _SEVERITY_NAMES = {0: "none", 1: "yellow", 2: "orange", 3: "red"}
 _CONFIDENCE_NAMES = {0: "unspecified", 1: "low", 2: "medium", 3: "high"}
 
 
-class NjordV3Sensor(CoordinatorEntity[NjordDataCoordinator], SensorEntity):
+class NjordV3Sensor(CoordinatorEntity[NjordV3Coordinator], SensorEntity):
     """A generic v3 sensor for scores, conditions, trends, forecasts, and observations."""
 
     _attr_has_entity_name = True
 
     def __init__(
         self,
-        coordinator: NjordDataCoordinator,
+        coordinator: NjordV3Coordinator,
         entry: ConfigEntry,
         manifest_entity: ManifestEntity,
         sw_version: str | None,
@@ -106,14 +106,14 @@ class NjordV3Sensor(CoordinatorEntity[NjordDataCoordinator], SensorEntity):
         return None
 
 
-class NjordV3AlertBinarySensor(CoordinatorEntity[NjordDataCoordinator], BinarySensorEntity):
+class NjordV3AlertBinarySensor(CoordinatorEntity[NjordV3Coordinator], BinarySensorEntity):
     """A generic v3 binary sensor for alerts."""
 
     _attr_has_entity_name = True
 
     def __init__(
         self,
-        coordinator: NjordDataCoordinator,
+        coordinator: NjordV3Coordinator,
         entry: ConfigEntry,
         manifest_entity: ManifestEntity,
         sw_version: str | None,

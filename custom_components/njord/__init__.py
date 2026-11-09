@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import timedelta
 
@@ -79,13 +80,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if status_coordinator is not None:
         coordinator.data.active_enrichments = set(status_coordinator.data.active_enrichments)
 
-    v3_coordinator = NjordV3Coordinator(hass, client)
+    v3_coordinator: NjordV3Coordinator | None = None
     try:
-        await v3_coordinator.async_setup()
-        await v3_coordinator.async_config_entry_first_refresh()
+        v3 = NjordV3Coordinator(hass, client)
+        await asyncio.wait_for(v3.async_setup(), timeout=5.0)
+        await v3.async_config_entry_first_refresh()
+        v3_coordinator = v3
     except Exception:
         _LOGGER.debug("v3 API not available, running v2 only")
-        v3_coordinator = None
 
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = {

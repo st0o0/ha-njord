@@ -192,6 +192,10 @@ def mock_client():
         )
     )
     mock.trigger_poll = AsyncMock(return_value=2)
+    mock.get_manifest = AsyncMock(side_effect=Exception("v3 not available in test"))
+    mock.subscribe = MagicMock(side_effect=Exception("v3 not available in test"))
+    mock.get_status_v3 = AsyncMock(side_effect=Exception("v3 not available in test"))
+    mock.trigger_poll_v3 = AsyncMock(side_effect=Exception("v3 not available in test"))
     mock.get_targets = AsyncMock(
         return_value=[
             TargetData(
