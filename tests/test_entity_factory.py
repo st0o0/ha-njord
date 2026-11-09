@@ -1,4 +1,4 @@
-"""Tests for the v3 entity factory."""
+"""Tests for the entity factory."""
 
 from __future__ import annotations
 

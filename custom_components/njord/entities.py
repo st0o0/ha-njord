@@ -19,7 +19,7 @@ _CONFIDENCE_NAMES = {0: "unspecified", 1: "low", 2: "medium", 3: "high"}
 
 
 class NjordEntitySensor(CoordinatorEntity[NjordStreamCoordinator], SensorEntity):
-    """A generic v3 sensor for scores, conditions, trends, forecasts, and observations."""
+    """A generic sensor for scores, conditions, trends, forecasts, and observations."""
 
     _attr_has_entity_name = True
 
@@ -107,7 +107,7 @@ class NjordEntitySensor(CoordinatorEntity[NjordStreamCoordinator], SensorEntity)
 
 
 class NjordAlertBinarySensor(CoordinatorEntity[NjordStreamCoordinator], BinarySensorEntity):
-    """A generic v3 binary sensor for alerts."""
+    """A generic binary sensor for alerts."""
 
     _attr_has_entity_name = True
 

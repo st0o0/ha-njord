@@ -20,7 +20,7 @@ from .const import (
 )
 from .coordinator import NjordStatusCoordinator
 from .grpc_client import NjordClient
-from .stream_coordinator import NjordV3Coordinator
+from .stream_coordinator import NjordStreamCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -64,7 +64,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
     await client.connect()
 
-    coordinator = NjordV3Coordinator(hass, client)
+    coordinator = NjordStreamCoordinator(hass, client)
     await asyncio.wait_for(coordinator.async_setup(), timeout=5.0)
     await coordinator.async_config_entry_first_refresh()
 
@@ -132,7 +132,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     if unload_ok:
         entry_data = hass.data[DOMAIN].pop(entry.entry_id)
-        v3_coord: NjordV3Coordinator = entry_data["coordinator"]
+        v3_coord: NjordStreamCoordinator = entry_data["coordinator"]
         await v3_coord.stop_stream()
         client: NjordClient = entry_data["client"]
         await client.close()

@@ -1,4 +1,4 @@
-"""Tests for v3 data models."""
+"""Tests for data models."""
 
 from __future__ import annotations
 

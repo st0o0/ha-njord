@@ -5,12 +5,12 @@ from __future__ import annotations
 from homeassistant.config_entries import ConfigEntry
 
 from .models import ManifestEntity
-from .stream_coordinator import NjordV3Coordinator
+from .stream_coordinator import NjordStreamCoordinator
 
 
 def create_sensors(
     manifest: list[ManifestEntity],
-    coordinator: NjordV3Coordinator,
+    coordinator: NjordStreamCoordinator,
     entry: ConfigEntry,
     sw_version: str | None,
 ) -> list:
@@ -26,7 +26,7 @@ def create_sensors(
 
 def create_binary_sensors(
     manifest: list[ManifestEntity],
-    coordinator: NjordV3Coordinator,
+    coordinator: NjordStreamCoordinator,
     entry: ConfigEntry,
     sw_version: str | None,
 ) -> list:
@@ -38,7 +38,7 @@ def create_binary_sensors(
 
 def create_weather_entities(
     manifest: list[ManifestEntity],
-    coordinator: NjordV3Coordinator,
+    coordinator: NjordStreamCoordinator,
     entry: ConfigEntry,
     sw_version: str | None,
 ) -> list:

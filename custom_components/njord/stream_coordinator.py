@@ -72,7 +72,7 @@ def _extract_value(update: njord_pb2.EntityStateUpdate):
 
 
 class NjordStreamCoordinator(DataUpdateCoordinator[None]):
-    """Stream-driven v3 coordinator: manifest + single Subscribe stream."""
+    """Stream-driven coordinator: manifest + single Subscribe stream."""
 
     def __init__(self, hass: HomeAssistant, client: NjordClient) -> None:
         super().__init__(

@@ -44,7 +44,7 @@ _CONDITION_MAP: dict[str, str] = {
 
 
 class NjordWeatherEntity(SingleCoordinatorWeatherEntity[NjordStreamCoordinator]):
-    """Weather entity driven by v3 WeatherValue from the Subscribe stream."""
+    """Weather entity driven by WeatherValue from the Subscribe stream."""
 
     _attr_has_entity_name = True
     _attr_name = None

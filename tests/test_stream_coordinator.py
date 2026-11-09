@@ -1,4 +1,4 @@
-"""Tests for the v3 coordinator."""
+"""Tests for the stream coordinator."""
 
 from __future__ import annotations
 

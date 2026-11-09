@@ -84,7 +84,7 @@ def auto_enable_custom_integrations(enable_custom_integrations):
 
 @pytest.fixture
 def mock_client():
-    """Patch NjordClient with v3 API mocks."""
+    """Patch NjordClient with API mocks."""
     mock = AsyncMock()
     mock.connect = AsyncMock()
     mock.close = AsyncMock()
