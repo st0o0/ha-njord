@@ -9,7 +9,7 @@ from google.protobuf.timestamp_pb2 import Timestamp
 from custom_components.njord.models import EntityState
 from custom_components.njord.proto.njord import njord_pb2 as v3_pb2
 from custom_components.njord.stream_coordinator import (
-    NjordV3Coordinator,
+    NjordStreamCoordinator,
     _extract_value,
     _parse_manifest,
 )
@@ -102,8 +102,8 @@ def test_extract_none_when_no_value_set():
 
 
 class TestProcessEvent:
-    def _coordinator(self) -> NjordV3Coordinator:
-        coord = NjordV3Coordinator.__new__(NjordV3Coordinator)
+    def _coordinator(self) -> NjordStreamCoordinator:
+        coord = NjordStreamCoordinator.__new__(NjordStreamCoordinator)
         coord.v3_entity_states = {}
         return coord
 

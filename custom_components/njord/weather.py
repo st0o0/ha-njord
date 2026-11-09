@@ -23,7 +23,7 @@ from homeassistant.util import dt as dt_util
 
 from .helpers import device_info
 from .models import EntityState, ManifestEntity
-from .stream_coordinator import NjordV3Coordinator
+from .stream_coordinator import NjordStreamCoordinator
 
 _CONDITION_MAP: dict[str, str] = {
     "clear": "sunny",
@@ -43,7 +43,7 @@ _CONDITION_MAP: dict[str, str] = {
 }
 
 
-class NjordV3WeatherEntity(SingleCoordinatorWeatherEntity[NjordV3Coordinator]):
+class NjordWeatherEntity(SingleCoordinatorWeatherEntity[NjordStreamCoordinator]):
     """Weather entity driven by v3 WeatherValue from the Subscribe stream."""
 
     _attr_has_entity_name = True
@@ -57,7 +57,7 @@ class NjordV3WeatherEntity(SingleCoordinatorWeatherEntity[NjordV3Coordinator]):
 
     def __init__(
         self,
-        coordinator: NjordV3Coordinator,
+        coordinator: NjordStreamCoordinator,
         entry: ConfigEntry,
         manifest_entity: ManifestEntity,
         sw_version: str | None = None,

@@ -15,10 +15,12 @@ def create_sensors(
     sw_version: str | None,
 ) -> list:
     """Create sensor entities for all non-alert, non-weather manifest entries."""
-    from .entities import NjordV3Sensor
+    from .entities import NjordEntitySensor
 
     return [
-        NjordV3Sensor(coordinator, entry, e, sw_version) for e in manifest if e.output_kind not in ("alert", "weather")
+        NjordEntitySensor(coordinator, entry, e, sw_version)
+        for e in manifest
+        if e.output_kind not in ("alert", "weather")
     ]
 
 
@@ -29,9 +31,9 @@ def create_binary_sensors(
     sw_version: str | None,
 ) -> list:
     """Create binary sensor entities for alert manifest entries."""
-    from .entities import NjordV3AlertBinarySensor
+    from .entities import NjordAlertBinarySensor
 
-    return [NjordV3AlertBinarySensor(coordinator, entry, e, sw_version) for e in manifest if e.output_kind == "alert"]
+    return [NjordAlertBinarySensor(coordinator, entry, e, sw_version) for e in manifest if e.output_kind == "alert"]
 
 
 def create_weather_entities(
@@ -41,6 +43,6 @@ def create_weather_entities(
     sw_version: str | None,
 ) -> list:
     """Create weather entities for weather manifest entries."""
-    from .weather import NjordV3WeatherEntity
+    from .weather import NjordWeatherEntity
 
-    return [NjordV3WeatherEntity(coordinator, entry, e, sw_version) for e in manifest if e.output_kind == "weather"]
+    return [NjordWeatherEntity(coordinator, entry, e, sw_version) for e in manifest if e.output_kind == "weather"]

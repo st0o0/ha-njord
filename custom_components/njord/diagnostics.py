@@ -10,7 +10,7 @@ from homeassistant.helpers.redact import async_redact_data
 
 from .const import DOMAIN
 from .coordinator import NjordStatusCoordinator
-from .stream_coordinator import NjordV3Coordinator
+from .stream_coordinator import NjordStreamCoordinator
 
 REDACT_KEYS = {"host"}
 
@@ -26,7 +26,7 @@ async def async_get_config_entry_diagnostics(
 
     entry_data = hass.data.get(DOMAIN, {}).get(entry.entry_id, {})
 
-    v3_coord: NjordV3Coordinator | None = entry_data.get("coordinator")
+    v3_coord: NjordStreamCoordinator | None = entry_data.get("coordinator")
     if v3_coord is not None and v3_coord.data is not None:
         data["coordinator"] = {
             "manifest_entities": len(v3_coord.manifest),

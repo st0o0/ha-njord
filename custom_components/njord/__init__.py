@@ -29,7 +29,6 @@ PLATFORMS = [
     Platform.BINARY_SENSOR,
     Platform.SENSOR,
     Platform.BUTTON,
-    Platform.CALENDAR,
 ]
 
 SERVICE_TRIGGER_POLL = "trigger_poll"
