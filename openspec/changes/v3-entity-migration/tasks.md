@@ -34,15 +34,15 @@
 
 **Validation:** `uv run pytest tests/ -v --tb=short` (full suite)
 
-## 4. Cleanup (Phase 4) — deferred until after E2E validation
+## 4. Cleanup (Phase 4)
 
-- [ ] 4.1 Remove v2 code: `protos/njord/v2/`, v2 stubs in `custom_components/njord/proto/`, v2 client methods in `grpc_client.py`, v2 models in `models.py`.
+- [x] 4.1 Remove v2 code: protos, stubs, client methods, models. Sync proto from njord (package `njord`, `csharp_namespace = "Njord.Grpc.Proto"`).
 
-- [ ] 4.2 Remove per-feature metadata: `ALERT_META`, `Feature` enum, `FEATURE_KEYS`, `DOMAIN_SENSOR_REGISTRY` from `const.py`. Remove `LIFESTYLE_SENSORS` and per-feature descriptions from `lifestyle.py`. Remove per-feature entity classes from `sensor.py`, `binary_sensor.py`.
+- [x] 4.2 Remove per-feature metadata: `Feature` enum, `FEATURE_KEYS`, `Domain`, `StreamName` from const.py. Delete lifestyle.py, weather.py, event.py. Strip v2 sensors from sensor.py, binary_sensor.py.
 
-- [ ] 4.3 Update remaining files: `config_flow.py` (simplify options), `button.py` (use v3 TriggerPoll), `event.py` (v3 AlertValue events), diagnostics.
+- [x] 4.3 Update integration files: config_flow.py (get_manifest), coordinator.py (remove v2 NjordDataCoordinator), __init__.py (v3-only flow), diagnostics.py, sync-protos.yml, AGENTS.md.
 
-- [ ] 4.4 Update all tests to v3 only. Remove v2 test fixtures and mocks. Run full test suite + ruff.
+- [x] 4.4 Update all tests to v3 only. Delete 11 v2 test files. Rewrite conftest.py with v3 mocks. Ruff check + format clean.
 
 **Validation:**
 ```bash
