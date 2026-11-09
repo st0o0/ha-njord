@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, PropertyMock, patch
-
-import pytest
+from unittest.mock import MagicMock
 
 from custom_components.njord.models import EntityState, ManifestEntity
 from custom_components.njord.v3_entities import NjordV3AlertBinarySensor, NjordV3Sensor
@@ -49,21 +47,27 @@ class TestNjordV3Sensor:
         value = MagicMock()
         value.value = 42.5
         state = EntityState(entity_id="vienna_pm25", value=value, available=True)
-        sensor = NjordV3Sensor(_coordinator({"vienna_pm25": state}), _entry(), _manifest("vienna_pm25", "observation"), None)
+        sensor = NjordV3Sensor(
+            _coordinator({"vienna_pm25": state}), _entry(), _manifest("vienna_pm25", "observation"), None
+        )
         assert sensor.native_value == 42.5
 
     def test_score_value(self):
         value = MagicMock()
         value.score = 85
         state = EntityState(entity_id="vienna_outdoor", value=value, available=True)
-        sensor = NjordV3Sensor(_coordinator({"vienna_outdoor": state}), _entry(), _manifest("vienna_outdoor", "score"), None)
+        sensor = NjordV3Sensor(
+            _coordinator({"vienna_outdoor": state}), _entry(), _manifest("vienna_outdoor", "score"), None
+        )
         assert sensor.native_value == 85
 
     def test_condition_value(self):
         value = MagicMock()
         value.active = True
         state = EntityState(entity_id="vienna_commute", value=value, available=True)
-        sensor = NjordV3Sensor(_coordinator({"vienna_commute": state}), _entry(), _manifest("vienna_commute", "condition"), None)
+        sensor = NjordV3Sensor(
+            _coordinator({"vienna_commute": state}), _entry(), _manifest("vienna_commute", "condition"), None
+        )
         assert sensor.native_value == "on"
 
     def test_unavailable_when_no_state(self):
@@ -73,7 +77,9 @@ class TestNjordV3Sensor:
 
     def test_unavailable_when_entity_marked_unavailable(self):
         state = EntityState(entity_id="vienna_pm25", value=None, available=False)
-        sensor = NjordV3Sensor(_coordinator({"vienna_pm25": state}), _entry(), _manifest("vienna_pm25", "observation"), None)
+        sensor = NjordV3Sensor(
+            _coordinator({"vienna_pm25": state}), _entry(), _manifest("vienna_pm25", "observation"), None
+        )
         assert sensor.available is False
 
     def test_unit_set_from_manifest(self):
@@ -94,14 +100,18 @@ class TestNjordV3AlertBinarySensor:
         value = MagicMock()
         value.severity = 2  # orange
         state = EntityState(entity_id="vienna_frost", value=value, available=True)
-        sensor = NjordV3AlertBinarySensor(_coordinator({"vienna_frost": state}), _entry(), _manifest("vienna_frost", "alert"), None)
+        sensor = NjordV3AlertBinarySensor(
+            _coordinator({"vienna_frost": state}), _entry(), _manifest("vienna_frost", "alert"), None
+        )
         assert sensor.is_on is True
 
     def test_is_off_when_severity_none(self):
         value = MagicMock()
         value.severity = 0
         state = EntityState(entity_id="vienna_frost", value=value, available=True)
-        sensor = NjordV3AlertBinarySensor(_coordinator({"vienna_frost": state}), _entry(), _manifest("vienna_frost", "alert"), None)
+        sensor = NjordV3AlertBinarySensor(
+            _coordinator({"vienna_frost": state}), _entry(), _manifest("vienna_frost", "alert"), None
+        )
         assert sensor.is_on is False
 
     def test_attributes_include_severity_and_confidence(self):

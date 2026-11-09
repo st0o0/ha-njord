@@ -3,9 +3,9 @@
 import grpc
 import warnings
 
-from njord.v2 import ops_pb2 as njord_dot_v2_dot_ops__pb2
+from njord import njord_pb2 as njord_dot_njord__pb2
 
-GRPC_GENERATED_VERSION = '1.68.1'
+GRPC_GENERATED_VERSION = '1.85.0'
 GRPC_VERSION = grpc.__version__
 _version_not_supported = False
 
@@ -18,14 +18,14 @@ except ImportError:
 if _version_not_supported:
     raise RuntimeError(
         f'The grpc package installed is at version {GRPC_VERSION},'
-        + f' but the generated code in njord/v2/ops_pb2_grpc.py depends on'
+        + ' but the generated code in njord/njord_pb2_grpc.py depends on'
         + f' grpcio>={GRPC_GENERATED_VERSION}.'
         + f' Please upgrade your grpc module to grpcio>={GRPC_GENERATED_VERSION}'
         + f' or downgrade your generated code using grpcio-tools<={GRPC_VERSION}.'
     )
 
 
-class OpsServiceStub(object):
+class NjordServiceStub:
     """Missing associated documentation comment in .proto file."""
 
     def __init__(self, channel):
@@ -34,33 +34,44 @@ class OpsServiceStub(object):
         Args:
             channel: A grpc.Channel.
         """
-        self.GetStatus = channel.unary_unary(
-                '/njord.v2.OpsService/GetStatus',
-                request_serializer=njord_dot_v2_dot_ops__pb2.GetStatusRequest.SerializeToString,
-                response_deserializer=njord_dot_v2_dot_ops__pb2.StatusResponse.FromString,
+        self.GetManifest = channel.unary_unary(
+                '/njord.NjordService/GetManifest',
+                request_serializer=njord_dot_njord__pb2.ManifestRequest.SerializeToString,
+                response_deserializer=njord_dot_njord__pb2.ManifestResponse.FromString,
                 _registered_method=True)
-        self.GetTargets = channel.unary_unary(
-                '/njord.v2.OpsService/GetTargets',
-                request_serializer=njord_dot_v2_dot_ops__pb2.GetTargetsRequest.SerializeToString,
-                response_deserializer=njord_dot_v2_dot_ops__pb2.GetTargetsResponse.FromString,
+        self.Subscribe = channel.unary_stream(
+                '/njord.NjordService/Subscribe',
+                request_serializer=njord_dot_njord__pb2.SubscribeRequest.SerializeToString,
+                response_deserializer=njord_dot_njord__pb2.EntityEvent.FromString,
+                _registered_method=True)
+        self.GetStatus = channel.unary_unary(
+                '/njord.NjordService/GetStatus',
+                request_serializer=njord_dot_njord__pb2.StatusRequest.SerializeToString,
+                response_deserializer=njord_dot_njord__pb2.StatusResponse.FromString,
                 _registered_method=True)
         self.TriggerPoll = channel.unary_unary(
-                '/njord.v2.OpsService/TriggerPoll',
-                request_serializer=njord_dot_v2_dot_ops__pb2.TriggerPollRequest.SerializeToString,
-                response_deserializer=njord_dot_v2_dot_ops__pb2.TriggerPollResponse.FromString,
+                '/njord.NjordService/TriggerPoll',
+                request_serializer=njord_dot_njord__pb2.TriggerPollRequest.SerializeToString,
+                response_deserializer=njord_dot_njord__pb2.TriggerPollResponse.FromString,
                 _registered_method=True)
 
 
-class OpsServiceServicer(object):
+class NjordServiceServicer:
     """Missing associated documentation comment in .proto file."""
 
-    def GetStatus(self, request, context):
+    def GetManifest(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def GetTargets(self, request, context):
+    def Subscribe(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetStatus(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -73,33 +84,92 @@ class OpsServiceServicer(object):
         raise NotImplementedError('Method not implemented!')
 
 
-def add_OpsServiceServicer_to_server(servicer, server):
+def add_NjordServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
+            'GetManifest': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetManifest,
+                    request_deserializer=njord_dot_njord__pb2.ManifestRequest.FromString,
+                    response_serializer=njord_dot_njord__pb2.ManifestResponse.SerializeToString,
+            ),
+            'Subscribe': grpc.unary_stream_rpc_method_handler(
+                    servicer.Subscribe,
+                    request_deserializer=njord_dot_njord__pb2.SubscribeRequest.FromString,
+                    response_serializer=njord_dot_njord__pb2.EntityEvent.SerializeToString,
+            ),
             'GetStatus': grpc.unary_unary_rpc_method_handler(
                     servicer.GetStatus,
-                    request_deserializer=njord_dot_v2_dot_ops__pb2.GetStatusRequest.FromString,
-                    response_serializer=njord_dot_v2_dot_ops__pb2.StatusResponse.SerializeToString,
-            ),
-            'GetTargets': grpc.unary_unary_rpc_method_handler(
-                    servicer.GetTargets,
-                    request_deserializer=njord_dot_v2_dot_ops__pb2.GetTargetsRequest.FromString,
-                    response_serializer=njord_dot_v2_dot_ops__pb2.GetTargetsResponse.SerializeToString,
+                    request_deserializer=njord_dot_njord__pb2.StatusRequest.FromString,
+                    response_serializer=njord_dot_njord__pb2.StatusResponse.SerializeToString,
             ),
             'TriggerPoll': grpc.unary_unary_rpc_method_handler(
                     servicer.TriggerPoll,
-                    request_deserializer=njord_dot_v2_dot_ops__pb2.TriggerPollRequest.FromString,
-                    response_serializer=njord_dot_v2_dot_ops__pb2.TriggerPollResponse.SerializeToString,
+                    request_deserializer=njord_dot_njord__pb2.TriggerPollRequest.FromString,
+                    response_serializer=njord_dot_njord__pb2.TriggerPollResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
-            'njord.v2.OpsService', rpc_method_handlers)
+            'njord.NjordService', rpc_method_handlers)
     server.add_generic_rpc_handlers((generic_handler,))
-    server.add_registered_method_handlers('njord.v2.OpsService', rpc_method_handlers)
+    server.add_registered_method_handlers('njord.NjordService', rpc_method_handlers)
 
 
  # This class is part of an EXPERIMENTAL API.
-class OpsService(object):
+class NjordService:
     """Missing associated documentation comment in .proto file."""
+
+    @staticmethod
+    def GetManifest(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/njord.NjordService/GetManifest',
+            njord_dot_njord__pb2.ManifestRequest.SerializeToString,
+            njord_dot_njord__pb2.ManifestResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def Subscribe(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_stream(
+            request,
+            target,
+            '/njord.NjordService/Subscribe',
+            njord_dot_njord__pb2.SubscribeRequest.SerializeToString,
+            njord_dot_njord__pb2.EntityEvent.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
 
     @staticmethod
     def GetStatus(request,
@@ -115,36 +185,9 @@ class OpsService(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/njord.v2.OpsService/GetStatus',
-            njord_dot_v2_dot_ops__pb2.GetStatusRequest.SerializeToString,
-            njord_dot_v2_dot_ops__pb2.StatusResponse.FromString,
-            options,
-            channel_credentials,
-            insecure,
-            call_credentials,
-            compression,
-            wait_for_ready,
-            timeout,
-            metadata,
-            _registered_method=True)
-
-    @staticmethod
-    def GetTargets(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(
-            request,
-            target,
-            '/njord.v2.OpsService/GetTargets',
-            njord_dot_v2_dot_ops__pb2.GetTargetsRequest.SerializeToString,
-            njord_dot_v2_dot_ops__pb2.GetTargetsResponse.FromString,
+            '/njord.NjordService/GetStatus',
+            njord_dot_njord__pb2.StatusRequest.SerializeToString,
+            njord_dot_njord__pb2.StatusResponse.FromString,
             options,
             channel_credentials,
             insecure,
@@ -169,9 +212,9 @@ class OpsService(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/njord.v2.OpsService/TriggerPoll',
-            njord_dot_v2_dot_ops__pb2.TriggerPollRequest.SerializeToString,
-            njord_dot_v2_dot_ops__pb2.TriggerPollResponse.FromString,
+            '/njord.NjordService/TriggerPoll',
+            njord_dot_njord__pb2.TriggerPollRequest.SerializeToString,
+            njord_dot_njord__pb2.TriggerPollResponse.FromString,
             options,
             channel_credentials,
             insecure,

@@ -1,4 +1,4 @@
-"""v3 data coordinator for njord — single Subscribe stream with snapshot-on-connect."""
+"""Data coordinator for njord — single Subscribe stream with snapshot-on-connect."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 
 from .grpc_client import NjordClient
 from .models import EntityState, ManifestEntity
-from .proto.njord.v3 import njord_pb2 as v3_pb2
+from .proto.njord import njord_pb2
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -20,23 +20,23 @@ _BACKOFF_MAX = 60.0
 _BACKOFF_FACTOR = 2.0
 
 _OUTPUT_KIND_NAMES: dict[int, str] = {
-    v3_pb2.OUTPUT_KIND_ALERT: "alert",
-    v3_pb2.OUTPUT_KIND_SCORE: "score",
-    v3_pb2.OUTPUT_KIND_CONDITION: "condition",
-    v3_pb2.OUTPUT_KIND_TREND: "trend",
-    v3_pb2.OUTPUT_KIND_FORECAST: "forecast",
-    v3_pb2.OUTPUT_KIND_WEATHER: "weather",
-    v3_pb2.OUTPUT_KIND_OBSERVATION: "observation",
+    njord_pb2.OUTPUT_KIND_ALERT: "alert",
+    njord_pb2.OUTPUT_KIND_SCORE: "score",
+    njord_pb2.OUTPUT_KIND_CONDITION: "condition",
+    njord_pb2.OUTPUT_KIND_TREND: "trend",
+    njord_pb2.OUTPUT_KIND_FORECAST: "forecast",
+    njord_pb2.OUTPUT_KIND_WEATHER: "weather",
+    njord_pb2.OUTPUT_KIND_OBSERVATION: "observation",
 }
 
 _PLATFORM_NAMES: dict[int, str] = {
-    v3_pb2.ENTITY_PLATFORM_WEATHER: "weather",
-    v3_pb2.ENTITY_PLATFORM_SENSOR: "sensor",
-    v3_pb2.ENTITY_PLATFORM_BINARY_SENSOR: "binary_sensor",
+    njord_pb2.ENTITY_PLATFORM_WEATHER: "weather",
+    njord_pb2.ENTITY_PLATFORM_SENSOR: "sensor",
+    njord_pb2.ENTITY_PLATFORM_BINARY_SENSOR: "binary_sensor",
 }
 
 
-def _parse_manifest(response: v3_pb2.ManifestResponse) -> list[ManifestEntity]:
+def _parse_manifest(response: njord_pb2.ManifestResponse) -> list[ManifestEntity]:
     """Convert a protobuf ManifestResponse to a list of ManifestEntity."""
     entities: list[ManifestEntity] = []
     for e in response.entities:
@@ -63,7 +63,7 @@ def _ts_to_iso(ts) -> str | None:
     return None
 
 
-def _extract_value(update: v3_pb2.EntityStateUpdate):
+def _extract_value(update: njord_pb2.EntityStateUpdate):
     """Extract the oneof value from an EntityStateUpdate."""
     which = update.WhichOneof("value")
     if which is None:
@@ -78,7 +78,7 @@ class NjordV3Coordinator(DataUpdateCoordinator[None]):
         super().__init__(
             hass,
             _LOGGER,
-            name="njord_v3",
+            name="njord",
             update_interval=None,
         )
         self.client = client
@@ -92,7 +92,7 @@ class NjordV3Coordinator(DataUpdateCoordinator[None]):
         try:
             response = await self.client.get_manifest()
         except Exception as err:
-            raise UpdateFailed(f"Failed to get njord v3 manifest: {err}") from err
+            raise UpdateFailed(f"Failed to get njord manifest: {err}") from err
         self.manifest = _parse_manifest(response)
 
     async def _async_update_data(self) -> None:
@@ -128,24 +128,24 @@ class NjordV3Coordinator(DataUpdateCoordinator[None]):
                 stream = await self.client.subscribe()
                 self._stream_connected = True
                 backoff = _BACKOFF_INITIAL
-                _LOGGER.debug("v3 Subscribe stream connected")
+                _LOGGER.debug("Subscribe stream connected")
 
                 async for event in stream:
                     self._process_event(event)
                     self.async_set_updated_data(None)
 
             except asyncio.CancelledError:
-                _LOGGER.debug("v3 Subscribe stream cancelled")
+                _LOGGER.debug("Subscribe stream cancelled")
                 break
             except Exception:
-                _LOGGER.exception("v3 Subscribe stream error, reconnecting in %.0fs", backoff)
+                _LOGGER.exception("Subscribe stream error, reconnecting in %.0fs", backoff)
             finally:
                 self._stream_connected = False
 
             await asyncio.sleep(backoff)
             backoff = min(backoff * _BACKOFF_FACTOR, _BACKOFF_MAX)
 
-    def _process_event(self, event: v3_pb2.EntityEvent) -> None:
+    def _process_event(self, event: njord_pb2.EntityEvent) -> None:
         """Dispatch a single EntityEvent."""
         which = event.WhichOneof("event")
         if which == "snapshot":
@@ -157,12 +157,12 @@ class NjordV3Coordinator(DataUpdateCoordinator[None]):
         elif which == "available":
             self._apply_available(event.available)
 
-    def _apply_snapshot(self, snapshot: v3_pb2.EntitySnapshot) -> None:
+    def _apply_snapshot(self, snapshot: njord_pb2.EntitySnapshot) -> None:
         """Replace all entity states from a snapshot."""
         for update in snapshot.states:
             self._apply_state_update(update)
 
-    def _apply_state_update(self, update: v3_pb2.EntityStateUpdate) -> None:
+    def _apply_state_update(self, update: njord_pb2.EntityStateUpdate) -> None:
         """Update a single entity's state."""
         value = _extract_value(update)
         updated_at_iso = _ts_to_iso(update.updated_at)
@@ -174,7 +174,7 @@ class NjordV3Coordinator(DataUpdateCoordinator[None]):
             available=existing.available if existing else True,
         )
 
-    def _apply_unavailable(self, msg: v3_pb2.EntityUnavailable) -> None:
+    def _apply_unavailable(self, msg: njord_pb2.EntityUnavailable) -> None:
         """Mark an entity as unavailable."""
         existing = self.v3_entity_states.get(msg.entity_id)
         if existing:
@@ -191,7 +191,7 @@ class NjordV3Coordinator(DataUpdateCoordinator[None]):
                 available=False,
             )
 
-    def _apply_available(self, msg: v3_pb2.EntityAvailable) -> None:
+    def _apply_available(self, msg: njord_pb2.EntityAvailable) -> None:
         """Mark an entity as available again."""
         existing = self.v3_entity_states.get(msg.entity_id)
         if existing:

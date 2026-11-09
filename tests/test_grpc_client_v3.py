@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from custom_components.njord.grpc_client import NjordClient
-from custom_components.njord.proto.njord.v3 import njord_pb2 as v3_pb2
+from custom_components.njord.proto.njord import njord_pb2 as v3_pb2
 
 
 @pytest.fixture

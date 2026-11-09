@@ -9,7 +9,8 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.redact import async_redact_data
 
 from .const import DOMAIN
-from .coordinator import NjordDataCoordinator, NjordStatusCoordinator
+from .coordinator import NjordStatusCoordinator
+from .v3_coordinator import NjordV3Coordinator
 
 REDACT_KEYS = {"host"}
 
@@ -25,28 +26,15 @@ async def async_get_config_entry_diagnostics(
 
     entry_data = hass.data.get(DOMAIN, {}).get(entry.entry_id, {})
 
-    coordinator: NjordDataCoordinator | None = entry_data.get("coordinator")
-    if coordinator is not None and coordinator.data is not None:
-        domains_per_location: dict[str, list[str]] = {}
-        for location, domain in coordinator.data.domains:
-            domains_per_location.setdefault(location, []).append(domain.value)
-
-        data["coordinator"] = {
-            "locations": coordinator.data.location_names,
-            "domains": {location: sorted(domains) for location, domains in sorted(domains_per_location.items())},
-            "features": {
-                location: sorted(f.value for loc, f in coordinator.data.features if loc == location)
-                for location in sorted({loc for loc, _ in coordinator.data.features})
-            },
-            "active_enrichments": sorted(coordinator.data.active_enrichments)
-            if coordinator.data.active_enrichments
-            else None,
-            "last_update_success": coordinator.last_update_success,
+    v3_coord: NjordV3Coordinator | None = entry_data.get("v3_coordinator")
+    if v3_coord is not None and v3_coord.data is not None:
+        data["v3_coordinator"] = {
+            "manifest_entities": len(v3_coord.manifest),
+            "entity_states": len(v3_coord.data),
+            "last_update_success": v3_coord.last_update_success,
         }
-        data["stream_states"] = {name.value: state for name, state in coordinator.stream_states.items()}
     else:
-        data["coordinator"] = None
-        data["stream_states"] = None
+        data["v3_coordinator"] = None
 
     status_coordinator: NjordStatusCoordinator | None = entry_data.get("status_coordinator")
     if status_coordinator is not None and status_coordinator.data is not None:
@@ -65,7 +53,7 @@ async def async_get_config_entry_diagnostics(
             else None,
             "budget_partial": status.budget_partial,
             "models_partial": status.models_partial,
-            "targets_count": len(status.targets),
+            "location_count": len(status.location_statuses),
         }
     else:
         data["server_status"] = "unavailable"

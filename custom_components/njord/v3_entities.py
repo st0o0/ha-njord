@@ -1,4 +1,4 @@
-"""Generic v3 entity classes driven by the njord manifest."""
+"""Generic entity classes driven by the njord manifest."""
 
 from __future__ import annotations
 
@@ -10,9 +10,9 @@ from homeassistant.components.sensor import SensorEntity, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .v3_coordinator import NjordV3Coordinator
 from .helpers import device_info
 from .models import EntityState, ManifestEntity
+from .v3_coordinator import NjordV3Coordinator
 
 _SEVERITY_NAMES = {0: "none", 1: "yellow", 2: "orange", 3: "red"}
 _CONFIDENCE_NAMES = {0: "unspecified", 1: "low", 2: "medium", 3: "high"}

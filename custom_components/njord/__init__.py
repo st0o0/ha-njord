@@ -18,7 +18,7 @@ from .const import (
     DEFAULT_STATUS_POLL_INTERVAL,
     DOMAIN,
 )
-from .coordinator import NjordDataCoordinator, NjordStatusCoordinator
+from .coordinator import NjordStatusCoordinator
 from .grpc_client import NjordClient
 from .v3_coordinator import NjordV3Coordinator
 
@@ -52,7 +52,6 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass.config_entries.async_update_entry(entry, options=options, version=2)
         _LOGGER.info("Migrated njord entry %s to version 2", entry.entry_id)
     if entry.version == 2:
-        # njord decides which enrichments run; the integration follows StatusResponse.active_enrichments.
         options = {k: v for k, v in entry.options.items() if k == CONF_STATUS_POLL_INTERVAL}
         hass.config_entries.async_update_entry(entry, options=options, version=3)
         _LOGGER.info("Migrated njord entry %s to version 3", entry.entry_id)
@@ -67,8 +66,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
     await client.connect()
 
-    coordinator = NjordDataCoordinator(hass, client)
-    await coordinator.async_config_entry_first_refresh()
+    v3_coordinator = NjordV3Coordinator(hass, client)
+    await asyncio.wait_for(v3_coordinator.async_setup(), timeout=5.0)
+    await v3_coordinator.async_config_entry_first_refresh()
 
     poll_interval = entry.options.get(CONF_STATUS_POLL_INTERVAL, DEFAULT_STATUS_POLL_INTERVAL)
     status_coordinator = NjordStatusCoordinator(hass, client, poll_interval=poll_interval)
@@ -77,31 +77,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     except Exception:
         status_coordinator = None
 
-    if status_coordinator is not None:
-        coordinator.data.active_enrichments = set(status_coordinator.data.active_enrichments)
-
-    v3_coordinator: NjordV3Coordinator | None = None
-    try:
-        v3 = NjordV3Coordinator(hass, client)
-        await asyncio.wait_for(v3.async_setup(), timeout=5.0)
-        await v3.async_config_entry_first_refresh()
-        v3_coordinator = v3
-    except Exception:
-        _LOGGER.debug("v3 API not available, running v2 only")
-
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = {
         "client": client,
-        "coordinator": coordinator,
-        "status_coordinator": status_coordinator,
         "v3_coordinator": v3_coordinator,
+        "status_coordinator": status_coordinator,
     }
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
-    coordinator.start_streams()
-    if v3_coordinator is not None:
-        v3_coordinator.start_stream()
+    v3_coordinator.start_stream()
 
     if status_coordinator is not None:
         _previous_enrichments: frozenset[str] = frozenset(status_coordinator.data.active_enrichments)
@@ -131,10 +116,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             location = call.data.get("location", "")
             for entry_data in hass.data[DOMAIN].values():
                 c: NjordClient = entry_data["client"]
-                if entry_data.get("v3_coordinator") is not None:
-                    await c.trigger_poll_v3(location=location)
-                else:
-                    await c.trigger_poll(location=location)
+                await c.trigger_poll(location=location)
 
         hass.services.async_register(
             DOMAIN,
@@ -152,11 +134,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     if unload_ok:
         entry_data = hass.data[DOMAIN].pop(entry.entry_id)
-        coordinator: NjordDataCoordinator = entry_data["coordinator"]
-        await coordinator.stop_streams()
-        v3_coord: NjordV3Coordinator | None = entry_data.get("v3_coordinator")
-        if v3_coord is not None:
-            await v3_coord.stop_stream()
+        v3_coord: NjordV3Coordinator = entry_data["v3_coordinator"]
+        await v3_coord.stop_stream()
         client: NjordClient = entry_data["client"]
         await client.close()
 

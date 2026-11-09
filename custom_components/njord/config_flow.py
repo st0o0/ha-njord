@@ -49,7 +49,7 @@ class NjordConfigFlow(ConfigFlow, domain=DOMAIN):
         client = NjordClient(host=host, port=port)
         try:
             await client.connect()
-            await client.get_catalog()
+            await client.get_manifest()
         except Exception:
             _LOGGER.exception("Failed to connect to njord at %s:%s", host, port)
             errors["base"] = "cannot_connect"

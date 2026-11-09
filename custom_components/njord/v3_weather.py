@@ -1,4 +1,4 @@
-"""v3 Weather entity fed from WeatherValue via the Subscribe stream."""
+"""Weather entity fed from WeatherValue via the Subscribe stream."""
 
 from __future__ import annotations
 

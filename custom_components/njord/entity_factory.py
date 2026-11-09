@@ -1,4 +1,4 @@
-"""Factory that creates HA entities from the njord v3 manifest."""
+"""Factory that creates HA entities from the njord manifest."""
 
 from __future__ import annotations
 
@@ -18,9 +18,7 @@ def create_v3_sensors(
     from .v3_entities import NjordV3Sensor
 
     return [
-        NjordV3Sensor(coordinator, entry, e, sw_version)
-        for e in manifest
-        if e.output_kind not in ("alert", "weather")
+        NjordV3Sensor(coordinator, entry, e, sw_version) for e in manifest if e.output_kind not in ("alert", "weather")
     ]
 
 
@@ -33,11 +31,7 @@ def create_v3_binary_sensors(
     """Create binary sensor entities for alert manifest entries."""
     from .v3_entities import NjordV3AlertBinarySensor
 
-    return [
-        NjordV3AlertBinarySensor(coordinator, entry, e, sw_version)
-        for e in manifest
-        if e.output_kind == "alert"
-    ]
+    return [NjordV3AlertBinarySensor(coordinator, entry, e, sw_version) for e in manifest if e.output_kind == "alert"]
 
 
 def create_v3_weather_entities(
@@ -49,8 +43,4 @@ def create_v3_weather_entities(
     """Create weather entities for weather manifest entries."""
     from .v3_weather import NjordV3WeatherEntity
 
-    return [
-        NjordV3WeatherEntity(coordinator, entry, e, sw_version)
-        for e in manifest
-        if e.output_kind == "weather"
-    ]
+    return [NjordV3WeatherEntity(coordinator, entry, e, sw_version) for e in manifest if e.output_kind == "weather"]

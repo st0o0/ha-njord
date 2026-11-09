@@ -32,7 +32,7 @@ async def test_user_step_creates_entry(hass: HomeAssistant, mock_client) -> None
 
 
 async def test_config_flow_cannot_connect(hass: HomeAssistant, mock_client) -> None:
-    mock_client.get_catalog.side_effect = Exception("Connection refused")
+    mock_client.get_manifest.side_effect = Exception("Connection refused")
 
     result = await _start_user_flow(hass, "badhost", 9999)
 

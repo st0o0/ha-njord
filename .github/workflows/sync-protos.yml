@@ -38,11 +38,7 @@ jobs:
             -Iprotos \
             --python_out=custom_components/njord/proto \
             --grpc_python_out=custom_components/njord/proto \
-            protos/njord/v2/common.proto \
-            protos/njord/v2/weather.proto \
-            protos/njord/v2/admin.proto \
-            protos/njord/v2/ops.proto \
-            protos/njord/v2/sensor.proto
+            protos/njord/njord.proto
 
       - uses: peter-evans/create-pull-request@v8
         with:

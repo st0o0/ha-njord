@@ -10,7 +10,6 @@ from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.njord.const import DOMAIN
-from custom_components.njord.coordinator import NjordDataCoordinator
 from tests.conftest import init_integration
 
 
@@ -18,10 +17,9 @@ async def test_setup_entry(hass: HomeAssistant, mock_client, mock_config_entry) 
     await init_integration(hass, mock_config_entry)
 
     entry_data = hass.data[DOMAIN][mock_config_entry.entry_id]
-    assert set(entry_data) == {"client", "coordinator", "status_coordinator", "v3_coordinator"}
+    assert set(entry_data) == {"client", "v3_coordinator", "status_coordinator"}
     mock_client.connect.assert_awaited_once()
-    mock_client.get_catalog.assert_awaited()
-    mock_client.get_status.assert_awaited()
+    mock_client.get_manifest.assert_awaited()
 
 
 async def test_unload_entry(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
@@ -49,25 +47,6 @@ async def test_setup_without_status_still_loads(hass: HomeAssistant, mock_client
     assert mock_config_entry.state is ConfigEntryState.LOADED
     entry_data = hass.data[DOMAIN][mock_config_entry.entry_id]
     assert entry_data["status_coordinator"] is None
-    assert entry_data["coordinator"].data.active_enrichments is None
-
-
-async def test_streams_start_after_setup(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
-    await init_integration(hass, mock_config_entry)
-
-    mock_client.stream_domain_data.assert_called_once()
-    mock_client.stream_enrichments.assert_called_once()
-
-
-async def test_streams_stop_on_unload(hass: HomeAssistant, mock_client, mock_config_entry) -> None:
-    await init_integration(hass, mock_config_entry)
-    coordinator: NjordDataCoordinator = hass.data[DOMAIN][mock_config_entry.entry_id]["coordinator"]
-    tasks_before = list(coordinator._stream_tasks)
-    assert len(tasks_before) == 2
-
-    assert await hass.config_entries.async_unload(mock_config_entry.entry_id) is True
-
-    assert all(task.done() for task in tasks_before)
 
 
 async def test_migrate_v1_entry(hass: HomeAssistant, mock_client) -> None:

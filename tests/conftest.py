@@ -2,212 +2,101 @@
 
 from __future__ import annotations
 
-from dataclasses import replace
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from custom_components.njord.const import (
-    DOMAIN,
-    AlertSeverity,
-    AlertType,
-    Domain,
-    Feature,
-    PollPhase,
-)
-from custom_components.njord.models import (
-    AirQualityDomainData,
-    AirQualitySampleData,
-    AlertData,
-    BudgetStatusData,
-    CatalogData,
-    FeatureData,
-    FloodDomainData,
-    FloodSampleData,
-    ForecastDomainData,
-    ForecastSampleData,
-    ModelInfoData,
-    NjordLocation,
-    SeasonalDomainData,
-    SeasonalSampleData,
-    ServerStatusData,
-    TargetData,
-)
+from custom_components.njord.const import DOMAIN
 
-# One sample in the past (the "current" one) and one far in the future (the forecast).
 PAST = datetime(2000, 1, 1, 12, 0, tzinfo=UTC)
 FUTURE = datetime(2099, 1, 1, 12, 0, tzinfo=UTC)
-MODEL_RUN = datetime(2000, 1, 1, 6, 0, tzinfo=UTC)
 
 
-def forecast_sample(valid_at: datetime = PAST, **overrides) -> ForecastSampleData:
-    values = {
-        "valid_at": valid_at,
-        "temperature": 22.5,
-        "apparent_temperature": 21.0,
-        "wind_speed": 3.5,
-        "precipitation": 0.4,
-        "precipitation_probability": 40.4,
-        "cloud_cover": 30.0,
-        "pressure": 1013.0,
-        "weather_code": 1,
-        "humidity": 65.0,
-        "dew_point": 15.0,
-        "uv_index": 5.0,
-        "is_day": True,
-        "wind_gusts": 8.0,
-        "visibility": 20000.0,
-        "cape": 120.0,
-    }
-    values.update(overrides)
-    return ForecastSampleData(**values)
+def _make_manifest_response():
+    """Build a mock ManifestResponse with sensor entities."""
+    mock = MagicMock()
+    entity1 = MagicMock()
+    entity1.entity_id = "home_frost"
+    entity1.location = "home"
+    entity1.feature = "Frost"
+    entity1.platform = 2  # SENSOR
+    entity1.device_class = "temperature"
+    entity1.unit = "°C"
+    entity1.icon = "mdi:snowflake-alert"
+    entity1.category = "alerts"
+    entity1.output_kind = 1  # ALERT
+    mock.entities = [entity1]
+    return mock
 
 
-def default_catalog() -> CatalogData:
-    return CatalogData(
-        locations=[
-            NjordLocation(
-                name="home",
-                latitude=47.05,
-                longitude=8.31,
-                models=["icon_d2", "ecmwf_ifs025"],
-                resolved_domains={
-                    "air_quality": frozenset(
-                        {"pm25", "pm10", "ozone", "birch_pollen", "grass_pollen", "alder", "mugwort"}
-                    ),
-                    "flood": frozenset({"discharge", "discharge_mean"}),
-                },
-            )
-        ],
-        model_info={
-            "icon_d2": ModelInfoData(
-                id="icon_d2",
-                display_name="ICON-D2",
-                provider="DWD",
-                region="DE, CH, AT",
-                coverage_tier="regional",
-                resolution_km=2.2,
-                max_forecast_hours=60,
-            ),
-            "ecmwf_ifs025": ModelInfoData(
-                id="ecmwf_ifs025",
-                display_name="ECMWF IFS",
-                provider="ECMWF",
-                region="Global",
-                coverage_tier="global",
-                resolution_km=25.0,
-                max_forecast_hours=360,
-            ),
-        },
-    )
+def _make_status_response():
+    """Build a mock StatusResponse."""
+    mock = MagicMock()
+    mock.version = "1.2.3"
+    mock.uptime_seconds = 3600
+    mock.budget_partial = False
+    mock.models_partial = False
+    mock.active_enrichments = ["Forecast:Uv", "Forecast:Frost"]
+
+    budget = MagicMock()
+    budget.monthly_limit = 20000
+    budget.monthly_used = 5000
+    budget.daily_limit = 700
+    budget.daily_used = 100
+    budget.usage_percent = 25.0
+    mock.budget = budget
+
+    process_start = MagicMock()
+    process_start.seconds = int(PAST.timestamp())
+    process_start.nanos = 0
+    mock.process_start = process_start
+
+    model = MagicMock()
+    model.location = "home"
+    model.phase = 2  # STEADY
+    next_poll = MagicMock()
+    next_poll.seconds = int(FUTURE.timestamp())
+    next_poll.nanos = 0
+    model.next_poll = next_poll
+    model.HasField = lambda f: f in ("next_poll",)
+    model.miss_count = 1
+    model.cycle_seconds = 3600
+    last_change = MagicMock()
+    last_change.seconds = 0
+    last_change.nanos = 0
+    model.last_change = last_change
+    mock.models = [model]
+
+    return mock
 
 
-def default_domain_data(location: str, domain: Domain, model: str = ""):
-    """Canned data per domain; marine has none."""
-    match domain:
-        case Domain.FORECAST:
-            return ForecastDomainData(
-                location, MODEL_RUN, [forecast_sample(), forecast_sample(FUTURE, temperature=25.0)], model=model
-            )
-        case Domain.AIR_QUALITY:
-            return AirQualityDomainData(
-                location,
-                MODEL_RUN,
-                [AirQualitySampleData(valid_at=PAST, pm25=12.34, pm10=20.0, ozone=80.0, birch_pollen=3.0)],  # noqa: E501
-            )
-        case Domain.FLOOD:
-            return FloodDomainData(
-                location, MODEL_RUN, [FloodSampleData(valid_at=PAST, discharge=55.5, discharge_mean=50.0)]
-            )
-        case Domain.SEASONAL:
-            return SeasonalDomainData(
-                location,
-                MODEL_RUN,
-                [
-                    SeasonalSampleData(
-                        valid_at=PAST, temperature_anomaly=1.2, precipitation_anomaly=None, precipitation_mean=None
-                    )
-                ],
-            )
-    return None
-
-
-def default_enrichment(location: str = "home") -> list[FeatureData]:
-    def alert(feature: Feature, **fields) -> FeatureData:
-        return FeatureData(
-            location=location,
-            feature=feature,
-            updated_at=PAST,
-            alert=AlertData(type=AlertType(feature.value), **fields),
-        )
-
-    return [
-        alert(
-            Feature.UV,
-            severity=AlertSeverity.ORANGE,
-            confidence=1.0,
-            trigger_value=8.5,
-            threshold=6.0,
-            peak_value=9.2,
-            hours_until=2,
-            duration_hours=4,
-        ),
-        alert(Feature.FROST, severity=AlertSeverity.NONE),
-        alert(Feature.POLLEN, severity=AlertSeverity.YELLOW, trigger_value=40.0, threshold=30.0),
-        alert(Feature.FLOOD_RISK, severity=AlertSeverity.RED, trigger_value=300.0, threshold=200.0),
-    ]
+def _make_trigger_response():
+    mock = MagicMock()
+    mock.triggered_count = 2
+    return mock
 
 
 @pytest.fixture(autouse=True)
 def auto_enable_custom_integrations(enable_custom_integrations):
-    """Enable custom integrations for all tests."""
-    yield
-
-
-async def _empty_async_gen(**kwargs):
-    return
     yield
 
 
 @pytest.fixture
 def mock_client():
-    """Patch NjordClient across all import sites with canned responses."""
+    """Patch NjordClient with v3 API mocks."""
     mock = AsyncMock()
     mock.connect = AsyncMock()
     mock.close = AsyncMock()
-    mock.get_catalog = AsyncMock(return_value=default_catalog())
-    mock.get_domain_data = AsyncMock(
-        side_effect=lambda location, domain, model="": default_domain_data(location, domain, model)
-    )
-    mock.get_enrichments = AsyncMock(side_effect=lambda location: default_enrichment(location))
-    mock.get_status = AsyncMock(
-        return_value=ServerStatusData(
-            version="1.2.3",
-            uptime_seconds=3600,
-            budget=BudgetStatusData(
-                monthly_limit=20000, monthly_used=5000, daily_limit=700, daily_used=100, usage_percent=25.0
-            ),
-            active_enrichments=["Forecast:Uv", "Forecast:Frost", "AirQuality:Pollen", "Flood:FloodRisk"],
-        )
-    )
-    mock.trigger_poll = AsyncMock(return_value=2)
-    mock.get_manifest = AsyncMock(side_effect=Exception("v3 not available in test"))
-    mock.subscribe = MagicMock(side_effect=Exception("v3 not available in test"))
-    mock.get_status_v3 = AsyncMock(side_effect=Exception("v3 not available in test"))
-    mock.trigger_poll_v3 = AsyncMock(side_effect=Exception("v3 not available in test"))
-    mock.get_targets = AsyncMock(
-        return_value=[
-            TargetData(
-                location="home",
-                phase=PollPhase.STEADY,
-                next_poll=datetime(2099, 1, 1, 12, 30, tzinfo=UTC),
-                miss_count=1,
-            ),
-        ]
-    )
-    mock.stream_domain_data = MagicMock(side_effect=lambda **kwargs: _empty_async_gen())
-    mock.stream_enrichments = MagicMock(side_effect=lambda **kwargs: _empty_async_gen())
+    mock.get_manifest = AsyncMock(return_value=_make_manifest_response())
+    mock.get_status = AsyncMock(return_value=_make_status_response())
+    mock.trigger_poll = AsyncMock(return_value=_make_trigger_response())
+
+    async def _empty_subscribe(**kwargs):
+        return
+        yield
+
+    mock.subscribe = MagicMock(side_effect=lambda **kwargs: _empty_subscribe())
 
     with (
         patch("custom_components.njord.NjordClient", return_value=mock),
@@ -233,26 +122,16 @@ def _make_entry(hass, options: dict | None = None, version: int = 3):
 
 @pytest.fixture
 def mock_config_entry(hass):
-    """A v3 config entry for njord."""
-    return _make_entry(hass)
-
-
-@pytest.fixture
-def all_alerts_entry(hass, mock_client):
-    """A v3 config entry whose server reports no active-enrichment filter (every feature enabled)."""
-    mock_client.get_status.return_value = replace(mock_client.get_status.return_value, active_enrichments=[])
     return _make_entry(hass)
 
 
 async def init_integration(hass, entry):
-    """Set up the njord integration with a config entry."""
     await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
     return entry
 
 
 def entity_id_for(hass, platform: str, unique_id: str) -> str | None:
-    """Resolve an entity id through the entity registry by unique id."""
     from homeassistant.helpers import entity_registry as er
 
     return er.async_get(hass).async_get_entity_id(platform, DOMAIN, unique_id)

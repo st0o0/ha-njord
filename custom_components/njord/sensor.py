@@ -1,173 +1,18 @@
-"""Sensor platform for njord domain data and server diagnostics."""
+"""Sensor platform for njord entities and server diagnostics."""
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from dataclasses import dataclass
-from datetime import datetime
-
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import (
-    CONCENTRATION_MICROGRAMS_PER_CUBIC_METER,
-    DEGREE,
-    UnitOfLength,
-    UnitOfTemperature,
-    UnitOfTime,
-)
+from homeassistant.const import UnitOfTime
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DISCHARGE_UNIT, DOMAIN, Domain, Feature, feature_enabled
-from .coordinator import NjordDataCoordinator, NjordStatusCoordinator
-from .helpers import current_point, device_info, server_device_info, slugify_location
-from .lifestyle import LIFESTYLE_SENSORS, LifestyleSensorDescription
-from .models import DomainData, FeatureData
-
-POLLEN_UNIT = "grains/m³"
-
-
-@dataclass(frozen=True, kw_only=True)
-class DomainSensorDescription:
-    """One sensor reading a field of the current sample of a domain."""
-
-    key: str
-    name: str
-    domain: Domain
-    field: str
-    unit: str | None = None
-    device_class: SensorDeviceClass | None = None
-    icon: str | None = None
-    precision: int | None = None
-    extra_fields: tuple[str, ...] = ()
-    value_fn: Callable[[object], float | None] | None = None
-
-
-DOMAIN_SENSOR_REGISTRY: dict[tuple[Domain, str], DomainSensorDescription] = {
-    (d.domain, d.field): d
-    for d in (
-        DomainSensorDescription(
-            key="pm25",
-            name="PM2.5",
-            domain=Domain.AIR_QUALITY,
-            field="pm25",
-            unit=CONCENTRATION_MICROGRAMS_PER_CUBIC_METER,
-            device_class=SensorDeviceClass.PM25,
-            precision=1,
-        ),
-        DomainSensorDescription(
-            key="pm10",
-            name="PM10",
-            domain=Domain.AIR_QUALITY,
-            field="pm10",
-            unit=CONCENTRATION_MICROGRAMS_PER_CUBIC_METER,
-            device_class=SensorDeviceClass.PM10,
-            precision=1,
-        ),
-        DomainSensorDescription(
-            key="ozone",
-            name="Ozone",
-            domain=Domain.AIR_QUALITY,
-            field="ozone",
-            unit=CONCENTRATION_MICROGRAMS_PER_CUBIC_METER,
-            device_class=SensorDeviceClass.OZONE,
-            precision=1,
-        ),
-        DomainSensorDescription(
-            key="birch_pollen",
-            name="Birch Pollen",
-            domain=Domain.AIR_QUALITY,
-            field="birch_pollen",
-            unit=POLLEN_UNIT,
-            icon="mdi:flower-pollen",
-            precision=1,
-        ),
-        DomainSensorDescription(
-            key="grass_pollen",
-            name="Grass Pollen",
-            domain=Domain.AIR_QUALITY,
-            field="grass_pollen",
-            unit=POLLEN_UNIT,
-            icon="mdi:flower-pollen",
-            precision=1,
-        ),
-        DomainSensorDescription(
-            key="alder_pollen",
-            name="Alder Pollen",
-            domain=Domain.AIR_QUALITY,
-            field="alder",
-            unit=POLLEN_UNIT,
-            icon="mdi:flower-pollen",
-            precision=1,
-        ),
-        DomainSensorDescription(
-            key="mugwort_pollen",
-            name="Mugwort Pollen",
-            domain=Domain.AIR_QUALITY,
-            field="mugwort",
-            unit=POLLEN_UNIT,
-            icon="mdi:flower-pollen",
-            precision=1,
-        ),
-        DomainSensorDescription(
-            key="river_discharge",
-            name="River Discharge",
-            domain=Domain.FLOOD,
-            field="discharge",
-            unit=DISCHARGE_UNIT,
-            icon="mdi:waves-arrow-right",
-            precision=1,
-            extra_fields=(
-                "discharge_mean",
-                "discharge_median",
-                "discharge_max",
-                "discharge_min",
-                "discharge_p25",
-                "discharge_p75",
-            ),
-        ),
-        DomainSensorDescription(
-            key="wave_height",
-            name="Wave Height",
-            domain=Domain.MARINE,
-            field="wave_height",
-            unit=UnitOfLength.METERS,
-            device_class=SensorDeviceClass.DISTANCE,
-            icon="mdi:waves",
-            precision=1,
-        ),
-        DomainSensorDescription(
-            key="wave_period",
-            name="Wave Period",
-            domain=Domain.MARINE,
-            field="wave_period",
-            unit=UnitOfTime.SECONDS,
-            device_class=SensorDeviceClass.DURATION,
-            icon="mdi:sine-wave",
-            precision=1,
-        ),
-        DomainSensorDescription(
-            key="wave_direction",
-            name="Wave Direction",
-            domain=Domain.MARINE,
-            field="wave_direction",
-            unit=DEGREE,
-            icon="mdi:compass-outline",
-            precision=0,
-        ),
-        DomainSensorDescription(
-            key="water_temperature",
-            name="Water Temperature",
-            domain=Domain.MARINE,
-            field="water_temperature",
-            unit=UnitOfTemperature.CELSIUS,
-            device_class=SensorDeviceClass.TEMPERATURE,
-            precision=1,
-        ),
-    )
-}
+from .const import DOMAIN
+from .coordinator import NjordStatusCoordinator
+from .helpers import server_device_info, slugify_location
 
 
 def _get_sw_version(hass: HomeAssistant, entry: ConfigEntry) -> str | None:
@@ -177,45 +22,15 @@ def _get_sw_version(hass: HomeAssistant, entry: ConfigEntry) -> str | None:
     return None
 
 
-def _domain_sensors(
-    coordinator: NjordDataCoordinator, entry: ConfigEntry, location: str, domain: Domain, sw_version: str | None
-) -> list[SensorEntity]:
-    schema_fields = coordinator.data.domain_schemas.get((location, domain))
-    if schema_fields is not None:
-        return [
-            NjordDomainSensor(coordinator, entry, location, desc, sw_version)
-            for field_name in schema_fields
-            if (desc := DOMAIN_SENSOR_REGISTRY.get((domain, field_name))) is not None
-        ]
-    return [
-        NjordDomainSensor(coordinator, entry, location, desc, sw_version)
-        for (d, _), desc in DOMAIN_SENSOR_REGISTRY.items()
-        if d == domain
-    ]
-
-
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up njord sensor entities."""
-    coordinator: NjordDataCoordinator = hass.data[DOMAIN][entry.entry_id]["coordinator"]
     sw_version = _get_sw_version(hass, entry)
 
-    def feature_sensors(location: str, feature: Feature) -> list[SensorEntity]:
-        return [
-            NjordLifestyleSensor(coordinator, entry, location, description, sw_version)
-            for description in LIFESTYLE_SENSORS
-            if description.feature == feature
-        ]
-
     entities: list[SensorEntity] = []
-    for location, feature in sorted(coordinator.data.features):
-        if feature_enabled(feature, coordinator.data.active_enrichments):
-            entities.extend(feature_sensors(location, feature))
-    for location, domain in sorted(coordinator.data.domains, key=lambda key: (key[0], key[1].value)):
-        entities.extend(_domain_sensors(coordinator, entry, location, domain, sw_version))
 
     status_coordinator: NjordStatusCoordinator | None = hass.data[DOMAIN][entry.entry_id].get("status_coordinator")
     if status_coordinator is not None:
@@ -225,8 +40,8 @@ async def async_setup_entry(
         entities.append(NjordUptimeSensor(status_coordinator, entry, sw_version))
 
         if status_coordinator.data is not None:
-            for target in status_coordinator.data.targets:
-                entities.append(NjordTargetSensor(status_coordinator, entry, target.location, sw_version))
+            for loc_status in status_coordinator.data.location_statuses:
+                entities.append(NjordTargetSensor(status_coordinator, entry, loc_status.location, sw_version))
 
     v3_coordinator = hass.data[DOMAIN][entry.entry_id].get("v3_coordinator")
     if v3_coordinator is not None:
@@ -235,155 +50,6 @@ async def async_setup_entry(
         entities.extend(create_v3_sensors(v3_coordinator.manifest, v3_coordinator, entry, sw_version))
 
     async_add_entities(entities)
-
-    def sensor_factory(location: str, domain: Domain) -> list[SensorEntity]:
-        return _domain_sensors(coordinator, entry, location, domain, sw_version)
-
-    coordinator.register_entity_factory("sensor", async_add_entities, sensor_factory)
-    coordinator.register_feature_factory("sensor", async_add_entities, feature_sensors)
-
-
-class NjordDomainSensor(CoordinatorEntity[NjordDataCoordinator], SensorEntity):
-    """Sensor for one field of the current sample of a domain at a location."""
-
-    _attr_has_entity_name = True
-
-    def __init__(
-        self,
-        coordinator: NjordDataCoordinator,
-        entry: ConfigEntry,
-        location: str,
-        description: DomainSensorDescription,
-        sw_version: str | None = None,
-    ) -> None:
-        super().__init__(coordinator)
-        self._location = location
-        self._description = description
-        self._attr_unique_id = f"{entry.entry_id}_{slugify_location(location)}_{description.key}"
-        self._attr_translation_key = description.key
-        self._attr_native_unit_of_measurement = description.unit
-        self._attr_device_class = description.device_class
-        self._attr_icon = description.icon
-        self._attr_suggested_display_precision = description.precision
-        self._attr_state_class = SensorStateClass.MEASUREMENT
-        self._attr_device_info = device_info(entry, location, sw_version)
-
-    def _data(self) -> DomainData | None:
-        if self.coordinator.data is None:
-            return None
-        return self.coordinator.data.domains.get((self._location, self._description.domain))
-
-    def _sample(self):
-        data = self._data()
-        if data is None:
-            return None
-        return current_point(data.points)
-
-    @property
-    def available(self) -> bool:
-        return self._sample() is not None
-
-    @property
-    def native_value(self) -> float | None:
-        sample = self._sample()
-        if sample is None:
-            return None
-        return getattr(sample, self._description.field, None)
-
-    @property
-    def extra_state_attributes(self) -> dict[str, object] | None:
-        sample = self._sample()
-        data = self._data()
-        if sample is None or data is None:
-            return None
-        attrs: dict[str, object] = {"valid_at": sample.valid_at.isoformat()}
-        if data.model_run is not None:
-            attrs["model_run"] = data.model_run.isoformat()
-        for name in self._description.extra_fields:
-            value = getattr(sample, name, None)
-            if value is not None:
-                attrs[name] = value
-        return attrs
-
-
-def _serialize(value):
-    if isinstance(value, datetime):
-        return value.isoformat()
-    if isinstance(value, dict):
-        return {k: _serialize(v) for k, v in value.items()}
-    if isinstance(value, list):
-        return [_serialize(v) for v in value]
-    return value
-
-
-def _attributes(item: FeatureData) -> dict[str, object]:
-    attrs: dict[str, object] = {}
-    for name, value in item.values.items():
-        if value is None:
-            continue
-        attrs[name] = value.isoformat() if isinstance(value, datetime) else value
-    if item.score is not None:
-        attrs["best_start"] = item.score.best_start.isoformat() if item.score.best_start else None
-        attrs["best_hours"] = item.score.best_hours if item.score.best_hours else None
-        if item.score.windows:
-            attrs["windows"] = [_serialize(w) for w in item.score.windows]
-    return attrs
-
-
-class NjordLifestyleSensor(CoordinatorEntity[NjordDataCoordinator], SensorEntity):
-    """Sensor for one lifestyle advisory of a location."""
-
-    _attr_has_entity_name = True
-
-    def __init__(
-        self,
-        coordinator: NjordDataCoordinator,
-        entry: ConfigEntry,
-        location: str,
-        description: LifestyleSensorDescription,
-        sw_version: str | None = None,
-    ) -> None:
-        super().__init__(coordinator)
-        self._location = location
-        self._description = description
-        self._attr_unique_id = f"{entry.entry_id}_{slugify_location(location)}_{description.key}"
-        self._attr_translation_key = description.key
-        self._attr_icon = description.icon
-        self._attr_native_unit_of_measurement = description.unit
-        self._attr_device_class = description.device_class
-        self._attr_suggested_display_precision = description.precision
-        if description.options is not None:
-            self._attr_options = list(description.options)
-        self._attr_device_info = device_info(entry, location, sw_version)
-
-    def _item(self) -> FeatureData | None:
-        if self.coordinator.data is None:
-            return None
-        return self.coordinator.data.features.get((self._location, self._description.feature))
-
-    @property
-    def available(self) -> bool:
-        return self._item() is not None
-
-    @property
-    def native_value(self):
-        item = self._item()
-        if item is None:
-            return None
-        value = self._description.value_fn(item)
-        if self._description.options is not None and value not in self._description.options:
-            return None
-        return value
-
-    @property
-    def extra_state_attributes(self) -> dict[str, object] | None:
-        item = self._item()
-        if item is None:
-            return None
-        attrs: dict[str, object] = _attributes(item)
-        if item.updated_at is not None:
-            attrs["updated_at"] = item.updated_at.isoformat()
-        return attrs
 
 
 class NjordMonthlyUsageSensor(CoordinatorEntity[NjordStatusCoordinator], SensorEntity):
@@ -551,7 +217,7 @@ class NjordTargetSensor(CoordinatorEntity[NjordStatusCoordinator], SensorEntity)
     def _find_target(self):
         if self.coordinator.data is None:
             return None
-        for t in self.coordinator.data.targets:
+        for t in self.coordinator.data.location_statuses:
             if t.location == self._target_location:
                 return t
         return None

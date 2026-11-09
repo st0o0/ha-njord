@@ -58,9 +58,7 @@ docker run --rm -v "$PWD:/work" -w /work python:3.12-slim \
     -Iprotos \
     --python_out=custom_components/njord/proto \
     --grpc_python_out=custom_components/njord/proto \
-    protos/njord/v2/common.proto \
-    protos/njord/v2/weather.proto \
-    protos/njord/v2/ops.proto"
+    protos/njord/njord.proto"
 ```
 
 ## Project Structure
@@ -77,17 +75,17 @@ custom_components/njord/
 ├── event.py             # Alert event entity (started, escalated, deescalated, cleared)
 ├── button.py            # Trigger poll button
 ├── grpc_client.py       # NjordClient: async gRPC wrapper (unary + reconnecting streams)
-├── models.py            # Frozen dataclasses (domain data, alerts, FeatureData/ScoreData, status, catalog)
+├── models.py            # Frozen dataclasses (status, ManifestEntity, EntityState)
 ├── condition_mapper.py  # WMO weather_code + is_day -> HA condition string
 ├── helpers.py           # Device info, current sample picker
 ├── diagnostics.py       # HA diagnostics download
-├── const.py             # DOMAIN, Domain, Feature/FEATURE_KEYS, AlertType (20), ALERT_META
+├── const.py             # DOMAIN, PollPhase, config constants
 ├── manifest.json        # HA integration metadata
 ├── strings.json         # English UI strings
 ├── translations/de.json # German UI strings
-└── proto/               # Generated protobuf/gRPC stubs (njord v2: common, weather, ops)
+└── proto/               # Generated protobuf/gRPC stubs (njord: NjordService)
 
-protos/njord/v2/         # Source .proto files (synced from njord repo)
+protos/njord/            # Source .proto file (synced from njord repo)
 tests/                   # pytest tests
 brand/                   # HACS brand assets (icon.png, logo.svg)
 ```

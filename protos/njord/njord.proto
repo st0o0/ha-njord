@@ -1,10 +1,10 @@
 syntax = "proto3";
 
-package njord.v3;
+package njord;
 
 import "google/protobuf/timestamp.proto";
 
-option csharp_namespace = "Njord.Grpc.V3";
+option csharp_namespace = "Njord.Grpc.Proto";
 
 service NjordService {
   rpc GetManifest (ManifestRequest) returns (ManifestResponse);

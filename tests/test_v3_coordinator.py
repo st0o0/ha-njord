@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import MagicMock
 
-import pytest
 from google.protobuf.timestamp_pb2 import Timestamp
 
 from custom_components.njord.models import EntityState
-from custom_components.njord.proto.njord.v3 import njord_pb2 as v3_pb2
+from custom_components.njord.proto.njord import njord_pb2 as v3_pb2
 from custom_components.njord.v3_coordinator import (
     NjordV3Coordinator,
     _extract_value,
@@ -149,9 +148,7 @@ class TestProcessEvent:
 
     def test_state_update_replaces_previous(self):
         coord = self._coordinator()
-        coord.v3_entity_states["vienna_pm25"] = EntityState(
-            entity_id="vienna_pm25", value=MagicMock(), available=True
-        )
+        coord.v3_entity_states["vienna_pm25"] = EntityState(entity_id="vienna_pm25", value=MagicMock(), available=True)
 
         event = v3_pb2.EntityEvent(
             state_update=v3_pb2.EntityStateUpdate(
@@ -170,18 +167,14 @@ class TestProcessEvent:
             entity_id="vienna_frost", value=MagicMock(), available=True
         )
 
-        event = v3_pb2.EntityEvent(
-            unavailable=v3_pb2.EntityUnavailable(entity_id="vienna_frost", since=_ts())
-        )
+        event = v3_pb2.EntityEvent(unavailable=v3_pb2.EntityUnavailable(entity_id="vienna_frost", since=_ts()))
         coord._process_event(event)
 
         assert coord.v3_entity_states["vienna_frost"].available is False
 
     def test_unavailable_for_unknown_entity_creates_entry(self):
         coord = self._coordinator()
-        event = v3_pb2.EntityEvent(
-            unavailable=v3_pb2.EntityUnavailable(entity_id="vienna_frost", since=_ts())
-        )
+        event = v3_pb2.EntityEvent(unavailable=v3_pb2.EntityUnavailable(entity_id="vienna_frost", since=_ts()))
         coord._process_event(event)
 
         assert coord.v3_entity_states["vienna_frost"].available is False
@@ -193,9 +186,7 @@ class TestProcessEvent:
             entity_id="vienna_frost", value=MagicMock(), available=False
         )
 
-        event = v3_pb2.EntityEvent(
-            available=v3_pb2.EntityAvailable(entity_id="vienna_frost", recovered_at=_ts())
-        )
+        event = v3_pb2.EntityEvent(available=v3_pb2.EntityAvailable(entity_id="vienna_frost", recovered_at=_ts()))
         coord._process_event(event)
 
         assert coord.v3_entity_states["vienna_frost"].available is True
