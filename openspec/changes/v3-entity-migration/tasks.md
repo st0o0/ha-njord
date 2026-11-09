@@ -34,7 +34,7 @@
 
 **Validation:** `uv run pytest tests/ -v --tb=short` (full suite)
 
-## 4. Cleanup (Phase 4)
+## 4. Cleanup (Phase 4) — deferred until after E2E validation
 
 - [ ] 4.1 Remove v2 code: `protos/njord/v2/`, v2 stubs in `custom_components/njord/proto/`, v2 client methods in `grpc_client.py`, v2 models in `models.py`.
 
