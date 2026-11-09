@@ -14,11 +14,11 @@
 
 ## 2. Manifest-driven entity factory (Phase 2)
 
-- [ ] 2.1 Create `custom_components/njord/entity_factory.py`: given a list of `ManifestEntity`, create HA entity descriptions grouped by platform. Generic entity class per OutputKind: `NjordAlertSensor`, `NjordScoreSensor`, `NjordConditionSensor`, `NjordTrendSensor`, `NjordForecastSensor`, `NjordObservationSensor`.
+- [x] 2.1 Create `custom_components/njord/entity_factory.py`: given a list of `ManifestEntity`, create HA entity descriptions grouped by platform. Generic entity class per OutputKind: `NjordAlertSensor`, `NjordScoreSensor`, `NjordConditionSensor`, `NjordTrendSensor`, `NjordForecastSensor`, `NjordObservationSensor`.
 
-- [ ] 2.2 Create `custom_components/njord/v3_entities.py`: the 6 generic entity classes (excluding weather). Each takes a `ManifestEntity` and implements `_handle_coordinator_update` to extract state from v3 EntityStateUpdate.
+- [x] 2.2 Create `custom_components/njord/v3_entities.py`: the 6 generic entity classes (excluding weather). Each takes a `ManifestEntity` and implements `_handle_coordinator_update` to extract state from v3 EntityStateUpdate.
 
-- [ ] 2.3 Tests: `tests/test_entity_factory.py` — manifest to entity descriptions. `tests/test_v3_entities.py` — state extraction from mock EntityStateUpdate per OutputKind.
+- [x] 2.3 Tests: `tests/test_entity_factory.py` — manifest to entity descriptions. `tests/test_v3_entities.py` — state extraction from mock EntityStateUpdate per OutputKind.
 
 **Validation:** `uv run pytest tests/test_entity_factory.py tests/test_v3_entities.py -v --tb=short`
 
