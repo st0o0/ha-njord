@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-from custom_components.njord.entity_factory import create_v3_binary_sensors, create_v3_sensors
+from custom_components.njord.entity_factory import create_binary_sensors, create_sensors
 from custom_components.njord.models import ManifestEntity
 
 
@@ -33,7 +33,7 @@ def test_sensors_exclude_alerts_and_weather():
         _entity("vienna_outdoor", "score", "sensor"),
         _entity("vienna_pm25_observation", "observation", "sensor"),
     ]
-    sensors = create_v3_sensors(manifest, MagicMock(), MagicMock(), None)
+    sensors = create_sensors(manifest, MagicMock(), MagicMock(), None)
     assert len(sensors) == 2
 
 
@@ -43,10 +43,10 @@ def test_binary_sensors_only_alerts():
         _entity("vienna_heat", "alert", feature="Heat"),
         _entity("vienna_outdoor", "score", "sensor"),
     ]
-    sensors = create_v3_binary_sensors(manifest, MagicMock(), MagicMock(), None)
+    sensors = create_binary_sensors(manifest, MagicMock(), MagicMock(), None)
     assert len(sensors) == 2
 
 
 def test_empty_manifest_produces_no_entities():
-    assert create_v3_sensors([], MagicMock(), MagicMock(), None) == []
-    assert create_v3_binary_sensors([], MagicMock(), MagicMock(), None) == []
+    assert create_sensors([], MagicMock(), MagicMock(), None) == []
+    assert create_binary_sensors([], MagicMock(), MagicMock(), None) == []

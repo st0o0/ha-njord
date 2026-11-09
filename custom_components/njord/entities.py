@@ -12,7 +12,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .helpers import device_info
 from .models import EntityState, ManifestEntity
-from .v3_coordinator import NjordV3Coordinator
+from .stream_coordinator import NjordV3Coordinator
 
 _SEVERITY_NAMES = {0: "none", 1: "yellow", 2: "orange", 3: "red"}
 _CONFIDENCE_NAMES = {0: "unspecified", 1: "low", 2: "medium", 3: "high"}

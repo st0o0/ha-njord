@@ -20,7 +20,7 @@ from .const import (
 )
 from .coordinator import NjordStatusCoordinator
 from .grpc_client import NjordClient
-from .v3_coordinator import NjordV3Coordinator
+from .stream_coordinator import NjordV3Coordinator
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -29,7 +29,6 @@ PLATFORMS = [
     Platform.BINARY_SENSOR,
     Platform.SENSOR,
     Platform.BUTTON,
-    Platform.EVENT,
     Platform.CALENDAR,
 ]
 
@@ -66,9 +65,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
     await client.connect()
 
-    v3_coordinator = NjordV3Coordinator(hass, client)
-    await asyncio.wait_for(v3_coordinator.async_setup(), timeout=5.0)
-    await v3_coordinator.async_config_entry_first_refresh()
+    coordinator = NjordV3Coordinator(hass, client)
+    await asyncio.wait_for(coordinator.async_setup(), timeout=5.0)
+    await coordinator.async_config_entry_first_refresh()
 
     poll_interval = entry.options.get(CONF_STATUS_POLL_INTERVAL, DEFAULT_STATUS_POLL_INTERVAL)
     status_coordinator = NjordStatusCoordinator(hass, client, poll_interval=poll_interval)
@@ -80,13 +79,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = {
         "client": client,
-        "v3_coordinator": v3_coordinator,
+        "coordinator": coordinator,
         "status_coordinator": status_coordinator,
     }
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
-    v3_coordinator.start_stream()
+    coordinator.start_stream()
 
     if status_coordinator is not None:
         _previous_enrichments: frozenset[str] = frozenset(status_coordinator.data.active_enrichments)
@@ -134,7 +133,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     if unload_ok:
         entry_data = hass.data[DOMAIN].pop(entry.entry_id)
-        v3_coord: NjordV3Coordinator = entry_data["v3_coordinator"]
+        v3_coord: NjordV3Coordinator = entry_data["coordinator"]
         await v3_coord.stop_stream()
         client: NjordClient = entry_data["client"]
         await client.close()

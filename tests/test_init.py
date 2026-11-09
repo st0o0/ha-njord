@@ -17,7 +17,7 @@ async def test_setup_entry(hass: HomeAssistant, mock_client, mock_config_entry) 
     await init_integration(hass, mock_config_entry)
 
     entry_data = hass.data[DOMAIN][mock_config_entry.entry_id]
-    assert set(entry_data) == {"client", "v3_coordinator", "status_coordinator"}
+    assert set(entry_data) == {"client", "coordinator", "status_coordinator"}
     mock_client.connect.assert_awaited_once()
     mock_client.get_manifest.assert_awaited()
 

@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
+from custom_components.njord.entities import NjordV3AlertBinarySensor, NjordV3Sensor
 from custom_components.njord.models import EntityState, ManifestEntity
-from custom_components.njord.v3_entities import NjordV3AlertBinarySensor, NjordV3Sensor
 
 
 def _manifest(

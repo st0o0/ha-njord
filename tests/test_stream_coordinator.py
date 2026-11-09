@@ -8,7 +8,7 @@ from google.protobuf.timestamp_pb2 import Timestamp
 
 from custom_components.njord.models import EntityState
 from custom_components.njord.proto.njord import njord_pb2 as v3_pb2
-from custom_components.njord.v3_coordinator import (
+from custom_components.njord.stream_coordinator import (
     NjordV3Coordinator,
     _extract_value,
     _parse_manifest,

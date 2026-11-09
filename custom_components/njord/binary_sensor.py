@@ -28,10 +28,10 @@ async def async_setup_entry(
 
     entities: list[BinarySensorEntity] = []
 
-    v3_coordinator = hass.data[DOMAIN][entry.entry_id].get("v3_coordinator")
-    if v3_coordinator is not None:
-        from .entity_factory import create_v3_binary_sensors
+    coordinator = hass.data[DOMAIN][entry.entry_id].get("coordinator")
+    if coordinator is not None:
+        from .entity_factory import create_binary_sensors
 
-        entities.extend(create_v3_binary_sensors(v3_coordinator.manifest, v3_coordinator, entry, sw_version))
+        entities.extend(create_binary_sensors(coordinator.manifest, coordinator, entry, sw_version))
 
     async_add_entities(entities)

@@ -23,7 +23,7 @@ from homeassistant.util import dt as dt_util
 
 from .helpers import device_info
 from .models import EntityState, ManifestEntity
-from .v3_coordinator import NjordV3Coordinator
+from .stream_coordinator import NjordV3Coordinator
 
 _CONDITION_MAP: dict[str, str] = {
     "clear": "sunny",

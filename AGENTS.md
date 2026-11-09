@@ -12,15 +12,14 @@ There is no polling on the HA side; updates arrive in real time.
 
 ```
 njord (gRPC server)  ──►  ha-njord (HA integration)
-  StreamDomainData()          NjordDataCoordinator (streaming)
-  StreamEnrichments()         weather, sensor, binary_sensor,
-  GetDomainData()             event, button entities
-  GetEnrichments()
+  GetManifest()               Entity definitions (manifest-driven)
+  Subscribe()                 NjordV3Coordinator (entity stream)
   GetStatus()                 NjordStatusCoordinator (polling)
+  TriggerPoll()               weather, sensor, binary_sensor,
+                              button entities
 ```
 
-Domains: weather, air quality, flood, marine get entities; seasonal and ensemble (spread data) are parsed and kept in the coordinator (no entity). The proto also carries satellite (`DomainDataUpdate` oneof has weather, air_quality, flood, marine, seasonal, satellite); it is not consumed.
-Enrichments on the wire are typed per-feature `EnrichmentEvent`s (oneof `feature`: alerts, scores, conditions, trends, forecasts). Which features get entities follows `StatusResponse.active_enrichments` (`<Category>:<Name>` keys, see `FEATURE_KEYS` in `const.py`); an empty list means all enabled. There are no enrichment toggles on the HA side.
+Entity-first architecture: `GetManifest` returns entity definitions per location x feature, `Subscribe` streams `EntityStateUpdate`s per entity_id. Entities are created from the manifest via `entity_factory.py`; state updates are dispatched by entity_id. Generic per-OutputKind entity classes (`NjordV3AlertBinarySensor`, `NjordV3ScoreSensor`, etc.) replace per-feature entities. Adding a new feature in njord requires no ha-njord changes.
 
 ## Tech Stack
 
@@ -65,16 +64,18 @@ docker run --rm -v "$PWD:/work" -w /work python:3.12-slim \
 
 ```
 custom_components/njord/
-├── __init__.py          # Setup: client, coordinators, platforms, v1->v2->v3 migration, trigger_poll service
+├── __init__.py          # Setup: client, coordinators, platforms, trigger_poll service
 ├── config_flow.py       # Config flow (host+port) + options flow (status poll interval)
-├── coordinator.py       # NjordDataCoordinator (domain + typed feature streams) + NjordStatusCoordinator (polling)
-├── weather.py           # One weather entity per location (weather domain, hourly forecast)
-├── sensor.py            # Domain sensors (air quality, flood, marine) + server diagnostics
-├── lifestyle.py         # Feature-keyed sensor and binary sensor descriptions (scores, conditions, trends, forecasts)
-├── binary_sensor.py     # Feature binary sensors, alert binary sensors (one per active alert feature), stream connectivity
-├── event.py             # Alert event entity (started, escalated, deescalated, cleared)
+├── coordinator.py       # NjordStatusCoordinator (status polling)
+├── v3_coordinator.py    # NjordV3Coordinator (entity stream via Subscribe)
+├── v3_entities.py       # Generic entity classes per OutputKind (alert, score, condition, trend, forecast, observation)
+├── v3_weather.py        # Weather entity from EntityStateUpdate WeatherValue
+├── entity_factory.py    # Manifest-driven entity creation per platform
+├── sensor.py            # Server diagnostic sensors + v3 entity factory
+├── binary_sensor.py     # v3 entity factory (alert binary sensors)
 ├── button.py            # Trigger poll button
-├── grpc_client.py       # NjordClient: async gRPC wrapper (unary + reconnecting streams)
+├── calendar.py          # Calendar entity (stub, needs v3 rewrite)
+├── grpc_client.py       # NjordClient: async gRPC wrapper (GetManifest, Subscribe, GetStatus, TriggerPoll)
 ├── models.py            # Frozen dataclasses (status, ManifestEntity, EntityState)
 ├── condition_mapper.py  # WMO weather_code + is_day -> HA condition string
 ├── helpers.py           # Device info, current sample picker

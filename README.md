@@ -65,9 +65,7 @@ docker run --rm -v "$PWD:/work" -w /work python:3.12-slim \
     -Iprotos \
     --python_out=custom_components/njord/proto \
     --grpc_python_out=custom_components/njord/proto \
-    protos/njord/v2/common.proto \
-    protos/njord/v2/weather.proto \
-    protos/njord/v2/ops.proto"
+    protos/njord/njord.proto"
 ```
 
 Commits follow [Conventional Commits](https://www.conventionalcommits.org/); releases are cut automatically by release-please.
