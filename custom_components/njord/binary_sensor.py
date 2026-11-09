@@ -67,6 +67,12 @@ async def async_setup_entry(
     for stream_name in StreamName:
         entities.append(NjordStreamSensor(coordinator, entry, stream_name, sw_version))
 
+    v3_coordinator = hass.data[DOMAIN][entry.entry_id].get("v3_coordinator")
+    if v3_coordinator is not None:
+        from .entity_factory import create_v3_binary_sensors
+
+        entities.extend(create_v3_binary_sensors(v3_coordinator.manifest, v3_coordinator, entry, sw_version))
+
     async_add_entities(entities)
 
     def binary_sensor_factory(location: str, domain: Domain) -> list[BinarySensorEntity]:

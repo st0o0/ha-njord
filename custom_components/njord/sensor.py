@@ -228,6 +228,12 @@ async def async_setup_entry(
             for target in status_coordinator.data.targets:
                 entities.append(NjordTargetSensor(status_coordinator, entry, target.location, sw_version))
 
+    v3_coordinator = hass.data[DOMAIN][entry.entry_id].get("v3_coordinator")
+    if v3_coordinator is not None:
+        from .entity_factory import create_v3_sensors
+
+        entities.extend(create_v3_sensors(v3_coordinator.manifest, v3_coordinator, entry, sw_version))
+
     async_add_entities(entities)
 
     def sensor_factory(location: str, domain: Domain) -> list[SensorEntity]:

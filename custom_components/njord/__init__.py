@@ -19,6 +19,7 @@ from .const import (
 )
 from .coordinator import NjordDataCoordinator, NjordStatusCoordinator
 from .grpc_client import NjordClient
+from .v3_coordinator import NjordV3Coordinator
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -78,16 +79,27 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if status_coordinator is not None:
         coordinator.data.active_enrichments = set(status_coordinator.data.active_enrichments)
 
+    v3_coordinator = NjordV3Coordinator(hass, client)
+    try:
+        await v3_coordinator.async_setup()
+        await v3_coordinator.async_config_entry_first_refresh()
+    except Exception:
+        _LOGGER.debug("v3 API not available, running v2 only")
+        v3_coordinator = None
+
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = {
         "client": client,
         "coordinator": coordinator,
         "status_coordinator": status_coordinator,
+        "v3_coordinator": v3_coordinator,
     }
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     coordinator.start_streams()
+    if v3_coordinator is not None:
+        v3_coordinator.start_stream()
 
     if status_coordinator is not None:
         _previous_enrichments: frozenset[str] = frozenset(status_coordinator.data.active_enrichments)
@@ -117,7 +129,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             location = call.data.get("location", "")
             for entry_data in hass.data[DOMAIN].values():
                 c: NjordClient = entry_data["client"]
-                await c.trigger_poll(location=location)
+                if entry_data.get("v3_coordinator") is not None:
+                    await c.trigger_poll_v3(location=location)
+                else:
+                    await c.trigger_poll(location=location)
 
         hass.services.async_register(
             DOMAIN,
@@ -137,6 +152,9 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         entry_data = hass.data[DOMAIN].pop(entry.entry_id)
         coordinator: NjordDataCoordinator = entry_data["coordinator"]
         await coordinator.stop_streams()
+        v3_coord: NjordV3Coordinator | None = entry_data.get("v3_coordinator")
+        if v3_coord is not None:
+            await v3_coord.stop_stream()
         client: NjordClient = entry_data["client"]
         await client.close()
 
