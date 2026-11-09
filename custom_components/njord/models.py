@@ -351,3 +351,31 @@ class FeatureData:
     alert: AlertData | None = None
     score: ScoreData | None = None
     values: dict[str, Any] = field(default_factory=dict)
+
+
+# --- v3 models ---
+
+
+@dataclass(frozen=True)
+class ManifestEntity:
+    """An entity definition from the njord v3 manifest."""
+
+    entity_id: str
+    location: str
+    feature: str
+    platform: str  # "weather", "sensor", "binary_sensor"
+    device_class: str
+    unit: str
+    icon: str
+    category: str
+    output_kind: str  # "alert", "score", "condition", "trend", "forecast", "weather", "observation"
+
+
+@dataclass(frozen=True)
+class EntityState:
+    """Current state of a v3 entity."""
+
+    entity_id: str
+    value: Any
+    updated_at: datetime | None = None
+    available: bool = True

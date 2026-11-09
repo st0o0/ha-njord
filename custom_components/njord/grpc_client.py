@@ -46,6 +46,8 @@ from .proto.njord.v2 import (
     weather_pb2,
     weather_pb2_grpc,
 )
+from .proto.njord.v3 import njord_pb2 as v3_pb2
+from .proto.njord.v3 import njord_pb2_grpc as v3_grpc
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -473,6 +475,7 @@ class NjordClient:
         self._channel: grpc.aio.Channel | None = None
         self._weather_stub: weather_pb2_grpc.WeatherServiceStub | None = None
         self._ops_stub: ops_pb2_grpc.OpsServiceStub | None = None
+        self._v3_stub: v3_grpc.NjordServiceStub | None = None
 
     async def connect(self) -> None:
         """Open an insecure gRPC channel to njord."""
@@ -480,6 +483,7 @@ class NjordClient:
         self._channel = grpc.aio.insecure_channel(target)
         self._weather_stub = weather_pb2_grpc.WeatherServiceStub(self._channel)
         self._ops_stub = ops_pb2_grpc.OpsServiceStub(self._channel)
+        self._v3_stub = v3_grpc.NjordServiceStub(self._channel)
 
     async def close(self) -> None:
         """Close the gRPC channel."""
@@ -488,6 +492,7 @@ class NjordClient:
             self._channel = None
             self._weather_stub = None
             self._ops_stub = None
+            self._v3_stub = None
 
     async def __aenter__(self) -> NjordClient:
         await self.connect()
@@ -551,6 +556,32 @@ class NjordClient:
         assert self._ops_stub is not None
         resp = await self._ops_stub.TriggerPoll(ops_pb2.TriggerPollRequest(location=location))
         return resp.triggered_count
+
+    # --- v3 API ---
+
+    async def get_manifest(self) -> v3_pb2.ManifestResponse:
+        """Retrieve entity manifest from njord v3 API."""
+        self._ensure_connected()
+        assert self._v3_stub is not None
+        return await self._v3_stub.GetManifest(v3_pb2.ManifestRequest())
+
+    async def subscribe(self, location: str = "") -> AsyncIterator[v3_pb2.EntityEvent]:
+        """Open a v3 Subscribe stream. Returns an async iterator of EntityEvent."""
+        self._ensure_connected()
+        assert self._v3_stub is not None
+        return self._v3_stub.Subscribe(v3_pb2.SubscribeRequest(location=location))
+
+    async def get_status_v3(self) -> v3_pb2.StatusResponse:
+        """Get system status via v3 API."""
+        self._ensure_connected()
+        assert self._v3_stub is not None
+        return await self._v3_stub.GetStatus(v3_pb2.StatusRequest())
+
+    async def trigger_poll_v3(self, location: str = "") -> v3_pb2.TriggerPollResponse:
+        """Trigger a poll via v3 API."""
+        self._ensure_connected()
+        assert self._v3_stub is not None
+        return await self._v3_stub.TriggerPoll(v3_pb2.TriggerPollRequest(location=location))
 
     # --- Streaming RPCs ---
 

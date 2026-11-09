@@ -2,13 +2,13 @@
 
 ## 1. Proto + client foundation (Phase 1)
 
-- [ ] 1.1 Copy `protos/njord/v3/njord.proto` from njord repo (`D:\GIT\njord\protos\njord\v3\njord.proto`) to `protos/njord/v3/njord.proto`. Generate Python stubs with grpcio-tools into `custom_components/njord/proto/`. Add `__init__.py` if needed.
+- [x] 1.1 Copy `protos/njord/v3/njord.proto` from njord repo (`D:\GIT\njord\protos\njord\v3\njord.proto`) to `protos/njord/v3/njord.proto`. Generate Python stubs with grpcio-tools into `custom_components/njord/proto/`. Add `__init__.py` if needed.
 
-- [ ] 1.2 Add v3 methods to `custom_components/njord/grpc_client.py`: `get_manifest()`, `subscribe()` (async iterator), `get_status_v3()`, `trigger_poll_v3()`. Keep v2 methods intact for now. Add v3 stub initialization in constructor.
+- [x] 1.2 Add v3 methods to `custom_components/njord/grpc_client.py`: `get_manifest()`, `subscribe()` (async iterator), `get_status_v3()`, `trigger_poll_v3()`. Keep v2 methods intact for now. Add v3 stub initialization in constructor.
 
-- [ ] 1.3 Add v3 models to `custom_components/njord/models.py`: `ManifestEntity` (entity_id, platform, device_class, unit, output_kind, name), `EntityState` (entity_id, value, updated_at, available). Parse from proto messages.
+- [x] 1.3 Add v3 models to `custom_components/njord/models.py`: `ManifestEntity` (entity_id, platform, device_class, unit, output_kind, name), `EntityState` (entity_id, value, updated_at, available). Parse from proto messages.
 
-- [ ] 1.4 Tests: `tests/test_grpc_client_v3.py` — test v3 client methods with mock stubs. `tests/test_models_v3.py` — test v3 model parsing.
+- [x] 1.4 Tests: `tests/test_grpc_client_v3.py` — test v3 client methods with mock stubs. `tests/test_models_v3.py` — test v3 model parsing.
 
 **Validation:** `uv run pytest tests/test_grpc_client_v3.py tests/test_models_v3.py -v --tb=short` (Docker on Windows)
 
