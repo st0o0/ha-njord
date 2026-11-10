@@ -142,7 +142,36 @@ class NjordWeatherEntity(SingleCoordinatorWeatherEntity[NjordStreamCoordinator])
         return wv.wind_speed if wv is not None else None
 
     @property
+    def native_wind_gust_speed(self) -> float | None:
+        wv = self._weather_value()
+        if wv is not None and wv.HasField("wind_gusts"):
+            return wv.wind_gusts
+        return None
+
+    @property
+    def wind_bearing(self) -> float | None:
+        wv = self._weather_value()
+        return wv.wind_direction if wv is not None else None
+
+    @property
     def cloud_coverage(self) -> float | None:
+        wv = self._weather_value()
+        if wv is not None and wv.HasField("cloud_cover"):
+            return wv.cloud_cover
+        return None
+
+    @property
+    def native_dew_point(self) -> float | None:
+        wv = self._weather_value()
+        if wv is not None and wv.HasField("dew_point"):
+            return wv.dew_point
+        return None
+
+    @property
+    def native_visibility(self) -> float | None:
+        wv = self._weather_value()
+        if wv is not None and wv.HasField("visibility"):
+            return wv.visibility
         return None
 
     @callback

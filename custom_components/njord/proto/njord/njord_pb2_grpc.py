@@ -5,7 +5,7 @@ import warnings
 
 from njord import njord_pb2 as njord_dot_njord__pb2
 
-GRPC_GENERATED_VERSION = '1.83.1'
+GRPC_GENERATED_VERSION = '1.71.2'
 GRPC_VERSION = grpc.__version__
 _version_not_supported = False
 
@@ -18,14 +18,14 @@ except ImportError:
 if _version_not_supported:
     raise RuntimeError(
         f'The grpc package installed is at version {GRPC_VERSION},'
-        + ' but the generated code in njord/njord_pb2_grpc.py depends on'
+        + f' but the generated code in njord/njord_pb2_grpc.py depends on'
         + f' grpcio>={GRPC_GENERATED_VERSION}.'
         + f' Please upgrade your grpc module to grpcio>={GRPC_GENERATED_VERSION}'
         + f' or downgrade your generated code using grpcio-tools<={GRPC_VERSION}.'
     )
 
 
-class NjordServiceStub:
+class NjordServiceStub(object):
     """Missing associated documentation comment in .proto file."""
 
     def __init__(self, channel):
@@ -56,7 +56,7 @@ class NjordServiceStub:
                 _registered_method=True)
 
 
-class NjordServiceServicer:
+class NjordServiceServicer(object):
     """Missing associated documentation comment in .proto file."""
 
     def GetManifest(self, request, context):
@@ -114,7 +114,7 @@ def add_NjordServiceServicer_to_server(servicer, server):
 
 
  # This class is part of an EXPERIMENTAL API.
-class NjordService:
+class NjordService(object):
     """Missing associated documentation comment in .proto file."""
 
     @staticmethod
