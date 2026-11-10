@@ -33,7 +33,7 @@ jobs:
 
       - name: Regenerate Python stubs
         run: |
-          pip install --quiet 'grpcio-tools>=1.70,<1.79' 'protobuf>=5.0,<6.0'
+          pip install --quiet 'grpcio-tools==1.83.1'
           python -m grpc_tools.protoc \
             -Iprotos \
             --python_out=custom_components/njord/proto \
