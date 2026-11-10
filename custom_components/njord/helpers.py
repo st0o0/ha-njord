@@ -21,6 +21,21 @@ def slugify_location(location: str) -> str:
     return location.replace("-", "_").replace(" ", "_").lower()
 
 
+def entity_name_from_id(entity_id: str, location: str) -> str | None:
+    """Derive a human-readable entity name from the njord entity_id.
+
+    Strips the location slug prefix and converts the remainder to title case.
+    Returns None for weather entities (they use the device name alone).
+    """
+    prefix = slugify_location(location) + "_"
+    if not entity_id.startswith(prefix):
+        return entity_id.replace("_", " ").title()
+    suffix = entity_id[len(prefix):]
+    if suffix == "weather" or suffix.endswith("_weather"):
+        return None
+    return suffix.replace("_", " ").title()
+
+
 def device_info(entry: ConfigEntry, location: str, sw_version: str | None = None) -> DeviceInfo:
     return DeviceInfo(
         identifiers={(DOMAIN, f"{entry.entry_id}_{location}")},

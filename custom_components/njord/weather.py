@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 from homeassistant.components.weather import (
     Forecast,
@@ -17,13 +17,35 @@ from homeassistant.const import (
     UnitOfSpeed,
     UnitOfTemperature,
 )
-from homeassistant.core import callback
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_track_utc_time_change
 from homeassistant.util import dt as dt_util
 
-from .helpers import device_info
+from .const import DOMAIN
+from .coordinator import NjordStatusCoordinator
+from .helpers import device_info, entity_name_from_id
 from .models import EntityState, ManifestEntity
 from .stream_coordinator import NjordStreamCoordinator
+
+
+async def async_setup_entry(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Set up njord weather entities."""
+    status_coordinator: NjordStatusCoordinator | None = hass.data[DOMAIN][entry.entry_id].get("status_coordinator")
+    sw_version = None
+    if status_coordinator is not None and status_coordinator.data is not None:
+        sw_version = status_coordinator.data.version or None
+
+    coordinator = hass.data[DOMAIN][entry.entry_id].get("coordinator")
+    if coordinator is not None:
+        from .entity_factory import create_weather_entities
+
+        async_add_entities(create_weather_entities(coordinator.manifest, coordinator, entry, sw_version))
+
 
 _CONDITION_MAP: dict[str, str] = {
     "clear": "sunny",
@@ -47,7 +69,6 @@ class NjordWeatherEntity(SingleCoordinatorWeatherEntity[NjordStreamCoordinator])
     """Weather entity driven by WeatherValue from the Subscribe stream."""
 
     _attr_has_entity_name = True
-    _attr_name = None
     _attr_supported_features = WeatherEntityFeature.FORECAST_HOURLY
     _attr_native_temperature_unit = UnitOfTemperature.CELSIUS
     _attr_native_pressure_unit = UnitOfPressure.HPA
@@ -65,6 +86,7 @@ class NjordWeatherEntity(SingleCoordinatorWeatherEntity[NjordStreamCoordinator])
         super().__init__(coordinator)
         self._manifest = manifest_entity
         self._attr_unique_id = f"{entry.entry_id}_{manifest_entity.entity_id}"
+        self._attr_name = entity_name_from_id(manifest_entity.entity_id, manifest_entity.location)
         self._attr_device_info = device_info(entry, manifest_entity.location, sw_version)
 
     async def async_added_to_hass(self) -> None:
@@ -132,7 +154,7 @@ class NjordWeatherEntity(SingleCoordinatorWeatherEntity[NjordStreamCoordinator])
         now = dt_util.utcnow()
         forecasts: list[Forecast] = []
         for point in wv.hourly_forecast:
-            point_time = point.time.ToDatetime()
+            point_time = point.time.ToDatetime().replace(tzinfo=UTC)
             if point_time < now:
                 continue
             forecast = Forecast(

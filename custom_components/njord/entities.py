@@ -10,7 +10,7 @@ from homeassistant.components.sensor import SensorEntity, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .helpers import device_info
+from .helpers import device_info, entity_name_from_id
 from .models import EntityState, ManifestEntity
 from .stream_coordinator import NjordStreamCoordinator
 
@@ -33,7 +33,7 @@ class NjordEntitySensor(CoordinatorEntity[NjordStreamCoordinator], SensorEntity)
         super().__init__(coordinator)
         self._manifest = manifest_entity
         self._attr_unique_id = f"{entry.entry_id}_{manifest_entity.entity_id}"
-        self._attr_translation_key = manifest_entity.entity_id
+        self._attr_name = entity_name_from_id(manifest_entity.entity_id, manifest_entity.location)
         self._attr_device_info = device_info(entry, manifest_entity.location, sw_version)
         if manifest_entity.unit:
             self._attr_native_unit_of_measurement = manifest_entity.unit
@@ -121,7 +121,7 @@ class NjordAlertBinarySensor(CoordinatorEntity[NjordStreamCoordinator], BinarySe
         super().__init__(coordinator)
         self._manifest = manifest_entity
         self._attr_unique_id = f"{entry.entry_id}_{manifest_entity.entity_id}"
-        self._attr_translation_key = manifest_entity.entity_id
+        self._attr_name = entity_name_from_id(manifest_entity.entity_id, manifest_entity.location)
         self._attr_device_info = device_info(entry, manifest_entity.location, sw_version)
         if manifest_entity.device_class:
             self._attr_device_class = manifest_entity.device_class
