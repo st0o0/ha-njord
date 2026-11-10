@@ -31,8 +31,11 @@ def entity_name_from_id(entity_id: str, location: str) -> str | None:
     if not entity_id.startswith(prefix):
         return entity_id.replace("_", " ").title()
     suffix = entity_id[len(prefix):]
-    if suffix == "weather" or suffix.endswith("_weather"):
+    if suffix == "weather":
         return None
+    if suffix.endswith("_weather"):
+        model_part = suffix[: -len("_weather")]
+        return model_part.replace("_", " ").title()
     return suffix.replace("_", " ").title()
 
 
