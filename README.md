@@ -5,20 +5,19 @@
 [![Python](https://img.shields.io/badge/python-3.12+-3776ab?style=flat-square)](https://www.python.org/)
 [![HACS](https://img.shields.io/badge/HACS-custom-41bdf5?style=flat-square)](https://hacs.xyz/)
 
-Home Assistant custom integration for the [njord](https://github.com/st0o0/njord) weather intelligence service. Connects via gRPC streaming and creates native Home Assistant entities for multi-domain weather intelligence. Data arrives in real time, with no polling delay on the HA side.
+Home Assistant custom integration for the [njord](https://github.com/st0o0/njord) weather intelligence service. Connects via gRPC streaming and creates native Home Assistant entities for multi-domain weather intelligence. Data arrives in real time with no polling delay on the HA side.
 
 ## Features
 
-- **Multi-domain weather data.** Weather (Ensemble), Air Quality, Flood and Marine data as sensor entities per location
-- **19 weather alerts.** Frost, heat, storm, UV, fog, pollen, PM2.5, flood risk, swimming conditions and more as `binary_sensor` entities with severity and trigger value
-- **Lifestyle enrichments.** Laundry drying score, commute safety, ventilation window, exercise advisory, BBQ score, outdoor score and more as `sensor` entities
-- **Alert events.** Event entity that fires on alert state changes
-- **Air quality sensors.** PM2.5, PM10, ozone, birch/grass/alder/mugwort pollen per location
-- **Flood monitoring.** River discharge sensor with flood risk alerts
-- **Marine conditions.** Wave height, wave period, wave direction, water temperature
+- **89 features across 6 domains.** Forecast, Ensemble, Air Quality, Flood, Marine, and Seasonal data as native HA entities per location
+- **30 weather alerts.** Frost, heat, storm, UV, fog, pollen, PM2.5, flood risk, swimming conditions, dust, fire risk, migraine risk, and more as `binary_sensor` entities with severity and trigger value
+- **23 observation sensors.** PM2.5, PM10, ozone, pollen (birch/grass/alder/mugwort), UV index, flood discharge, wave height/period/direction, water temperature, soil moisture/temperature, snow depth, and more
+- **23 condition sensors.** Commute safety, ventilation window, exercise advisory, gardening, atmospheric stability, heat pump COP, solar yield, irrigation need, and more
+- **7 activity scores.** Laundry drying, BBQ, outdoor, sleep quality, allergy severity, asthma risk, spray window as `sensor` entities
+- **4 forecast sensors.** Ensemble and forecast model comparison, seasonal outlook, growing degree days
+- **Weather entity.** Native `weather` platform entity per location with hourly forecasts
 - **Server diagnostics.** API usage, poll state per location, gRPC stream connectivity
 - **Manual poll trigger.** Button entity to trigger an immediate poll for a location
-- **Enrichment-driven config.** Toggle individual enrichments in HA; njord derives which API domains to fetch
 
 ## Prerequisites
 
@@ -43,13 +42,12 @@ Copy the `custom_components/njord` directory to your Home Assistant `config/cust
 1. Go to **Settings > Devices & Services > Add Integration**
 2. Search for **njord Weather**
 3. Enter the host and gRPC port (default: 8081) of your njord instance
-4. Choose which enrichments to enable (weather alerts, pollen, flood risk, lifestyle scores, etc.)
 
-Entities appear immediately after setup. Locations are auto-discovered from the njord configuration. Coordinates are resolved automatically via geocoding.
+Entities appear immediately after setup. Locations are auto-discovered from the njord configuration. Feature toggles are configured server-side in njord (environment variables or config file).
 
 ## Documentation
 
-For the complete entity reference, dashboard examples, automation recipes, and configuration details, see the **[njord documentation](https://st0o0.github.io/njord/home-assistant)**.
+For the complete entity reference, dashboard examples, automation recipes, and configuration details, see the **[njord documentation](https://njord.st0o0.net/home-assistant/)**.
 
 ## Development
 
@@ -60,7 +58,7 @@ docker run --rm -v "$PWD:/work" -w /work -e UV_PROJECT_ENVIRONMENT=/opt/venv pyt
 
 # Regenerate proto stubs
 docker run --rm -v "$PWD:/work" -w /work python:3.12-slim \
-  sh -c "pip install --quiet 'grpcio-tools>=1.70,<1.79' 'protobuf>=5.0,<6.0' && \
+  sh -c "pip install --quiet 'grpcio-tools>=1.68.0' 'protobuf>=5.0,<6.0' && \
   python -m grpc_tools.protoc \
     -Iprotos \
     --python_out=custom_components/njord/proto \
