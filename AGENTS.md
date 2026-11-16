@@ -13,13 +13,13 @@ There is no polling on the HA side; updates arrive in real time.
 ```
 njord (gRPC server)  ──►  ha-njord (HA integration)
   GetManifest()               Entity definitions (manifest-driven)
-  Subscribe()                 NjordV3Coordinator (entity stream)
+  Subscribe()                 NjordStreamCoordinator (entity stream)
   GetStatus()                 NjordStatusCoordinator (polling)
   TriggerPoll()               weather, sensor, binary_sensor,
-                              button entities
+                              event, button entities
 ```
 
-Entity-first architecture: `GetManifest` returns entity definitions per location x feature, `Subscribe` streams `EntityStateUpdate`s per entity_id. Entities are created from the manifest via `entity_factory.py`; state updates are dispatched by entity_id. Generic per-OutputKind entity classes (`NjordV3AlertBinarySensor`, `NjordV3ScoreSensor`, etc.) replace per-feature entities. Adding a new feature in njord requires no ha-njord changes.
+Entity-first architecture: `GetManifest` returns entity definitions per location x feature, `Subscribe` streams `EntityStateUpdate`s per entity_id. Entities are created from the manifest via `entity_factory.py`; state updates are dispatched by entity_id. Generic per-OutputKind entity classes (`NjordAlertBinarySensor`, `NjordScoreSensor`, etc.) replace per-feature entities. Adding a new feature in njord requires no ha-njord changes.
 
 ## Tech Stack
 
@@ -67,14 +67,13 @@ custom_components/njord/
 ├── __init__.py          # Setup: client, coordinators, platforms, trigger_poll service
 ├── config_flow.py       # Config flow (host+port) + options flow (status poll interval)
 ├── coordinator.py       # NjordStatusCoordinator (status polling)
-├── v3_coordinator.py    # NjordV3Coordinator (entity stream via Subscribe)
-├── v3_entities.py       # Generic entity classes per OutputKind (alert, score, condition, trend, forecast, observation)
-├── v3_weather.py        # Weather entity from EntityStateUpdate WeatherValue
+├── stream_coordinator.py # NjordStreamCoordinator (entity stream via Subscribe)
+├── entities.py          # Generic entity classes per OutputKind (alert, score, condition, trend, forecast, observation)
+├── weather.py           # Weather entity from EntityStateUpdate WeatherValue
 ├── entity_factory.py    # Manifest-driven entity creation per platform
-├── sensor.py            # Server diagnostic sensors + v3 entity factory
-├── binary_sensor.py     # v3 entity factory (alert binary sensors)
+├── sensor.py            # Server diagnostic sensors + entity factory
+├── binary_sensor.py     # Entity factory (alert binary sensors)
 ├── button.py            # Trigger poll button
-├── calendar.py          # Calendar entity (stub, needs v3 rewrite)
 ├── grpc_client.py       # NjordClient: async gRPC wrapper (GetManifest, Subscribe, GetStatus, TriggerPoll)
 ├── models.py            # Frozen dataclasses (status, ManifestEntity, EntityState)
 ├── condition_mapper.py  # WMO weather_code + is_day -> HA condition string
@@ -117,4 +116,4 @@ workflow (`sync-protos.yml`) automates this on njord releases.
 ## Documentation
 
 Full entity reference, dashboard examples, and automation recipes are in the
-[njord docs](https://st0o0.github.io/njord/home-assistant/).
+[njord docs](https://njord.st0o0.net/home-assistant/).

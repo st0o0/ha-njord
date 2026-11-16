@@ -22,6 +22,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_track_utc_time_change
 from homeassistant.util import dt as dt_util
 
+from .condition_mapper import map_condition
 from .const import DOMAIN
 from .coordinator import NjordStatusCoordinator
 from .helpers import device_info, entity_name_from_id
@@ -45,24 +46,6 @@ async def async_setup_entry(
         from .entity_factory import create_weather_entities
 
         async_add_entities(create_weather_entities(coordinator.manifest, coordinator, entry, sw_version))
-
-
-_CONDITION_MAP: dict[str, str] = {
-    "clear": "sunny",
-    "mostly_clear": "sunny",
-    "partly_cloudy": "partlycloudy",
-    "overcast": "cloudy",
-    "fog": "fog",
-    "drizzle": "rainy",
-    "rain": "rainy",
-    "heavy_rain": "pouring",
-    "snow": "snowy",
-    "heavy_snow": "snowy",
-    "thunderstorm": "lightning-rainy",
-    "sleet": "snowy-rainy",
-    "hail": "hail",
-    "windy": "windy",
-}
 
 
 class NjordWeatherEntity(SingleCoordinatorWeatherEntity[NjordStreamCoordinator]):
@@ -114,7 +97,9 @@ class NjordWeatherEntity(SingleCoordinatorWeatherEntity[NjordStreamCoordinator])
         wv = self._weather_value()
         if wv is None:
             return None
-        return _CONDITION_MAP.get(wv.condition, wv.condition)
+        if wv.HasField("weather_code"):
+            return map_condition(wv.weather_code, wv.is_day if wv.HasField("is_day") else True)
+        return wv.condition
 
     @property
     def native_temperature(self) -> float | None:
@@ -193,7 +178,7 @@ class NjordWeatherEntity(SingleCoordinatorWeatherEntity[NjordStreamCoordinator])
                 humidity=point.humidity,
                 native_pressure=point.pressure,
                 native_wind_speed=point.wind_speed,
-                condition=_CONDITION_MAP.get(point.condition, point.condition),
+                condition=map_condition(point.weather_code, point.is_day if point.HasField("is_day") else True) if point.HasField("weather_code") else point.condition,
             )
             if point.HasField("precipitation_probability"):
                 forecast["precipitation_probability"] = round(point.precipitation_probability)

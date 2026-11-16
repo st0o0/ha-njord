@@ -58,7 +58,7 @@ docker run --rm -v "$PWD:/work" -w /work -e UV_PROJECT_ENVIRONMENT=/opt/venv pyt
 
 # Regenerate proto stubs
 docker run --rm -v "$PWD:/work" -w /work python:3.12-slim \
-  sh -c "pip install --quiet 'grpcio-tools>=1.68.0' 'protobuf>=5.0,<6.0' && \
+  sh -c "pip install --quiet 'grpcio-tools>=1.70,<1.79' 'protobuf>=5.0,<6.0' && \
   python -m grpc_tools.protoc \
     -Iprotos \
     --python_out=custom_components/njord/proto \
