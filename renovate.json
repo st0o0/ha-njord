@@ -7,7 +7,7 @@
   "packageRules": [
     {
       "description": "Group all Python dependency updates (minor+patch)",
-      "matchManagers": ["pep621", "homeassistant"],
+      "matchManagers": ["pep621", "homeassistant-manifest"],
       "matchUpdateTypes": ["minor", "patch", "pin", "digest"],
       "groupName": "python dependencies",
       "labels": ["dependencies", "python"],
@@ -17,7 +17,7 @@
     },
     {
       "description": "Group major Python dependency updates (separate PR, no automerge)",
-      "matchManagers": ["pep621", "homeassistant"],
+      "matchManagers": ["pep621", "homeassistant-manifest"],
       "matchUpdateTypes": ["major"],
       "groupName": "major python dependencies",
       "labels": ["dependencies", "python"]
