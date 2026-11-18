@@ -54,7 +54,7 @@ def _make_status_response():
 
     model = MagicMock()
     model.location = "home"
-    model.phase = 2  # STEADY
+    model.phase = 1  # ACTIVE
     next_poll = MagicMock()
     next_poll.seconds = int(FUTURE.timestamp())
     next_poll.nanos = 0

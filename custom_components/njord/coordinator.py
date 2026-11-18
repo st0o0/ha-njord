@@ -29,7 +29,7 @@ def _parse_status(proto) -> ServerStatusData:
             usage_percent=proto.budget.usage_percent,
         )
 
-    _PHASE_MAP = {0: PollPhase.UNSPECIFIED, 1: PollPhase.DISCOVERY, 2: PollPhase.STEADY}
+    _PHASE_MAP = {0: PollPhase.UNSPECIFIED, 1: PollPhase.ACTIVE, 3: PollPhase.SUSPENDED}
 
     statuses = [
         LocationStatusData(

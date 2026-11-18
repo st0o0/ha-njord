@@ -29,5 +29,5 @@ class PollPhase(_WireEnum):
     """Poll phase of a location target."""
 
     UNSPECIFIED = "unspecified"
-    DISCOVERY = "discovery"
-    STEADY = "steady"
+    ACTIVE = "active"
+    SUSPENDED = "suspended"
