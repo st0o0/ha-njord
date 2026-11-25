@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -14,19 +15,54 @@ FUTURE = datetime(2099, 1, 1, 12, 0, tzinfo=UTC)
 
 
 def _make_manifest_response():
-    """Build a mock ManifestResponse with sensor entities."""
+    """Build a mock ManifestResponse with entities across all platforms."""
     mock = MagicMock()
-    entity1 = MagicMock()
-    entity1.entity_id = "home_frost"
-    entity1.location = "home"
-    entity1.feature = "Frost"
-    entity1.platform = 2  # SENSOR
-    entity1.device_class = "temperature"
-    entity1.unit = "°C"
-    entity1.icon = "mdi:snowflake-alert"
-    entity1.category = "alerts"
-    entity1.output_kind = 1  # ALERT
-    mock.entities = [entity1]
+
+    frost_sensor = MagicMock()
+    frost_sensor.entity_id = "home_frost"
+    frost_sensor.location = "home"
+    frost_sensor.feature = "Frost"
+    frost_sensor.platform = 2  # SENSOR
+    frost_sensor.device_class = "temperature"
+    frost_sensor.unit = "°C"
+    frost_sensor.icon = "mdi:snowflake-alert"
+    frost_sensor.category = "alerts"
+    frost_sensor.output_kind = 2  # SCORE
+
+    frost_alert = MagicMock()
+    frost_alert.entity_id = "home_frost_alert"
+    frost_alert.location = "home"
+    frost_alert.feature = "Frost"
+    frost_alert.platform = 3  # BINARY_SENSOR
+    frost_alert.device_class = ""
+    frost_alert.unit = "°C"
+    frost_alert.icon = "mdi:snowflake-alert"
+    frost_alert.category = "alerts"
+    frost_alert.output_kind = 1  # ALERT
+
+    uv_alert = MagicMock()
+    uv_alert.entity_id = "home_uv_alert"
+    uv_alert.location = "home"
+    uv_alert.feature = "Uv"
+    uv_alert.platform = 3  # BINARY_SENSOR
+    uv_alert.device_class = ""
+    uv_alert.unit = "UV"
+    uv_alert.icon = "mdi:weather-sunny-alert"
+    uv_alert.category = "alerts"
+    uv_alert.output_kind = 1  # ALERT
+
+    weather = MagicMock()
+    weather.entity_id = "home_weather"
+    weather.location = "home"
+    weather.feature = "Weather"
+    weather.platform = 1  # WEATHER
+    weather.device_class = ""
+    weather.unit = ""
+    weather.icon = ""
+    weather.category = "forecast"
+    weather.output_kind = 6  # WEATHER
+
+    mock.entities = [frost_sensor, frost_alert, uv_alert, weather]
     return mock
 
 
@@ -84,7 +120,7 @@ def auto_enable_custom_integrations(enable_custom_integrations):
 
 @pytest.fixture
 def mock_client():
-    """Patch NjordClient with API mocks."""
+    """Patch NjordClient and disable stream_coordinator.start_stream for tests."""
     mock = AsyncMock()
     mock.connect = AsyncMock()
     mock.close = AsyncMock()
@@ -92,15 +128,16 @@ def mock_client():
     mock.get_status = AsyncMock(return_value=_make_status_response())
     mock.trigger_poll = AsyncMock(return_value=_make_trigger_response())
 
-    async def _empty_subscribe(**kwargs):
-        return
-        yield
+    async def _blocking_stream():
+        await asyncio.get_event_loop().create_future()
+        yield  # never reached
 
-    mock.subscribe = MagicMock(side_effect=lambda **kwargs: _empty_subscribe())
+    mock.subscribe = AsyncMock(side_effect=lambda **kwargs: _blocking_stream())
 
     with (
         patch("custom_components.njord.NjordClient", return_value=mock),
         patch("custom_components.njord.config_flow.NjordClient", return_value=mock),
+        patch("custom_components.njord.stream_coordinator.NjordStreamCoordinator.start_stream"),
     ):
         yield mock
 

@@ -43,7 +43,8 @@ class NjordTriggerPollButton(ButtonEntity):
         self._last_triggered: datetime | None = None
 
     async def async_press(self) -> None:
-        self._triggered_count = await self._client.trigger_poll()
+        response = await self._client.trigger_poll()
+        self._triggered_count = response.triggered_count
         self._last_triggered = datetime.now(UTC)
         self.async_write_ha_state()
 

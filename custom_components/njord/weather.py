@@ -178,7 +178,9 @@ class NjordWeatherEntity(SingleCoordinatorWeatherEntity[NjordStreamCoordinator])
                 humidity=point.humidity,
                 native_pressure=point.pressure,
                 native_wind_speed=point.wind_speed,
-                condition=map_condition(point.weather_code, point.is_day if point.HasField("is_day") else True) if point.HasField("weather_code") else point.condition,
+                condition=map_condition(point.weather_code, point.is_day if point.HasField("is_day") else True)
+                if point.HasField("weather_code")
+                else point.condition,
             )
             if point.HasField("precipitation_probability"):
                 forecast["precipitation_probability"] = round(point.precipitation_probability)

@@ -30,7 +30,7 @@ def entity_name_from_id(entity_id: str, location: str) -> str | None:
     prefix = slugify_location(location) + "_"
     if not entity_id.startswith(prefix):
         return entity_id.replace("_", " ").title()
-    suffix = entity_id[len(prefix):]
+    suffix = entity_id[len(prefix) :]
     if suffix == "weather":
         return None
     if suffix.endswith("_weather"):
