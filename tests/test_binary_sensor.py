@@ -48,7 +48,9 @@ async def test_alert_is_off_when_severity_zero(hass: HomeAssistant, mock_client,
 
     value = MagicMock()
     value.severity = 0
-    coordinator.v3_entity_states["home_frost_alert"] = EntityState(entity_id="home_frost_alert", value=value, available=True)
+    coordinator.v3_entity_states["home_frost_alert"] = EntityState(
+        entity_id="home_frost_alert", value=value, available=True
+    )
     coordinator.async_set_updated_data(None)
     await hass.async_block_till_done()
 
